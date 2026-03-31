@@ -1,5 +1,10 @@
 "use client"
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+declare global {
+  interface Window { instgrm?: any }
+}
+
 import { useEffect, useRef, useState } from "react"
 import { BeeDecoration } from "./bee-decoration"
 
