@@ -36,24 +36,36 @@ function getAdmin() {
   )
 }
 
-export const metadata: Metadata = {
-  title: 'Your Quote – Dr. Squeegee',
-  description: 'Professional house washing service quote from Dr. Squeegee — House Calls for a Cleaner Home.',
-  robots: { index: false, follow: false },
-  icons: {
-    icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
-    ],
-    apple: '/apple-touch-icon.png',
-  },
-  openGraph: {
-    title: 'Dr. Squeegee — Your Service Quote',
-    description: 'House Calls for a Cleaner Home. Professional pressure washing in Charlotte, NC.',
-    siteName: 'Dr. Squeegee',
-    type: 'website',
-    images: [{ width: 1200, height: 630 }],
-  },
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { token } = await params
+  const ogImageUrl = `https://drsqueegeeclt.com/q/${token}/opengraph-image`
+
+  return {
+    metadataBase: new URL('https://drsqueegeeclt.com'),
+    title: 'Your Quote – Dr. Squeegee',
+    description: 'Professional house washing service quote from Dr. Squeegee — House Calls for a Cleaner Home.',
+    robots: { index: false, follow: false },
+    icons: {
+      icon: [
+        { url: '/favicon.svg', type: 'image/svg+xml' },
+        { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      ],
+      apple: '/apple-touch-icon.png',
+    },
+    openGraph: {
+      title: 'Dr. Squeegee — Your Service Quote',
+      description: 'House Calls for a Cleaner Home. Professional pressure washing in Charlotte, NC.',
+      siteName: 'Dr. Squeegee',
+      type: 'website',
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: 'Dr. Squeegee — Your Service Quote' }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Dr. Squeegee — Your Service Quote',
+      description: 'House Calls for a Cleaner Home. Professional pressure washing in Charlotte, NC.',
+      images: [ogImageUrl],
+    },
+  }
 }
 
 export default async function QuotePage({ params }: PageProps) {
