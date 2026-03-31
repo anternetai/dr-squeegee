@@ -52,6 +52,7 @@ export const metadata: Metadata = {
     description: 'House Calls for a Cleaner Home. Professional pressure washing in Charlotte, NC.',
     siteName: 'Dr. Squeegee',
     type: 'website',
+    images: [{ width: 1200, height: 630 }],
   },
 }
 
