@@ -54,13 +54,17 @@ async function getRelatedArticles(category: string | null, currentSlug: string):
 }
 
 export async function generateStaticParams() {
-  const supabase = getSupabase()
-  const { data } = await supabase
-    .from("seo_articles")
-    .select("slug")
-    .eq("site", "drsqueegee")
+  try {
+    const supabase = getSupabase()
+    const { data } = await supabase
+      .from("seo_articles")
+      .select("slug")
+      .eq("site", "drsqueegee")
 
-  return (data || []).map((row: { slug: string }) => ({ slug: row.slug }))
+    return (data || []).map((row: { slug: string }) => ({ slug: row.slug }))
+  } catch {
+    return []
+  }
 }
 
 export async function generateMetadata({
