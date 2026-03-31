@@ -10,7 +10,7 @@ const SCOPES = [
   "https://www.googleapis.com/auth/calendar",
 ]
 
-const REDIRECT_URI = "https://homefieldhub.com/api/google/callback"
+const REDIRECT_URI = "https://drsqueegeeclt.com/api/google/callback"
 
 // Admin Supabase client (service role) for reading/writing settings
 function getAdminSupabase() {

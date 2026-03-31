@@ -29,25 +29,8 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  const isPortalRoute = request.nextUrl.pathname.startsWith("/portal")
-  const isLoginPage = request.nextUrl.pathname === "/portal/login"
-  const isAcceptInvite = request.nextUrl.pathname === "/portal/accept-invite"
-
-  if (isPortalRoute && !isLoginPage && !isAcceptInvite && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/portal/login"
-    return NextResponse.redirect(url)
-  }
-
-  if (isLoginPage && user) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/portal/dashboard"
-    return NextResponse.redirect(url)
-  }
+  // Refresh Supabase session cookies (required to keep session alive)
+  await supabase.auth.getUser()
 
   return supabaseResponse
 }

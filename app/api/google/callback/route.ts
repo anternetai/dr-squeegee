@@ -10,13 +10,13 @@ export async function GET(request: NextRequest) {
   if (error) {
     console.error("Google OAuth error:", error)
     return NextResponse.redirect(
-      new URL("/portal/admin/calendar-auth?error=access_denied", request.url)
+      new URL("/crm?gcal_error=access_denied", request.url)
     )
   }
 
   if (!code) {
     return NextResponse.redirect(
-      new URL("/portal/admin/calendar-auth?error=no_code", request.url)
+      new URL("/crm?gcal_error=no_code", request.url)
     )
   }
 
@@ -24,23 +24,23 @@ export async function GET(request: NextRequest) {
     // Exchange code for tokens (saves refresh token to Supabase + .env)
     await exchangeCodeForTokens(code)
 
-    // Setup default calendars (HomeField Hub + Dr. Squeegee)
+    // Setup default calendars (Dr. Squeegee)
     try {
       await setupDefaultCalendars()
     } catch (calErr) {
-      // Non-fatal: calendar setup can be retried from the admin page
+      // Non-fatal: calendar setup can be retried
       console.error("Failed to setup default calendars:", calErr)
     }
 
-    // Redirect back to admin page with success
+    // Redirect back to CRM with success
     return NextResponse.redirect(
-      new URL("/portal/admin/calendar-auth?success=connected", request.url)
+      new URL("/crm?gcal_connected=1", request.url)
     )
   } catch (err) {
     console.error("Google OAuth callback error:", err)
     const message = err instanceof Error ? err.message : "unknown_error"
     return NextResponse.redirect(
-      new URL(`/portal/admin/calendar-auth?error=${encodeURIComponent(message)}`, request.url)
+      new URL(`/crm?gcal_error=${encodeURIComponent(message)}`, request.url)
     )
   }
 }

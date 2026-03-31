@@ -1,25 +1,14 @@
 import { NextResponse } from "next/server"
 import { getAuthUrl } from "@/lib/google-calendar"
-import { createClient } from "@/lib/supabase/server"
+import { verifyCrmAuth } from "@/lib/crm-auth-check"
 
 export async function GET() {
   try {
-    // Verify the requester is an admin
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Verify the requester is logged into the CRM
+    const isAuthed = await verifyCrmAuth()
 
-    if (!user) {
+    if (!isAuthed) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { data: client } = await supabase
-      .from("agency_clients")
-      .select("role")
-      .eq("auth_user_id", user.id)
-      .single()
-
-    if (!client || client.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const authUrl = getAuthUrl()
