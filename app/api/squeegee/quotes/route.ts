@@ -11,6 +11,7 @@ function getAdmin() {
 interface QuoteService {
   name: string
   price: number
+  description?: string
 }
 
 interface CreateQuoteBody {

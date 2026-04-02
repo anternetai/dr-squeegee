@@ -6,6 +6,8 @@ import type { SqueegeeQuote } from "./page"
 const SERVICE_DESCRIPTIONS: Record<string, string> = {
   "House Washing":
     "Soft wash of all exterior siding, eaves, and trim to remove dirt, mildew, and algae.",
+  "Window Cleaning":
+    "Streak-free cleaning of interior and exterior windows, frames, and sills.",
   "Surface Cleaning":
     "High-pressure cleaning of concrete, brick, or stone walkways and patios.",
   Driveway:
@@ -19,6 +21,8 @@ const SERVICE_DESCRIPTIONS: Record<string, string> = {
 const PREP_INSTRUCTIONS: Record<string, string> = {
   "House Washing":
     "Please close all windows and doors before we arrive. Remove any fragile items or outdoor décor from the area.",
+  "Window Cleaning":
+    "Please ensure windows are accessible and remove any window screens you'd like cleaned separately.",
   "Surface Cleaning":
     "Please clear the driveway/surface of vehicles and any items you'd like to protect.",
   Driveway:
@@ -123,8 +127,8 @@ export function QuoteView({ quote: initialQuote }: Props) {
                   <tr key={i}>
                     <td className="py-2.5">
                       <div className="text-[#2B2B2B] font-medium">{s.name}</div>
-                      {SERVICE_DESCRIPTIONS[s.name] && (
-                        <div className="text-xs text-[#2B2B2B]/50 mt-0.5">{SERVICE_DESCRIPTIONS[s.name]}</div>
+                      {(s.description || SERVICE_DESCRIPTIONS[s.name]) && (
+                        <div className="text-xs text-[#2B2B2B]/50 mt-0.5">{s.description || SERVICE_DESCRIPTIONS[s.name]}</div>
                       )}
                     </td>
                     <td className="py-2.5 text-right text-[#2B2B2B] tabular-nums align-top">

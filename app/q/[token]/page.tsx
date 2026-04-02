@@ -9,6 +9,7 @@ interface PageProps {
 interface QuoteService {
   name: string
   price: number
+  description?: string
 }
 
 export interface SqueegeeQuote {

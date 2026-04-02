@@ -29,6 +29,7 @@ export const STATUS_LABELS: Record<JobStatus, string> = {
 
 export const SERVICE_TYPES = [
   "House Washing",
+  "Window Cleaning",
   "Surface Cleaning",
   "Driveway",
   "Pool Deck",

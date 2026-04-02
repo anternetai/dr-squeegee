@@ -1,10 +1,15 @@
-import { Droplets, CarFront, Fence, Waves, BrickWall } from "lucide-react"
+import { Droplets, CarFront, Fence, Waves, BrickWall, Sparkles } from "lucide-react"
 
 export const SERVICES = [
   {
     name: "House Washing",
     description: "Soft wash of exterior siding, eaves, and trim",
     icon: Droplets,
+  },
+  {
+    name: "Window Cleaning",
+    description: "Streak-free interior and exterior window cleaning",
+    icon: Sparkles,
   },
   {
     name: "Surface Cleaning",
@@ -63,6 +68,7 @@ export const REVIEWS = [
 
 export const SERVICE_OPTIONS = [
   "House Washing",
+  "Window Cleaning",
   "Driveway",
   "Surface Cleaning",
   "Pool Deck",

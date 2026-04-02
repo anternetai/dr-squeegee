@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 
 const QUOTE_SERVICES = [
   "House Washing",
+  "Window Cleaning",
   "Surface Cleaning",
   "Driveway",
   "Pool Deck",
@@ -19,6 +20,7 @@ const QUOTE_SERVICES = [
 
 const SERVICE_DESCRIPTIONS: Record<string, string> = {
   "House Washing": "Soft wash of exterior siding, eaves, and trim",
+  "Window Cleaning": "Streak-free interior and exterior window cleaning",
   "Surface Cleaning": "High-pressure cleaning of walkways and patios",
   Driveway: "Full driveway pressure wash — oil stains, tire marks, buildup",
   "Pool Deck": "Pressure wash and surface treatment of pool deck",
@@ -97,6 +99,10 @@ export function QuoteBuilder({ job }: Props) {
   const [editPrices, setEditPrices] = useState<Record<string, string>>({})
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [customEnabled, setCustomEnabled] = useState(false)
+  const [customName, setCustomName] = useState("")
+  const [customDescription, setCustomDescription] = useState("")
+  const [customPrice, setCustomPrice] = useState("")
 
   const fetchPastQuotes = useCallback(async () => {
     setLoadingQuotes(true)
@@ -118,10 +124,11 @@ export function QuoteBuilder({ job }: Props) {
   }, [fetchPastQuotes])
 
   const selectedServices = QUOTE_SERVICES.filter((s) => selected[s])
+  const customPriceNum = parseFloat(customPrice) || 0
   const subtotal = selectedServices.reduce((sum, s) => {
     const p = parseFloat(prices[s] ?? "")
     return sum + (isNaN(p) ? 0 : p)
-  }, 0)
+  }, 0) + (customEnabled ? customPriceNum : 0)
 
   const discountNum = parseFloat(discountValue) || 0
   const discountAmount =
@@ -130,12 +137,15 @@ export function QuoteBuilder({ job }: Props) {
       : discountNum
   const total = Math.max(0, subtotal - discountAmount)
 
-  const canGenerate =
+  const hasStandardServices =
     selectedServices.length > 0 &&
     selectedServices.every((s) => {
       const p = parseFloat(prices[s] ?? "")
       return !isNaN(p) && p > 0
     })
+  const hasValidCustom =
+    customEnabled && customName.trim().length > 0 && customPriceNum > 0
+  const canGenerate = hasStandardServices || hasValidCustom
 
   const quoteUrl = generatedToken
     ? `https://drsqueegeeclt.com/q/${generatedToken}`
@@ -146,10 +156,19 @@ export function QuoteBuilder({ job }: Props) {
     setLoading(true)
     setError(null)
 
-    const services = selectedServices.map((name) => ({
-      name,
-      price: parseFloat(prices[name]),
-    }))
+    const services: { name: string; price: number; description?: string }[] =
+      selectedServices.map((name) => ({
+        name,
+        price: parseFloat(prices[name]),
+      }))
+
+    if (customEnabled && customName.trim() && customPriceNum > 0) {
+      services.push({
+        name: customName.trim(),
+        price: customPriceNum,
+        ...(customDescription.trim() && { description: customDescription.trim() }),
+      })
+    }
 
     try {
       const res = await fetch("/api/squeegee/quotes", {
@@ -306,11 +325,65 @@ export function QuoteBuilder({ job }: Props) {
                 )}
               </div>
             ))}
+
+            {/* Custom service */}
+            <div className="border-t pt-2 mt-1">
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2.5 cursor-pointer min-w-[160px]">
+                  <input
+                    type="checkbox"
+                    checked={customEnabled}
+                    onChange={() => {
+                      setCustomEnabled((prev) => !prev)
+                      if (customEnabled) {
+                        setCustomName("")
+                        setCustomDescription("")
+                        setCustomPrice("")
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-border accent-[#3A6B4C]"
+                  />
+                  <div>
+                    <span className="text-sm font-medium">Custom Service</span>
+                    <p className="text-[11px] text-muted-foreground leading-tight">Add a service not listed above</p>
+                  </div>
+                </label>
+              </div>
+              {customEnabled && (
+                <div className="ml-6 mt-2 space-y-2">
+                  <Input
+                    placeholder="Service name"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                  <Input
+                    placeholder="Description (optional)"
+                    value={customDescription}
+                    onChange={(e) => setCustomDescription(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm text-muted-foreground">$</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={customPrice}
+                      onChange={(e) => setCustomPrice(e.target.value)}
+                      className="h-8 w-28 text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Discount */}
-        {selectedServices.length > 0 && (
+        {(selectedServices.length > 0 || hasValidCustom) && (
           <div className="space-y-2 border-t pt-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Discount (optional)
@@ -361,7 +434,7 @@ export function QuoteBuilder({ job }: Props) {
         )}
 
         {/* Total */}
-        {selectedServices.length > 0 && (
+        {(selectedServices.length > 0 || hasValidCustom) && (
           <div className="border-t pt-3 space-y-1">
             {discountAmount > 0 && (
               <div className="flex items-center justify-between text-sm text-muted-foreground">
