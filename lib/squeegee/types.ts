@@ -46,6 +46,8 @@ export interface SqueegeeClient {
   email: string | null
   address: string | null
   notes: string | null
+  blacklisted: boolean
+  blacklist_reason: string | null
 }
 
 export interface SqueegeeInvoice {

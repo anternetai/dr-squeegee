@@ -3,7 +3,7 @@ import { SqueegeeClient } from "@/lib/squeegee/types"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Plus, Users, Phone, Mail } from "lucide-react"
+import { Plus, Users, Phone, Mail, ShieldBan } from "lucide-react"
 
 interface ClientWithJobCount extends SqueegeeClient {
   job_count: number
@@ -93,8 +93,9 @@ export default async function ClientsPage() {
                         className="hover:bg-muted/40 transition-colors cursor-pointer"
                       >
                         <td className="px-4 py-3">
-                          <Link href={`/crm/clients/${client.id}`} className="block font-medium hover:text-[#3A6B4C]">
-                            {client.name}
+                          <Link href={`/crm/clients/${client.id}`} className="flex items-center gap-2 font-medium hover:text-[#3A6B4C]">
+                            {client.blacklisted && <ShieldBan className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+                            <span className={client.blacklisted ? "text-red-600 dark:text-red-400" : ""}>{client.name}</span>
                           </Link>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
@@ -134,7 +135,10 @@ export default async function ClientsPage() {
                 <Card className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4 space-y-2">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold">{client.name}</p>
+                      <div className="flex items-center gap-2">
+                        {client.blacklisted && <ShieldBan className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+                        <p className={`font-semibold ${client.blacklisted ? "text-red-600 dark:text-red-400" : ""}`}>{client.name}</p>
+                      </div>
                       <span className="shrink-0 text-xs px-2 py-0.5 rounded-full font-semibold bg-[#E8F0EA] text-[#1E3E2B] dark:bg-[#1A2E21] dark:text-[#A8C4B0]">
                         {client.job_count} job{client.job_count !== 1 ? "s" : ""}
                       </span>

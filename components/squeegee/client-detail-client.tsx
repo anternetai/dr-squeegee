@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Phone, Mail, MapPin, FileText, Pencil, Save, X, Loader2, Trash2 } from "lucide-react"
+import { Phone, Mail, MapPin, FileText, Pencil, Save, X, Loader2, Trash2, ShieldBan, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface Props {
@@ -67,6 +67,7 @@ export function ClientDetailClient({ client: initialClient }: Props) {
   const [editError, setEditError] = useState<string | null>(null)
 
   const [deleting, setDeleting] = useState(false)
+  const [togglingBlacklist, setTogglingBlacklist] = useState(false)
 
   const [editForm, setEditForm] = useState({
     name: client.name,
@@ -96,6 +97,40 @@ export function ClientDetailClient({ client: initialClient }: Props) {
       alert("Network error — please try again.")
       setDeleting(false)
     }
+  }
+
+  async function toggleBlacklist() {
+    const action = client.blacklisted ? "remove from blacklist" : "blacklist"
+    let reason: string | null = null
+
+    if (!client.blacklisted) {
+      reason = window.prompt("Reason for blacklisting (optional):")
+      if (reason === null) return // cancelled
+    } else {
+      const confirmed = window.confirm(`Remove "${client.name}" from the blacklist?`)
+      if (!confirmed) return
+    }
+
+    setTogglingBlacklist(true)
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+      .from("squeegee_clients")
+      .update({
+        blacklisted: !client.blacklisted,
+        blacklist_reason: !client.blacklisted ? (reason?.trim() || null) : null,
+      })
+      .eq("id", client.id)
+      .select("*")
+      .single()
+
+    if (error) {
+      alert(`Failed to ${action}: ${error.message}`)
+    } else if (data) {
+      setClient(data as SqueegeeClient)
+      router.refresh()
+    }
+    setTogglingBlacklist(false)
   }
 
   function startEdit() {
@@ -226,6 +261,29 @@ export function ClientDetailClient({ client: initialClient }: Props) {
 
   return (
     <>
+      {/* Blacklist banner */}
+      {client.blacklisted && (
+        <div className="flex items-center gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950/40">
+          <ShieldBan className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-700 dark:text-red-300">Blacklisted Client</p>
+            {client.blacklist_reason && (
+              <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">{client.blacklist_reason}</p>
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={toggleBlacklist}
+            disabled={togglingBlacklist}
+            className="border-red-300 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/40"
+          >
+            {togglingBlacklist ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />}
+            Remove
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -266,7 +324,30 @@ export function ClientDetailClient({ client: initialClient }: Props) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {!client.blacklisted && (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Blacklist this client</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Flags the client so you know not to take their business.
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={toggleBlacklist}
+                disabled={togglingBlacklist}
+              >
+                {togglingBlacklist ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <ShieldBan className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                Blacklist
+              </Button>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Delete this client</p>
