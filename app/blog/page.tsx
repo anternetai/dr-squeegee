@@ -7,13 +7,13 @@ export const metadata: Metadata = {
   description:
     "Expert tips on pressure washing, soft washing, and exterior home maintenance for Charlotte, NC homeowners. From Dr. Squeegee.",
   alternates: {
-    canonical: "https://drsqueegeeclt.com/blog",
+    canonical: "https://www.drsqueegeeclt.com/blog",
   },
   openGraph: {
     title: "Charlotte House Washing & Pressure Washing Tips | Dr. Squeegee",
     description:
       "Expert tips on pressure washing and exterior home maintenance for Charlotte homeowners.",
-    url: "https://drsqueegeeclt.com/blog",
+    url: "https://www.drsqueegeeclt.com/blog",
     siteName: "Dr. Squeegee",
     type: "website",
   },

@@ -148,7 +148,7 @@ export function QuoteBuilder({ job }: Props) {
   const canGenerate = hasStandardServices || hasValidCustom
 
   const quoteUrl = generatedToken
-    ? `https://drsqueegeeclt.com/q/${generatedToken}`
+    ? `https://www.drsqueegeeclt.com/q/${generatedToken}`
     : null
 
   async function handleGenerate() {
@@ -519,7 +519,7 @@ export function QuoteBuilder({ job }: Props) {
                   <div className="flex items-center justify-between gap-2 text-xs bg-muted/50 rounded-md px-3 py-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <a
-                        href={`https://drsqueegeeclt.com/q/${q.token}`}
+                        href={`https://www.drsqueegeeclt.com/q/${q.token}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-mono text-[#3A6B4C] hover:underline truncate"

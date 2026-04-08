@@ -5,8 +5,8 @@ const LLMS_TXT = `# Dr. Squeegee
 > Professional pressure washing and exterior cleaning in Charlotte, NC. House washing, driveway cleaning, window cleaning, surface cleaning, pool decks, and pavers. Licensed, insured, 5-star rated. Serving Charlotte, Huntersville, Matthews, Mint Hill, Ballantyne, South End, and the greater Mecklenburg County area.
 
 ## About
-- [About Dr. Squeegee](https://drsqueegeeclt.com/about.md): Our story, services, and service area
-- [Get a Quote](https://drsqueegeeclt.com/get-quote.md): Services, pricing approach, and how to request a free quote
+- [About Dr. Squeegee](https://www.drsqueegeeclt.com/about.md): Our story, services, and service area
+- [Get a Quote](https://www.drsqueegeeclt.com/get-quote.md): Services, pricing approach, and how to request a free quote
 
 ## Services
 - House Washing — Soft wash of exterior siding, eaves, and trim
@@ -17,15 +17,15 @@ const LLMS_TXT = `# Dr. Squeegee
 - Pavers — Paver pressure wash with joint sand preservation
 
 ## Blog
-- [Blog Index](https://drsqueegeeclt.com/blog.md): Tips, guides, and pressure washing insights
+- [Blog Index](https://www.drsqueegeeclt.com/blog.md): Tips, guides, and pressure washing insights
 
 ## Contact
 - Phone: (980) 242-8048
 - Address: 8623 Longnor St, Charlotte, NC 28214
-- Website: https://drsqueegeeclt.com
+- Website: https://www.drsqueegeeclt.com
 
 ## Legal
-- [Privacy Policy](https://drsqueegeeclt.com/privacy.md)
+- [Privacy Policy](https://www.drsqueegeeclt.com/privacy.md)
 `
 
 export function GET() {

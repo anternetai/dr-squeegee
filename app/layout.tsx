@@ -25,7 +25,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://drsqueegeeclt.com"),
+  metadataBase: new URL("https://www.drsqueegeeclt.com"),
   title: "Dr. Squeegee | Professional House Washing",
   description:
     "Charlotte's trusted pressure washing specialist. House washing, driveways, patios — done right, every time.",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     title: "Dr. Squeegee — House Calls for a Cleaner Home",
     description:
       "Charlotte's trusted pressure washing specialist. Free estimates, licensed & insured.",
-    url: "https://drsqueegeeclt.com",
+    url: "https://www.drsqueegeeclt.com",
     siteName: "Dr. Squeegee",
     type: "website",
   },

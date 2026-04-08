@@ -80,12 +80,12 @@ export async function generateMetadata({
     title: `${article.title} | Dr. Squeegee`,
     description: article.meta_description || article.excerpt || "",
     alternates: {
-      canonical: `https://drsqueegeeclt.com/blog/${article.slug}`,
+      canonical: `https://www.drsqueegeeclt.com/blog/${article.slug}`,
     },
     openGraph: {
       title: article.title,
       description: article.meta_description || article.excerpt || "",
-      url: `https://drsqueegeeclt.com/blog/${article.slug}`,
+      url: `https://www.drsqueegeeclt.com/blog/${article.slug}`,
       siteName: "Dr. Squeegee",
       type: "article",
       publishedTime: article.published_at,
@@ -174,16 +174,16 @@ export default async function SqueegeeArticlePage({
     author: {
       "@type": "Organization",
       name: "Dr. Squeegee",
-      url: "https://drsqueegeeclt.com",
+      url: "https://www.drsqueegeeclt.com",
     },
     publisher: {
       "@type": "Organization",
       name: "Dr. Squeegee",
-      url: "https://drsqueegeeclt.com",
+      url: "https://www.drsqueegeeclt.com",
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `https://drsqueegeeclt.com/blog/${article.slug}`,
+      "@id": `https://www.drsqueegeeclt.com/blog/${article.slug}`,
     },
   }
 

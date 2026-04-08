@@ -21,7 +21,7 @@ const caveat = Caveat({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://drsqueegeeclt.com"),
+  metadataBase: new URL("https://www.drsqueegeeclt.com"),
   title: "The Bumblebread Club — Weekly Small-Batch Sourdough",
   description:
     "A microbakery offering weekly limited sourdough loaves. Join the club.",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     title: "The Bumblebread Club — Weekly Small-Batch Sourdough",
     description:
       "A microbakery offering weekly limited sourdough loaves. Join the club.",
-    url: "https://drsqueegeeclt.com/bumblebread",
+    url: "https://www.drsqueegeeclt.com/bumblebread",
     siteName: "The Bumblebread Club",
     type: "website",
     images: [

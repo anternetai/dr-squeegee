@@ -53,7 +53,7 @@ We serve Charlotte and the surrounding areas including Huntersville, Cornelius, 
 ## Contact
 
 - **Phone:** (980) 242-8048
-- **Website:** [drsqueegeeclt.com](https://drsqueegeeclt.com)
+- **Website:** [drsqueegeeclt.com](https://www.drsqueegeeclt.com)
 - **Address:** 8623 Longnor St, Charlotte, NC 28214
 `,
   },
@@ -82,7 +82,7 @@ We serve Charlotte and the surrounding areas including Huntersville, Cornelius, 
 ## Contact
 
 - **Phone:** (980) 242-8048
-- **Website:** [drsqueegeeclt.com](https://drsqueegeeclt.com)
+- **Website:** [drsqueegeeclt.com](https://www.drsqueegeeclt.com)
 - **Address:** 8623 Longnor St, Charlotte, NC 28214
 `,
   },

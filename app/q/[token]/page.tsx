@@ -39,10 +39,10 @@ function getAdmin() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { token } = await params
-  const ogImageUrl = `https://drsqueegeeclt.com/q/${token}/opengraph-image`
+  const ogImageUrl = `https://www.drsqueegeeclt.com/q/${token}/opengraph-image`
 
   return {
-    metadataBase: new URL('https://drsqueegeeclt.com'),
+    metadataBase: new URL('https://www.drsqueegeeclt.com'),
     title: 'Your Quote – Dr. Squeegee',
     description: 'Professional house washing service quote from Dr. Squeegee — House Calls for a Cleaner Home.',
     robots: { index: false, follow: false },

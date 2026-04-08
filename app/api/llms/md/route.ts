@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
       if (articles && articles.length > 0) {
         for (const a of articles) {
-          md += `## [${a.title}](https://drsqueegeeclt.com/blog/${a.slug}.md)\n\n`
+          md += `## [${a.title}](https://www.drsqueegeeclt.com/blog/${a.slug}.md)\n\n`
           md += `*${formatDate(a.published_at)}*\n\n`
           if (a.excerpt) md += `${a.excerpt}\n\n`
           md += `---\n\n`
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
 
   // 4. Not found
   return new NextResponse(
-    "# 404 — Page Not Found\n\nThis page does not have a markdown version.\n\nSee [/llms.txt](https://drsqueegeeclt.com/llms.txt) for available pages.\n",
+    "# 404 — Page Not Found\n\nThis page does not have a markdown version.\n\nSee [/llms.txt](https://www.drsqueegeeclt.com/llms.txt) for available pages.\n",
     { status: 404, headers: MD_HEADERS }
   )
 }
