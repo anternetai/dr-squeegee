@@ -13,6 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: "https://www.drsqueegeeclt.com/blog", lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     { url: "https://www.drsqueegeeclt.com/privacy", lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
     { url: "https://www.drsqueegeeclt.com/terms", lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: "https://www.drsqueegeeclt.com/llms.txt", lastModified: new Date(), changeFrequency: "monthly", priority: 0.2 },
   ]
 
   try {
