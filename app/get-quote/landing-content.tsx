@@ -19,6 +19,7 @@ import {
 } from "@/lib/squeegee/landing-data"
 import { COLORS, BRAND, FONTS } from "@/lib/squeegee/brand"
 import { FAQ_DATA, FAQSchema } from "./faq-schema"
+import { ScrollVideoHero } from "@/components/scroll-video-hero"
 
 const VIDEOS = [
   {
@@ -201,10 +202,14 @@ export function LandingContent() {
         </div>
       </header>
 
-      {/* ── Hero ── */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#F5F0E1] via-[#FEFCF7] to-[#FEFCF7]" />
-        <div className="relative max-w-4xl mx-auto px-4 py-20 md:py-28 text-center">
+      {/* ── Scroll-Synced Video Hero ── */}
+      <ScrollVideoHero
+        src="/videos/squeegee/house-washing.mp4"
+        poster="/videos/squeegee/house-washing-poster.jpg"
+        overlay="bg-gradient-to-b from-black/60 via-black/40 to-black/70"
+        scrubDuration="150%"
+      >
+        <div className="max-w-4xl mx-auto px-4 text-center">
           {/* Gold accent line */}
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className="h-px w-12 bg-[#C8973E]" />
@@ -213,26 +218,32 @@ export function LandingContent() {
           </div>
           <h1
             style={{ fontFamily: FONTS.display }}
-            className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-4 text-[#2B2B2B]"
+            className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-4 text-white drop-shadow-lg"
           >
             Charlotte&apos;s Trusted{" "}
-            <span className="text-[#3A6B4C]">Pressure Washing</span> Pros
+            <span className="text-[#C8973E]">Pressure Washing</span> Pros
           </h1>
-          <p className="text-lg md:text-xl text-[#2B2B2B]/60 mb-2 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-white/80 mb-2 max-w-2xl mx-auto">
             {BRAND.tagline}
           </p>
-          <p className="text-sm text-[#2B2B2B]/40 mb-8">
+          <p className="text-sm text-white/50 mb-8">
             House washing, driveways, patios — done right, every time.
           </p>
           <a
             href="#get-quote"
-            className="inline-flex items-center gap-2 text-[#F5F0E1] font-semibold py-3.5 px-8 rounded-lg text-lg transition-colors bg-[#3A6B4C] hover:bg-[#2F5A3F]"
+            className="inline-flex items-center gap-2 font-semibold py-3.5 px-8 rounded-lg text-lg transition-colors bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
           >
             Get Your Free Quote
             <ChevronRight className="h-5 w-5" />
           </a>
+          {/* Scroll hint */}
+          <div className="mt-12 animate-bounce">
+            <svg className="h-6 w-6 mx-auto text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+          </div>
         </div>
-      </section>
+      </ScrollVideoHero>
 
       {/* ── Trust Bar ── */}
       <section className="border-y border-[#3A6B4C]/10 bg-[#F5F0E1]/50">
