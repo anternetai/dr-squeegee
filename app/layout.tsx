@@ -44,6 +44,9 @@ export const metadata: Metadata = {
     siteName: "Dr. Squeegee",
     type: "website",
   },
+  verification: {
+    other: { "msvalidate.01": "F77839BA725F86AAFF9906E2805D09C1" },
+  },
   robots: {
     index: true,
     follow: true,
