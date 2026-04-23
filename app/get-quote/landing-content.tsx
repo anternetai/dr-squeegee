@@ -19,7 +19,7 @@ import {
 } from "@/lib/squeegee/landing-data"
 import { COLORS, BRAND, FONTS } from "@/lib/squeegee/brand"
 import { FAQ_DATA, FAQSchema } from "./faq-schema"
-import { ScrollVideoHero } from "@/components/scroll-video-hero"
+import { ScrollSequenceHero } from "@/components/scroll-sequence-hero"
 
 const VIDEOS = [
   {
@@ -202,10 +202,9 @@ export function LandingContent() {
         </div>
       </header>
 
-      {/* ── Scroll-Synced Video Hero ── */}
-      <ScrollVideoHero
-        src="/videos/squeegee/house-washing.mp4"
-        poster="/videos/squeegee/house-washing-poster.jpg"
+      {/* ── Scroll-Driven Image Sequence Hero ── */}
+      <ScrollSequenceHero
+        sequenceSlug="siding-pollen-reveal"
         overlay="bg-gradient-to-b from-black/60 via-black/40 to-black/70"
         scrubDuration="150%"
       >
@@ -243,7 +242,7 @@ export function LandingContent() {
             </svg>
           </div>
         </div>
-      </ScrollVideoHero>
+      </ScrollSequenceHero>
 
       {/* ── Trust Bar ── */}
       <section className="border-y border-[#3A6B4C]/10 bg-[#F5F0E1]/50">
