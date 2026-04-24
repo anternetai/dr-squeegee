@@ -202,47 +202,46 @@ export function LandingContent() {
         </div>
       </header>
 
-      {/* ── Scroll-Driven Image Sequence Hero ── */}
+      {/* ── Hero: sequence is the subject, no overlay content ── */}
       <ScrollSequenceHero
         sequenceSlug="siding-pollen-reveal"
-        overlay="bg-gradient-to-b from-black/60 via-black/40 to-black/70"
-        scrubDuration="150%"
-      >
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          {/* Gold accent line */}
-          <div className="flex items-center justify-center gap-3 mb-6">
+        scrubDuration="200%"
+        eyebrow="Charlotte Pressure Washing"
+      />
+
+      {/* ── Reveal: headline + CTA reveal as the pin releases ── */}
+      <section className="bg-[#FEFCF7] py-20 md:py-28 px-4">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="flex items-center justify-center gap-3 mb-8">
             <div className="h-px w-12 bg-[#C8973E]" />
             <Star className="h-4 w-4 text-[#C8973E] fill-[#C8973E]" />
             <div className="h-px w-12 bg-[#C8973E]" />
           </div>
           <h1
             style={{ fontFamily: FONTS.display }}
-            className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-4 text-white drop-shadow-lg"
+            className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-5 text-[#2B2B2B]"
           >
             Charlotte&apos;s Trusted{" "}
-            <span className="text-[#C8973E]">Pressure Washing</span> Pros
+            <span className="text-[#3A6B4C]">Pressure Washing</span> Pros
           </h1>
-          <p className="text-lg md:text-xl text-white/80 mb-2 max-w-2xl mx-auto">
+          <p
+            style={{ fontFamily: FONTS.display }}
+            className="text-xl md:text-2xl italic text-[#2B2B2B]/75 mb-4"
+          >
             {BRAND.tagline}
           </p>
-          <p className="text-sm text-white/50 mb-8">
+          <p className="text-base text-[#2B2B2B]/60 mb-10 max-w-xl mx-auto">
             House washing, driveways, patios — done right, every time.
           </p>
           <a
             href="#get-quote"
-            className="inline-flex items-center gap-2 font-semibold py-3.5 px-8 rounded-lg text-lg transition-colors bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
+            className="inline-flex items-center gap-2 font-semibold py-4 px-10 rounded-lg text-lg transition-colors bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white shadow-lg shadow-[#3A6B4C]/20"
           >
             Get Your Free Quote
             <ChevronRight className="h-5 w-5" />
           </a>
-          {/* Scroll hint */}
-          <div className="mt-12 animate-bounce">
-            <svg className="h-6 w-6 mx-auto text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            </svg>
-          </div>
         </div>
-      </ScrollSequenceHero>
+      </section>
 
       {/* ── Trust Bar ── */}
       <section className="border-y border-[#3A6B4C]/10 bg-[#F5F0E1]/50">

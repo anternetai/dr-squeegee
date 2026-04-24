@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 import { gsap } from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 
@@ -22,57 +22,7 @@ function frameUrl(slug: string, tier: Tier, index: number): string {
   return `/scroll-sequences/${slug}/${tier}/frame-${n}.webp`
 }
 
-/**
- * Bounded-concurrency preloader with progressive activation. Activates
- * ScrollTrigger after the first `activationThreshold` frames decode, keeps
- * loading the rest in background. img.decode() runs off-main-thread and
- * resolves only when the bitmap is ready to paint.
- *
- * The `images` array is mutated in place; callers hold a reference and
- * `draw()` checks `if (!img) return` so unloaded slots are no-ops until
- * they fill in.
- */
-function startPreload(
-  urls: string[],
-  concurrency: number,
-  activationThreshold: number,
-  onProgress: (loaded: number, total: number) => void,
-  onActivate: () => void,
-): { images: HTMLImageElement[]; done: Promise<void> } {
-  const images: HTMLImageElement[] = new Array(urls.length)
-  let cursor = 0
-  let loaded = 0
-  let activated = false
-  const workers = Array.from({ length: concurrency }, async () => {
-    while (cursor < urls.length) {
-      const i = cursor++
-      const img = new Image()
-      img.src = urls[i]
-      try {
-        await img.decode()
-      } catch {
-        // fall through; draw() skips null slots
-      }
-      images[i] = img
-      loaded++
-      onProgress(loaded, urls.length)
-      if (!activated && loaded >= activationThreshold) {
-        activated = true
-        onActivate()
-      }
-    }
-  })
-  // Safety: if the sequence is shorter than the threshold, activate once all done.
-  const done = Promise.all(workers).then(() => {
-    if (!activated) {
-      activated = true
-      onActivate()
-    }
-  })
-  return { images, done }
-}
-
-/** object-fit: cover equivalent for canvas drawImage */
+/** object-fit: cover math for canvas drawImage */
 function drawCover(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
@@ -89,40 +39,40 @@ function drawCover(
 }
 
 /**
- * Apple-style scroll-driven image sequence hero.
+ * Apple-style scroll-driven image sequence.
  *
- * Pins a full-viewport canvas and maps scroll progress to frame index —
- * preloaded WebP frames drawn via `ctx.drawImage`, not video scrubbing.
- * Mobile ships a reduced-count, reduced-resolution frame set.
+ * The sequence is the subject — no overlay content. Headline/CTA lives in
+ * sibling sections above/below. An optional `eyebrow` renders as a small
+ * top-center label (very quiet type, does not fight the photography).
  *
- * Failure modes handled: preload >3s (falls back to static poster, no pin),
- * prefers-reduced-motion (static last frame, no pin), SSR (all setup in effect),
- * connection 2g/saveData (forced to mobile tier).
+ * Architecture:
+ * - Fire all frames as native <Image>.src at once; let the browser pipeline
+ *   handle queuing (6 per origin on HTTP/2, more with multiplexing).
+ * - ScrollTrigger activates immediately on mount. draw() reads frames[i].
+ *   complete — if the target frame isn't loaded yet, it holds the last
+ *   complete frame. Scrolling past the buffer feels tacky early on and
+ *   crisp once frames fill in. Never blocks.
+ * - Poster <img> sits under the canvas at fetchPriority="high" so LCP
+ *   measures against the static first-frame, not an empty canvas.
+ * - Reduced-motion: skip the pin, draw the last (clean) frame static.
  */
 export function ScrollSequenceHero({
   sequenceSlug,
   desktopFrames = 120,
   mobileFrames = 60,
   poster,
-  overlay = "bg-black/40",
-  scrubDuration = "150%",
-  loaderColor = "#3A6B4C",
-  children,
+  scrubDuration = "200%",
+  eyebrow,
 }: {
   sequenceSlug: string
   desktopFrames?: number
   mobileFrames?: number
   poster?: string
-  overlay?: string
   scrubDuration?: string
-  loaderColor?: string
-  children: React.ReactNode
+  eyebrow?: React.ReactNode
 }) {
   const sectionRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [progress, setProgress] = useState(0)
-  const [ready, setReady] = useState(false)
-  const [staticFallback, setStaticFallback] = useState(false)
 
   const posterSrc = poster ?? `/scroll-sequences/${sequenceSlug}/poster.webp`
 
@@ -137,176 +87,141 @@ export function ScrollSequenceHero({
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
     const tier = pickTier()
     const total = tier === "desktop" ? desktopFrames : mobileFrames
-    const urls = Array.from({ length: total }, (_, i) => frameUrl(sequenceSlug, tier, i + 1))
 
-    let frames: HTMLImageElement[] = []
-    let lastDrawn = -1
-    let cancelled = false
-    let timeoutHandle: number | undefined
+    // Fire all frame loads at once — browser handles the queue.
+    const frames: HTMLImageElement[] = []
+    for (let i = 0; i < total; i++) {
+      const img = new Image()
+      img.src = frameUrl(sequenceSlug, tier, i + 1)
+      frames.push(img)
+    }
+
+    let cssW = 0
+    let cssH = 0
+    let lastComplete = 0
 
     const measure = () => {
       const rect = section.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      const cssW = rect.width
-      const cssH = rect.height
+      cssW = rect.width
+      cssH = rect.height
       canvas.width = Math.round(cssW * dpr)
       canvas.height = Math.round(cssH * dpr)
       canvas.style.width = cssW + "px"
       canvas.style.height = cssH + "px"
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      return { cssW, cssH }
     }
 
-    const draw = (i: number) => {
-      const clamped = Math.max(0, Math.min(i, frames.length - 1))
-      if (clamped === lastDrawn) return
-      const img = frames[clamped]
-      if (!img) return
-      lastDrawn = clamped
-      const { cssW, cssH } = measureCached
-      drawCover(ctx, img, cssW, cssH)
+    const draw = (targetIdx: number) => {
+      const clamped = Math.max(0, Math.min(targetIdx, total - 1))
+      let i = clamped
+      // Walk backward to find the nearest loaded frame — feels like the
+      // video is slightly behind the scroll at first, snaps forward once
+      // frames decode. Beats drawing nothing.
+      while (i > 0 && !frames[i].complete) i--
+      if (frames[i].complete && frames[i].naturalWidth > 0) {
+        lastComplete = i
+        drawCover(ctx, frames[i], cssW, cssH)
+      } else if (lastComplete > 0) {
+        drawCover(ctx, frames[lastComplete], cssW, cssH)
+      }
     }
 
-    let measureCached = measure()
-    const lastSeenFrame = { current: 0 }
+    measure()
 
-    const onResize = () => {
-      measureCached = measure()
-      lastDrawn = -1
-      if (frames.length > 0) draw(lastSeenFrame.current)
-      ScrollTrigger.refresh()
+    // If prefers-reduced-motion, bail early: render the last clean frame.
+    if (reduced) {
+      const last = frames[total - 1]
+      if (last.complete) {
+        drawCover(ctx, last, cssW, cssH)
+      } else {
+        last.addEventListener(
+          "load",
+          () => drawCover(ctx, last, cssW, cssH),
+          { once: true },
+        )
+      }
+      const onResize = () => measure()
+      window.addEventListener("resize", onResize)
+      return () => window.removeEventListener("resize", onResize)
     }
+
+    // Draw whatever we have as frames arrive — progressively sharpens the
+    // initial scroll experience.
+    frames.forEach((img, i) => {
+      img.addEventListener(
+        "load",
+        () => {
+          if (i === 0 && lastComplete === 0) {
+            drawCover(ctx, img, cssW, cssH)
+            lastComplete = i
+          }
+        },
+        { once: true },
+      )
+    })
 
     const gsapCtx = gsap.context(() => {
-      // reduced-motion path: render last frame static, no pin
-      if (reduced) {
-        ;(async () => {
-          const img = new Image()
-          img.src = urls[urls.length - 1]
-          try { await img.decode() } catch {}
-          if (cancelled) return
-          frames = [img]
-          measureCached = measure()
-          drawCover(ctx, img, measureCached.cssW, measureCached.cssH)
-          setReady(true)
-        })()
-        return
-      }
-
-      // Main path: activate after the first ~20 frames decode so we don't
-      // block interaction on the full 22 MB set. Rest streams in behind.
-      // If the first-N threshold isn't hit within the timeout, fall back
-      // to static poster + no pin.
-      const activationThreshold = Math.min(20, urls.length)
-      let activated = false
-
-      const activate = () => {
-        if (activated || cancelled) return
-        activated = true
-        if (timeoutHandle !== undefined) {
-          window.clearTimeout(timeoutHandle)
-          timeoutHandle = undefined
-        }
-        measureCached = measure()
-        draw(0)
-        setReady(true)
-
-        const playhead = { frame: 0 }
-        gsap.to(playhead, {
-          frame: total - 1,
-          ease: "none",
-          scrollTrigger: {
-            trigger: section,
-            start: "top top",
-            end: `+=${scrubDuration}`,
-            pin: true,
-            pinSpacing: true,
-            anticipatePin: 1,
-            scrub: 0.5,
-            invalidateOnRefresh: true,
-          },
-          onUpdate: () => {
-            const i = Math.round(playhead.frame)
-            lastSeenFrame.current = i
-            draw(i)
-          },
-        })
-      }
-
-      const preload = startPreload(
-        urls,
-        6,
-        activationThreshold,
-        (loaded, t) => {
-          if (cancelled) return
-          setProgress(loaded / t)
+      const playhead = { frame: 0 }
+      gsap.to(playhead, {
+        frame: total - 1,
+        ease: "none",
+        scrollTrigger: {
+          trigger: section,
+          start: "top top",
+          end: `+=${scrubDuration}`,
+          pin: true,
+          pinSpacing: true,
+          anticipatePin: 1,
+          scrub: 0.5,
+          invalidateOnRefresh: true,
         },
-        activate,
-      )
-      frames = preload.images
-
-      // 8s bail — if the first 20 frames aren't decoded by then, skip pin
-      // and just show the poster. (Activation would already have cleared
-      // this handle if it fired first.)
-      timeoutHandle = window.setTimeout(() => {
-        if (cancelled || activated) return
-        setStaticFallback(true)
-        setReady(true)
-      }, 8000)
+        onUpdate: () => draw(Math.round(playhead.frame)),
+      })
     }, sectionRef)
 
+    const onResize = () => {
+      measure()
+      draw(lastComplete)
+      ScrollTrigger.refresh()
+    }
     window.addEventListener("resize", onResize)
 
     return () => {
-      cancelled = true
-      if (timeoutHandle !== undefined) window.clearTimeout(timeoutHandle)
       window.removeEventListener("resize", onResize)
       gsapCtx.revert()
-      frames = []
+      frames.length = 0
     }
   }, [sequenceSlug, desktopFrames, mobileFrames, scrubDuration])
 
   return (
     <section
       ref={sectionRef}
-      className="relative h-screen w-full overflow-hidden bg-black"
+      className="relative h-screen w-full overflow-hidden bg-[#FEFCF7]"
       aria-label="Before-and-after pressure-wash transformation"
     >
-      {/* LCP-eligible poster under the canvas — becomes the static fallback
-          and prevents LCP regression vs an empty canvas */}
+      {/* LCP-eligible poster under the canvas — prevents LCP regression vs
+          an empty canvas and acts as the static fallback. */}
       <img
         src={posterSrc}
         alt="Charlotte colonial home before pressure washing"
         className="absolute inset-0 h-full w-full object-cover"
         fetchPriority="high"
         decoding="async"
-        aria-hidden={ready && !staticFallback}
       />
 
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 h-full w-full transition-opacity duration-500 ${
-          ready && !staticFallback ? "opacity-100" : "opacity-0"
-        }`}
+        className="absolute inset-0 h-full w-full"
       />
 
-      {/* Branded preload progress bar — Squeegee Green, tasteful */}
-      {!ready && !staticFallback && (
-        <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-center p-8">
-          <div className="h-0.5 w-32 overflow-hidden rounded-full bg-white/20">
-            <div
-              className="h-full transition-[width] duration-150"
-              style={{ width: `${Math.round(progress * 100)}%`, backgroundColor: loaderColor }}
-            />
-          </div>
+      {eyebrow && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10 text-center pointer-events-none">
+          <p className="text-[10px] md:text-xs tracking-[0.3em] uppercase text-white/90 drop-shadow-md font-medium">
+            {eyebrow}
+          </p>
         </div>
       )}
-
-      <div className={`absolute inset-0 ${overlay} z-10`} />
-
-      <div className="relative z-20 flex h-full items-center justify-center">
-        {children}
-      </div>
     </section>
   )
 }
