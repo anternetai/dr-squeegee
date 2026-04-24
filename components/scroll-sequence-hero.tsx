@@ -23,17 +23,26 @@ function frameUrl(slug: string, tier: Tier, index: number): string {
 }
 
 /**
- * Bounded-concurrency preloader. img.decode() runs off-main-thread and resolves
- * only when the bitmap is ready to paint — avoids first-drawImage jank.
+ * Bounded-concurrency preloader with progressive activation. Activates
+ * ScrollTrigger after the first `activationThreshold` frames decode, keeps
+ * loading the rest in background. img.decode() runs off-main-thread and
+ * resolves only when the bitmap is ready to paint.
+ *
+ * The `images` array is mutated in place; callers hold a reference and
+ * `draw()` checks `if (!img) return` so unloaded slots are no-ops until
+ * they fill in.
  */
-async function preloadSequence(
+function startPreload(
   urls: string[],
   concurrency: number,
-  onProgress?: (loaded: number, total: number) => void,
-): Promise<HTMLImageElement[]> {
+  activationThreshold: number,
+  onProgress: (loaded: number, total: number) => void,
+  onActivate: () => void,
+): { images: HTMLImageElement[]; done: Promise<void> } {
   const images: HTMLImageElement[] = new Array(urls.length)
   let cursor = 0
-  let done = 0
+  let loaded = 0
+  let activated = false
   const workers = Array.from({ length: concurrency }, async () => {
     while (cursor < urls.length) {
       const i = cursor++
@@ -42,15 +51,25 @@ async function preloadSequence(
       try {
         await img.decode()
       } catch {
-        // fall through; image may still draw via implicit decode
+        // fall through; draw() skips null slots
       }
       images[i] = img
-      done++
-      onProgress?.(done, urls.length)
+      loaded++
+      onProgress(loaded, urls.length)
+      if (!activated && loaded >= activationThreshold) {
+        activated = true
+        onActivate()
+      }
     }
   })
-  await Promise.all(workers)
-  return images
+  // Safety: if the sequence is shorter than the threshold, activate once all done.
+  const done = Promise.all(workers).then(() => {
+    if (!activated) {
+      activated = true
+      onActivate()
+    }
+  })
+  return { images, done }
 }
 
 /** object-fit: cover equivalent for canvas drawImage */
@@ -174,35 +193,27 @@ export function ScrollSequenceHero({
         return
       }
 
-      // main path: preload with 3s timeout, then activate ScrollTrigger
-      const preloadPromise = preloadSequence(urls, 6, (loaded, t) => {
-        if (cancelled) return
-        setProgress(loaded / t)
-      })
+      // Main path: activate after the first ~20 frames decode so we don't
+      // block interaction on the full 22 MB set. Rest streams in behind.
+      // If the first-N threshold isn't hit within the timeout, fall back
+      // to static poster + no pin.
+      const activationThreshold = Math.min(20, urls.length)
+      let activated = false
 
-      const timeout = new Promise<"timeout">((resolve) => {
-        timeoutHandle = window.setTimeout(() => resolve("timeout"), 3000)
-      })
-
-      ;(async () => {
-        const raced = await Promise.race([preloadPromise, timeout])
-        if (cancelled) return
-
-        if (raced === "timeout") {
-          // network too slow — show poster, skip pin/scrub
-          setStaticFallback(true)
-          setReady(true)
-          return
+      const activate = () => {
+        if (activated || cancelled) return
+        activated = true
+        if (timeoutHandle !== undefined) {
+          window.clearTimeout(timeoutHandle)
+          timeoutHandle = undefined
         }
-
-        frames = raced as HTMLImageElement[]
         measureCached = measure()
         draw(0)
         setReady(true)
 
         const playhead = { frame: 0 }
         gsap.to(playhead, {
-          frame: frames.length - 1,
+          frame: total - 1,
           ease: "none",
           scrollTrigger: {
             trigger: section,
@@ -220,7 +231,28 @@ export function ScrollSequenceHero({
             draw(i)
           },
         })
-      })()
+      }
+
+      const preload = startPreload(
+        urls,
+        6,
+        activationThreshold,
+        (loaded, t) => {
+          if (cancelled) return
+          setProgress(loaded / t)
+        },
+        activate,
+      )
+      frames = preload.images
+
+      // 8s bail — if the first 20 frames aren't decoded by then, skip pin
+      // and just show the poster. (Activation would already have cleared
+      // this handle if it fired first.)
+      timeoutHandle = window.setTimeout(() => {
+        if (cancelled || activated) return
+        setStaticFallback(true)
+        setReady(true)
+      }, 8000)
     }, sectionRef)
 
     window.addEventListener("resize", onResize)
