@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Fraunces, Outfit } from "next/font/google";
+import { Geist, Geist_Mono, Fraunces, Outfit, Oswald } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,6 +22,13 @@ const outfit = Outfit({
   variable: "--font-brand-body",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
+});
+
+// Athletic bold condensed — matches the embroidered "DR. SQUEEGEE" patch lettering
+const oswald = Oswald({
+  variable: "--font-logo",
+  subsets: ["latin"],
+  weight: ["700"],
 });
 
 export const metadata: Metadata = {
@@ -61,7 +68,7 @@ export default function RootLayout({
         <meta name="msvalidate.01" content="F77839BA725F86AAFF9906E2805D09C1" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${outfit.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${outfit.variable} ${oswald.variable} antialiased`}
       >
         {children}
       </body>

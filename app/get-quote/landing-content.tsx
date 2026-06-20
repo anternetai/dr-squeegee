@@ -88,16 +88,29 @@ const REVIEWS = [
   { name: "Chris W.", neighborhood: "University Area", text: "Professional, great communication, fair price. The whole property looks 10 years newer. Will use again." },
 ]
 
-/* ── 50s oval logo crest (matches the embroidered jacket patch) ── */
+/* ── 50s oval logo crest (vector recreation of the embroidered patch:
+   cream merrowed border, dark-green field, cream athletic lettering) ── */
 function Logo({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 220 116" className={className} role="img" aria-label="Dr. Squeegee">
-      {/* merrowed cream rim */}
-      <ellipse cx="110" cy="58" rx="108" ry="54" fill="#EAE0C8" />
-      {/* cream field + thin green inner ring */}
-      <ellipse cx="110" cy="58" rx="98" ry="46" fill="#F5F0E1" stroke="#2F5A3F" strokeWidth="3" />
-      <text x="110" y="69" textAnchor="middle" fontFamily="Fraunces, Georgia, serif" fontWeight="900"
-        fontSize="33" fill="#2F5A3F" letterSpacing="0.5">DR. SQUEEGEE</text>
+    <svg viewBox="0 0 240 96" className={className} role="img" aria-label="Dr. Squeegee">
+      {/* cream merrowed border */}
+      <ellipse cx="120" cy="48" rx="119" ry="47" fill="#E4DABE" />
+      {/* dark green field */}
+      <ellipse cx="120" cy="48" rx="110" ry="38.5" fill="#2F4A39" />
+      {/* cream athletic wordmark */}
+      <text
+        x="120"
+        y="63"
+        textAnchor="middle"
+        textLength="198"
+        lengthAdjust="spacingAndGlyphs"
+        fontFamily="var(--font-logo), Oswald, Impact, sans-serif"
+        fontWeight="700"
+        fontSize="40"
+        fill="#ECE3C8"
+      >
+        DR. SQUEEGEE
+      </text>
     </svg>
   )
 }
