@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
 import {
   Shield,
   Star,
@@ -14,26 +13,15 @@ import {
   CalendarClock,
   Home,
 } from "lucide-react"
-import { PROPERTY_TYPES, TIMELINES } from "@/lib/squeegee/landing-data"
 import { BRAND, FONTS } from "@/lib/squeegee/brand"
 import { FAQ_DATA, FAQSchema } from "./faq-schema"
+import { QuickQuote } from "./quick-quote"
 
 /* ──────────────────────────────────────────────────────────
    Dark theme tokens (window-first redesign)
    ink  #0C120F · panel #121B16 · panel2 #16221B · line #26352B
    green #3A6B4C · greenB #5AA374 · gold #C8973E · mute #A8C4B0
    ────────────────────────────────────────────────────────── */
-
-// Window cleaning leads; pressure washing is the add-on.
-const SERVICE_PICKER = [
-  "Window Cleaning",
-  "House Washing",
-  "Driveway / Concrete",
-  "Patio & Pool Deck",
-  "Gutter Cleaning",
-  "Pressure Washing",
-  "Other",
-]
 
 const TRANSFORMATIONS = [
   {
@@ -154,15 +142,12 @@ function BeforeAfter({ before, after, label }: { before: string; after: string; 
       onMouseDown={(e) => { dragging.current = true; setFromClientX(e.clientX) }}
       onTouchStart={(e) => { dragging.current = true; setFromClientX(e.touches[0].clientX) }}
     >
-      {/* After (full) */}
       <img src={after} alt={`${label} after cleaning`} className="absolute inset-0 w-full h-full object-cover" draggable={false} />
       <span className="absolute bottom-3 right-3 text-[11px] font-bold uppercase tracking-widest bg-[#5AA374] text-[#0C120F] px-2.5 py-1 rounded-full">After</span>
-      {/* Before (revealed via clip-path) */}
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
         <img src={before} alt={`${label} before cleaning`} className="absolute inset-0 w-full h-full object-cover" draggable={false} />
         <span className="absolute bottom-3 left-3 text-[11px] font-bold uppercase tracking-widest bg-[#0C120F]/80 text-white px-2.5 py-1 rounded-full">Before</span>
       </div>
-      {/* Handle */}
       <div className="absolute top-0 bottom-0 w-0.5 bg-white/90 pointer-events-none" style={{ left: `${pos}%` }}>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-white shadow-lg flex items-center justify-center text-[#0C120F]">
           <ChevronRight className="h-3.5 w-3.5 -mr-1 rotate-180" />
@@ -192,9 +177,7 @@ function SocialProofToast() {
 
   const t = TOASTS[i]
   return (
-    <div
-      className={`fixed bottom-5 left-5 z-50 transition-all duration-500 ${show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"}`}
-    >
+    <div className={`fixed bottom-5 left-5 z-50 transition-all duration-500 ${show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"}`}>
       <div className="flex items-center gap-3 rounded-xl border border-[#26352B] bg-[#16221B]/95 backdrop-blur px-4 py-3 shadow-2xl max-w-xs">
         <div className="h-9 w-9 shrink-0 rounded-full bg-[#5AA374]/15 flex items-center justify-center text-[#5AA374]">
           <Sparkles className="h-4 w-4" />
@@ -209,59 +192,6 @@ function SocialProofToast() {
 }
 
 export function LandingContent() {
-  const searchParams = useSearchParams()
-  const [step, setStep] = useState(1)
-  const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  const [selectedService, setSelectedService] = useState("")
-  const [propertyType, setPropertyType] = useState("")
-  const [timeline, setTimeline] = useState("")
-  const [name, setName] = useState("")
-  const [phone, setPhone] = useState("")
-  const [email, setEmail] = useState("")
-  const [address, setAddress] = useState("")
-  const [smsConsent, setSmsConsent] = useState(false)
-
-  const totalSteps = 4
-  const progress = ((step - 1) / (totalSteps - 1)) * 100
-
-  async function handleSubmit() {
-    if (!name.trim() || !phone.trim() || !address.trim()) return
-    setLoading(true)
-
-    try {
-      await fetch("/api/squeegee/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          phone: phone.trim(),
-          email: email.trim() || undefined,
-          address: address.trim(),
-          services: [selectedService],
-          property_type: propertyType,
-          timeline,
-          sms_consent: smsConsent,
-          sms_consent_timestamp: smsConsent ? new Date().toISOString() : undefined,
-          utm_source: searchParams.get("utm_source") ?? undefined,
-          utm_medium: searchParams.get("utm_medium") ?? undefined,
-          utm_campaign: searchParams.get("utm_campaign") ?? undefined,
-        }),
-      })
-      setSubmitted(true)
-    } catch (err) {
-      console.error("Submit error:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const pickBtn =
-    "py-3 px-4 rounded-lg border border-[#26352B] bg-[#16221B] hover:border-[#5AA374]/50 hover:bg-[#1b2a21] transition-colors text-sm font-medium text-left text-white"
-  const inputCls =
-    "w-full px-4 py-3 bg-[#16221B] border border-[#26352B] rounded-lg focus:outline-none focus:border-[#5AA374] text-sm text-white placeholder:text-[#A8C4B0]/40"
-
   return (
     <div className="bg-[#0C120F] text-white" style={{ fontFamily: FONTS.body }}>
       {/* ── Sticky Header ── */}
@@ -286,43 +216,39 @@ export function LandingContent() {
         </div>
       </header>
 
-      {/* ── Hero ── */}
+      {/* ── Hero with top-of-page quote form ── */}
       <section className="relative">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/images/squeegee/hero-pool.jpg')" }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0C120F]/40 via-[#0C120F]/75 to-[#0C120F]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0C120F]/80 to-transparent" />
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/images/squeegee/hero-pool.jpg')" }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0C120F]/45 via-[#0C120F]/80 to-[#0C120F]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0C120F]/85 to-[#0C120F]/30" />
 
-        <div className="relative max-w-6xl mx-auto px-5 pt-20 pb-16 md:pt-28 md:pb-24">
-          <div className="max-w-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <span className="h-px w-8 bg-[#5AA374]" />
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C8973E]">Charlotte · Professional Window Cleaning</span>
-            </div>
-            <h1 style={{ fontFamily: FONTS.display }} className="text-4xl md:text-6xl lg:text-7xl font-black leading-[1.03] tracking-tight mb-5">
-              Streak-free windows,<br /><span className="text-[#5AA374]">every single time.</span>
-            </h1>
-            <p className="text-lg md:text-xl text-[#A8C4B0] leading-relaxed mb-3 max-w-xl">
-              Inside and out, hand-cleaned and squeegeed to a spotless shine by uniformed Charlotte pros. Most homes done in under two hours — and we guarantee the streak-free finish.
-            </p>
-            <p className="text-sm text-white/55 mb-8 max-w-xl">
-              Homes &amp; storefronts. <span className="text-[#C8973E] font-medium">Add pressure washing</span> for the full exterior.
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#5AA374] hover:bg-[#3A6B4C] text-[#0C120F] font-semibold text-base px-7 py-4 transition-colors shadow-xl shadow-[#5AA374]/25">
-                Get My Free Quote
-                <ChevronRight className="h-5 w-5" />
+        <div className="relative max-w-6xl mx-auto px-5 pt-14 pb-14 md:pt-20 md:pb-20">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <span className="h-px w-8 bg-[#5AA374]" />
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C8973E]">Charlotte · Professional Window Cleaning</span>
+              </div>
+              <h1 style={{ fontFamily: FONTS.display }} className="text-4xl md:text-5xl lg:text-6xl font-black leading-[1.04] tracking-tight mb-5">
+                Streak-free windows,<br /><span className="text-[#5AA374]">every single time.</span>
+              </h1>
+              <p className="text-lg text-[#A8C4B0] leading-relaxed mb-3 max-w-xl">
+                Inside and out, hand-cleaned and squeegeed to a spotless shine by uniformed Charlotte pros. Most homes done in under two hours — guaranteed streak-free.
+              </p>
+              <p className="text-sm text-white/55 mb-7 max-w-xl">
+                Homes &amp; storefronts. <span className="text-[#C8973E] font-medium">Add pressure washing</span> for the full exterior.
+              </p>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[#A8C4B0]">
+                <span className="flex items-center gap-2"><Shield className="h-4 w-4 text-[#5AA374]" />Licensed &amp; Insured</span>
+                <span className="flex items-center gap-1.5 text-[#C8973E]">★★★★★ <span className="text-[#A8C4B0]">5.0 Google rating</span></span>
+                <span className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[#5AA374]" />Cancel anytime</span>
+              </div>
+              <a href="#work" className="inline-flex items-center gap-1.5 mt-6 text-sm font-medium text-white/80 hover:text-white transition-colors">
+                See real transformations <ChevronRight className="h-4 w-4" />
               </a>
-              <a href="#work" className="inline-flex items-center gap-2 rounded-lg border border-[#26352B] bg-[#121B16]/60 hover:bg-[#16221B] text-white font-medium text-base px-6 py-4 transition-colors backdrop-blur">
-                See the Difference
-              </a>
             </div>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-8 text-sm text-[#A8C4B0]">
-              <span className="flex items-center gap-2"><Shield className="h-4 w-4 text-[#5AA374]" />Licensed &amp; Insured</span>
-              <span className="flex items-center gap-1.5 text-[#C8973E]">★★★★★ <span className="text-[#A8C4B0]">5.0 Google rating</span></span>
-              <span className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[#5AA374]" />Cancel anytime</span>
+            <div className="lg:pl-2">
+              <QuickQuote id="get-quote" />
             </div>
           </div>
         </div>
@@ -483,111 +409,19 @@ export function LandingContent() {
         </div>
       </section>
 
-      {/* ── Multi-Step Quote Form ── */}
-      <section id="get-quote" className="max-w-xl mx-auto px-5 py-16">
-        <div className="flex items-center justify-center gap-3 mb-3">
-          <span className="h-px w-8 bg-[#C8973E]/50" />
-          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C8973E]">Free Estimate</span>
-          <span className="h-px w-8 bg-[#C8973E]/50" />
-        </div>
-        <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-4xl font-black text-center mb-2">Get Your Free Quote</h2>
-        <p className="text-[#A8C4B0]/70 text-center mb-8">Takes less than 60 seconds.</p>
-
-        <div className="bg-[#121B16] border border-[#26352B] rounded-2xl p-6 md:p-8 shadow-sm">
-          {!submitted && (
-            <div className="mb-6">
-              <div className="h-1.5 bg-[#16221B] rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-300 bg-[#5AA374]" style={{ width: `${progress}%` }} />
-              </div>
-              <p className="text-xs text-[#A8C4B0]/50 mt-2 text-center">Step {step} of {totalSteps}</p>
-            </div>
-          )}
-
-          {submitted ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-[#5AA374]/15 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-[#5AA374]" />
-              </div>
-              <h3 style={{ fontFamily: FONTS.display }} className="text-xl font-bold mb-2 text-white">You&apos;re All Set!</h3>
-              <p className="text-[#A8C4B0]">We&apos;ll call you within 2 hours to discuss your project.</p>
-            </div>
-          ) : step === 1 ? (
-            <div>
-              <h3 style={{ fontFamily: FONTS.display }} className="text-lg font-semibold mb-1 text-center text-white">What do you need cleaned?</h3>
-              <p className="text-sm text-[#A8C4B0]/50 mb-5 text-center">Select one to continue.</p>
-              <div className="grid grid-cols-2 gap-3">
-                {SERVICE_PICKER.map((svc) => (
-                  <button key={svc} onClick={() => { setSelectedService(svc); setStep(2) }} className={pickBtn}>{svc}</button>
-                ))}
-              </div>
-            </div>
-          ) : step === 2 ? (
-            <div>
-              <h3 style={{ fontFamily: FONTS.display }} className="text-lg font-semibold mb-1 text-center text-white">What type of property?</h3>
-              <p className="text-sm text-[#A8C4B0]/50 mb-5 text-center">Helps us give you an accurate quote.</p>
-              <div className="grid grid-cols-2 gap-3">
-                {PROPERTY_TYPES.map((pt) => (
-                  <button key={pt} onClick={() => { setPropertyType(pt); setStep(3) }} className={pickBtn}>{pt}</button>
-                ))}
-              </div>
-              <button onClick={() => setStep(1)} className="mt-4 text-[#A8C4B0]/50 hover:text-[#5AA374] text-sm transition-colors">&larr; Back</button>
-            </div>
-          ) : step === 3 ? (
-            <div>
-              <h3 style={{ fontFamily: FONTS.display }} className="text-lg font-semibold mb-1 text-center text-white">When do you need this done?</h3>
-              <p className="text-sm text-[#A8C4B0]/50 mb-5 text-center">No commitment — just helps us plan.</p>
-              <div className="grid grid-cols-2 gap-3">
-                {TIMELINES.map((tl) => (
-                  <button key={tl} onClick={() => { setTimeline(tl); setStep(4) }} className={pickBtn}>{tl}</button>
-                ))}
-              </div>
-              <button onClick={() => setStep(2)} className="mt-4 text-[#A8C4B0]/50 hover:text-[#5AA374] text-sm transition-colors">&larr; Back</button>
-            </div>
-          ) : (
-            <div>
-              <h3 style={{ fontFamily: FONTS.display }} className="text-lg font-semibold mb-1 text-center text-white">Where should we send your quote?</h3>
-              <p className="text-sm text-[#A8C4B0]/50 mb-5 text-center">We&apos;ll call you — no spam, ever.</p>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-white">Name <span className="text-[#C8973E]">*</span></label>
-                  <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="John Smith" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-white">Phone <span className="text-[#C8973E]">*</span></label>
-                  <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} placeholder="(704) 555-1234" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-white">Email <span className="text-[#A8C4B0]/40">(optional)</span></label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} placeholder="john@email.com" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5 text-white">Address or Zip <span className="text-[#C8973E]">*</span></label>
-                  <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls} placeholder="123 Main St, Charlotte NC or 28214" />
-                </div>
-                <div className="flex items-start gap-3 pt-1">
-                  <input type="checkbox" id="sms-consent" checked={smsConsent} onChange={(e) => setSmsConsent(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 rounded border-[#26352B] text-[#5AA374] focus:ring-[#5AA374] accent-[#5AA374]" />
-                  <label htmlFor="sms-consent" className="text-xs text-[#A8C4B0]/70 leading-relaxed">
-                    By checking this box, I agree to receive SMS text messages from Dr. Squeegee House Washing
-                    at the phone number provided. Messages may include appointment reminders, quote follow-ups,
-                    job status updates, and service communications. Message frequency varies. Msg &amp; data
-                    rates may apply. Reply STOP to opt out. Reply HELP for help. See our{" "}
-                    <a href="/privacy" target="_blank" className="underline text-[#5AA374] hover:text-[#79b890]">Privacy Policy</a>{" "}
-                    and{" "}
-                    <a href="/terms" target="_blank" className="underline text-[#5AA374] hover:text-[#79b890]">Terms of Service</a>.
-                  </label>
-                </div>
-                <button onClick={handleSubmit} disabled={!name.trim() || !phone.trim() || !address.trim() || loading} className="w-full font-semibold py-3.5 rounded-lg transition-colors text-[#0C120F] bg-[#5AA374] hover:bg-[#3A6B4C] disabled:bg-[#26352B] disabled:text-[#A8C4B0]/40 disabled:cursor-not-allowed">
-                  {loading ? "Sending..." : "Get My Free Quote"}
-                </button>
-              </div>
-              <button onClick={() => setStep(3)} className="mt-4 text-[#A8C4B0]/50 hover:text-[#5AA374] text-sm transition-colors">&larr; Back</button>
-            </div>
-          )}
+      {/* ── Final CTA band ── */}
+      <section className="border-y border-[#26352B] bg-[#0a0f0c]">
+        <div className="max-w-3xl mx-auto px-5 py-16 text-center">
+          <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-4xl font-black mb-3">Ready for spotless windows?</h2>
+          <p className="text-[#A8C4B0] mb-7">Free quote in under 60 seconds — we&apos;ll text you back within 2 hours.</p>
+          <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#5AA374] hover:bg-[#3A6B4C] text-[#0C120F] font-semibold text-lg px-8 py-4 transition-colors shadow-xl shadow-[#5AA374]/25">
+            Get My Free Quote <ChevronRight className="h-5 w-5" />
+          </a>
         </div>
       </section>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-[#26352B] py-10 px-5 bg-[#0a0f0c]">
+      <footer className="py-10 px-5 bg-[#0C120F]">
         <div className="max-w-4xl mx-auto text-center text-[#A8C4B0]/60 text-sm space-y-2">
           <Logo className="h-12 w-auto mx-auto mb-2" />
           <p>{BRAND.address}</p>
