@@ -112,6 +112,22 @@ export default function GetQuoteLayout({
                     "description": "Driveways, patios, pool decks, and pavers — available as an add-on.",
                   },
                 },
+                {
+                  "@type": "Offer",
+                  "itemOffered": {
+                    "@type": "Service",
+                    "name": "Solar Panel Cleaning",
+                    "description": "Removes dust, pollen, and droppings to restore solar panel efficiency.",
+                  },
+                },
+                {
+                  "@type": "Offer",
+                  "itemOffered": {
+                    "@type": "Service",
+                    "name": "Gutter Cleaning",
+                    "description": "Clears leaves, debris, and sludge so gutters drain properly and prevent water damage.",
+                  },
+                },
               ],
             },
           }),

@@ -45,6 +45,20 @@ const TRANSFORMATIONS = [
     before: "/images/squeegee/driveway-before.jpg",
     after: "/images/squeegee/driveway-after.jpg",
   },
+  {
+    name: "Solar Panel Cleaning",
+    tag: "Add-on",
+    description: "Dust, pollen and bird droppings cut your panels' output. We rinse them spotless so they pull full power again.",
+    before: "/images/squeegee/solar-before.jpg",
+    after: "/images/squeegee/solar-after.jpg",
+  },
+  {
+    name: "Gutter Cleaning",
+    tag: "Add-on",
+    description: "Clogged gutters cause overflow and rot. We clear out every leaf and bit of sludge so water flows where it should.",
+    before: "/images/squeegee/gutter-before.jpg",
+    after: "/images/squeegee/gutter-after.jpg",
+  },
 ] as const
 
 const PLANS = [

@@ -18,7 +18,7 @@ const PROPERTY = [
   { value: "Business", label: "My Business", icon: Building2 },
 ]
 
-const SERVICES = ["Window Cleaning", "House Washing", "Driveway / Concrete", "Multiple Services", "Not Sure Yet"]
+const SERVICES = ["Window Cleaning", "House Washing", "Driveway / Concrete", "Solar Panel Cleaning", "Gutter Cleaning", "Multiple Services"]
 
 const FREQUENCY = ["One-Time", "Monthly", "Quarterly", "Just Exploring"]
 
