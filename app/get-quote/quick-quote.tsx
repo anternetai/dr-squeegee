@@ -53,19 +53,11 @@ function AddressAutocomplete({
       return
     }
     setLoading(true)
-    // Bias toward Charlotte, NC
-    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5&lat=35.2271&lon=-80.8431&lang=en`
-    fetch(url)
+    // Server proxy: Google Places (New) when key is set, else free Photon.
+    fetch(`/api/squeegee/address-suggest?q=${encodeURIComponent(q)}`)
       .then((r) => r.json())
-      .then((d) => {
-        const items: string[] = (d.features ?? [])
-          .map((f: { properties: Record<string, string> }) => {
-            const p = f.properties
-            const street = [p.housenumber, p.street].filter(Boolean).join(" ")
-            return [street, p.city, p.state, p.postcode].filter(Boolean).join(", ")
-          })
-          .filter((s: string) => s.length > 0)
-        setSuggestions(Array.from(new Set(items)))
+      .then((d: { suggestions?: string[] }) => {
+        setSuggestions(d.suggestions ?? [])
         setOpen(true)
       })
       .catch(() => {})
