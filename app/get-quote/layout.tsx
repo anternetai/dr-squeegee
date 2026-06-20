@@ -2,10 +2,10 @@ import type { Metadata } from "next"
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.drsqueegeeclt.com"),
-  title: "Dr. Squeegee | Pressure Washing Charlotte NC | Free Quote",
+  title: "Dr. Squeegee | Window Cleaning Charlotte NC | Free Quote",
   description:
-    "Charlotte's trusted pressure washing specialist. House washing, driveways, patios — done right, every time. Get your free quote today.",
-  keywords: ["pressure washing Charlotte NC", "house washing Charlotte", "power washing Charlotte NC", "driveway cleaning Charlotte", "patio cleaning Charlotte NC", "pressure washing near me", "exterior cleaning Charlotte"],
+    "Charlotte's trusted window cleaning specialist. Streak-free interior & exterior windows on a simple monthly, quarterly, or weekly plan. Pressure washing add-ons available. Free quote today.",
+  keywords: ["window cleaning Charlotte NC", "window cleaners Charlotte", "residential window cleaning Charlotte", "commercial window cleaning Charlotte", "window washing near me", "storefront window cleaning Charlotte", "pressure washing Charlotte NC", "house washing Charlotte"],
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
@@ -17,18 +17,18 @@ export const metadata: Metadata = {
     canonical: "https://www.drsqueegeeclt.com/get-quote",
   },
   openGraph: {
-    title: "Dr. Squeegee — House Calls for a Cleaner Home",
+    title: "Dr. Squeegee — Streak-Free Windows, Every Time",
     description:
-      "Charlotte's trusted pressure washing specialist. Free estimates, licensed & insured.",
+      "Charlotte's trusted window cleaning specialist. Recurring plans, free estimates, licensed & insured.",
     siteName: "Dr. Squeegee",
     type: "website",
     url: "https://www.drsqueegeeclt.com/get-quote",
-    images: [{ url: "/get-quote/opengraph-image", width: 1200, height: 630, alt: "Dr. Squeegee — Pressure Washing Charlotte NC" }],
+    images: [{ url: "/get-quote/opengraph-image", width: 1200, height: 630, alt: "Dr. Squeegee — Window Cleaning Charlotte NC" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Dr. Squeegee | Pressure Washing Charlotte NC",
-    description: "Charlotte's trusted pressure washing specialist. Free estimates, licensed & insured.",
+    title: "Dr. Squeegee | Window Cleaning Charlotte NC",
+    description: "Charlotte's trusted window cleaning specialist. Recurring plans, free estimates, licensed & insured.",
     images: ["/get-quote/opengraph-image"],
   },
 }
@@ -39,7 +39,7 @@ export default function GetQuoteLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-[#FEFCF7] text-[#2B2B2B] antialiased" style={{ fontFamily: "var(--font-brand-body), sans-serif" }}>
+    <div className="min-h-screen bg-[#0C120F] text-white antialiased" style={{ fontFamily: "var(--font-brand-body), sans-serif" }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -48,7 +48,7 @@ export default function GetQuoteLayout({
             "@type": "LocalBusiness",
             "@id": "https://www.drsqueegeeclt.com/#business",
             "name": "Dr. Squeegee",
-            "description": "Professional pressure washing and house washing services in Charlotte, NC. Driveways, patios, siding, and more.",
+            "description": "Professional window cleaning in Charlotte, NC — streak-free interior & exterior glass on recurring monthly, quarterly, and weekly plans. Plus house washing and pressure washing.",
             "url": "https://www.drsqueegeeclt.com/get-quote",
             "telephone": "+19802428048",
             "address": {
@@ -78,8 +78,24 @@ export default function GetQuoteLayout({
             },
             "hasOfferCatalog": {
               "@type": "OfferCatalog",
-              "name": "Pressure Washing Services",
+              "name": "Window Cleaning & Exterior Services",
               "itemListElement": [
+                {
+                  "@type": "Offer",
+                  "itemOffered": {
+                    "@type": "Service",
+                    "name": "Window Cleaning",
+                    "description": "Streak-free interior and exterior window cleaning, including screens and sills, on recurring monthly, quarterly, or weekly plans.",
+                  },
+                },
+                {
+                  "@type": "Offer",
+                  "itemOffered": {
+                    "@type": "Service",
+                    "name": "Commercial Window Cleaning",
+                    "description": "Storefront and office glass cleaning on weekly or bi-weekly routes.",
+                  },
+                },
                 {
                   "@type": "Offer",
                   "itemOffered": {
@@ -92,16 +108,8 @@ export default function GetQuoteLayout({
                   "@type": "Offer",
                   "itemOffered": {
                     "@type": "Service",
-                    "name": "Driveway Cleaning",
-                    "description": "High-pressure concrete and paver driveway cleaning.",
-                  },
-                },
-                {
-                  "@type": "Offer",
-                  "itemOffered": {
-                    "@type": "Service",
-                    "name": "Patio & Deck Cleaning",
-                    "description": "Pressure washing for patios, decks, and outdoor living spaces.",
+                    "name": "Pressure Washing",
+                    "description": "Driveways, patios, pool decks, and pavers — available as an add-on.",
                   },
                 },
               ],
