@@ -12,9 +12,7 @@ import {
   Sparkles,
   Droplets,
   CalendarClock,
-  Building2,
   Home,
-  Wind,
 } from "lucide-react"
 import { PROPERTY_TYPES, TIMELINES } from "@/lib/squeegee/landing-data"
 import { BRAND, FONTS } from "@/lib/squeegee/brand"
@@ -37,11 +35,28 @@ const SERVICE_PICKER = [
   "Other",
 ]
 
-const WHAT_WE_CLEAN = [
-  { name: "Window Cleaning", description: "Interior + exterior glass, screens & sills — streak-free, every pane.", icon: Sparkles },
-  { name: "Storefront Glass", description: "Keep your business sparkling on a weekly or bi-weekly route.", icon: Building2 },
-  { name: "House Washing", description: "Gentle soft-wash for siding, eaves and trim.", icon: Droplets },
-  { name: "Driveways & Patios", description: "High-pressure cleaning of concrete, pavers and pool decks.", icon: Wind },
+const TRANSFORMATIONS = [
+  {
+    name: "Window Cleaning",
+    tag: "Our specialty",
+    description: "Interior & exterior glass, screens and sills — hand-scrubbed and squeegeed streak-free. Keep it that way on a recurring plan.",
+    before: "/images/squeegee/window-before.jpg",
+    after: "/images/squeegee/window-after.jpg",
+  },
+  {
+    name: "House Washing",
+    tag: "Add-on",
+    description: "A gentle soft-wash lifts years of algae, mildew and grime off your siding — no high pressure, no damage.",
+    before: "/images/squeegee/house-before.jpg",
+    after: "/images/squeegee/house-after.jpg",
+  },
+  {
+    name: "Driveways & Concrete",
+    tag: "Add-on",
+    description: "High-pressure cleaning blasts out dirt, oil, tire marks and dark stains — concrete looks poured-yesterday new.",
+    before: "/images/squeegee/driveway-before.jpg",
+    after: "/images/squeegee/driveway-after.jpg",
+  },
 ] as const
 
 const PLANS = [
@@ -85,22 +100,22 @@ const REVIEWS = [
   { name: "Chris W.", neighborhood: "University Area", text: "Professional, great communication, fair price. The whole property looks 10 years newer. Will use again." },
 ]
 
-/* ── 50s oval logo crest ── */
+/* ── 50s oval logo crest (matches the embroidered jacket patch) ── */
 function Logo({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 220 116" className={className} role="img" aria-label="Dr. Squeegee">
-      <ellipse cx="110" cy="58" rx="106" ry="52" fill="#F5F0E1" stroke="#3A6B4C" strokeWidth="4" />
-      <ellipse cx="110" cy="58" rx="96" ry="43" fill="none" stroke="#3A6B4C" strokeWidth="1.6" />
-      <text x="110" y="54" textAnchor="middle" fontFamily="Fraunces, serif" fontWeight="900"
-        fontSize="30" fill="#234A32" letterSpacing="0.5">DR. SQUEEGEE</text>
-      <text x="110" y="78" textAnchor="middle" fontFamily="Outfit, sans-serif" fontWeight="700"
-        fontSize="11" fill="#3A6B4C" letterSpacing="3.5">WINDOW CLEANING CO.</text>
+      {/* merrowed cream rim */}
+      <ellipse cx="110" cy="58" rx="108" ry="54" fill="#EAE0C8" />
+      {/* cream field + thin green inner ring */}
+      <ellipse cx="110" cy="58" rx="98" ry="46" fill="#F5F0E1" stroke="#2F5A3F" strokeWidth="3" />
+      <text x="110" y="69" textAnchor="middle" fontFamily="Fraunces, Georgia, serif" fontWeight="900"
+        fontSize="33" fill="#2F5A3F" letterSpacing="0.5">DR. SQUEEGEE</text>
     </svg>
   )
 }
 
-/* ── Before / After drag slider ── */
-function BeforeAfter() {
+/* ── Before / After drag slider (reusable) ── */
+function BeforeAfter({ before, after, label }: { before: string; after: string; label: string }) {
   const [pos, setPos] = useState(50)
   const ref = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
@@ -135,23 +150,23 @@ function BeforeAfter() {
   return (
     <div
       ref={ref}
-      className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-[#26352B] select-none cursor-ew-resize"
+      className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-[#26352B] select-none cursor-ew-resize"
       onMouseDown={(e) => { dragging.current = true; setFromClientX(e.clientX) }}
       onTouchStart={(e) => { dragging.current = true; setFromClientX(e.touches[0].clientX) }}
     >
       {/* After (full) */}
-      <img src="/images/squeegee/window-after.jpg" alt="Window after cleaning" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+      <img src={after} alt={`${label} after cleaning`} className="absolute inset-0 w-full h-full object-cover" draggable={false} />
       <span className="absolute bottom-3 right-3 text-[11px] font-bold uppercase tracking-widest bg-[#5AA374] text-[#0C120F] px-2.5 py-1 rounded-full">After</span>
-      {/* Before (clipped) */}
-      <div className="absolute inset-0 overflow-hidden" style={{ width: `${pos}%` }}>
-        <img src="/images/squeegee/window-before.jpg" alt="Window before cleaning" className="absolute inset-0 h-full object-cover max-w-none" style={{ width: ref.current?.offsetWidth ?? "100%" }} draggable={false} />
+      {/* Before (revealed via clip-path) */}
+      <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
+        <img src={before} alt={`${label} before cleaning`} className="absolute inset-0 w-full h-full object-cover" draggable={false} />
         <span className="absolute bottom-3 left-3 text-[11px] font-bold uppercase tracking-widest bg-[#0C120F]/80 text-white px-2.5 py-1 rounded-full">Before</span>
       </div>
       {/* Handle */}
       <div className="absolute top-0 bottom-0 w-0.5 bg-white/90 pointer-events-none" style={{ left: `${pos}%` }}>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-white shadow-lg flex items-center justify-center text-[#0C120F]">
-          <ChevronRight className="h-4 w-4 -mr-1 rotate-180" />
-          <ChevronRight className="h-4 w-4 -ml-1" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-white shadow-lg flex items-center justify-center text-[#0C120F]">
+          <ChevronRight className="h-3.5 w-3.5 -mr-1 rotate-180" />
+          <ChevronRight className="h-3.5 w-3.5 -ml-1" />
         </div>
       </div>
     </div>
@@ -330,45 +345,38 @@ export function LandingContent() {
         </div>
       </section>
 
-      {/* ── What We Clean ── */}
-      <section className="max-w-6xl mx-auto px-5 py-16 md:py-20">
-        <div className="flex items-center justify-center gap-3 mb-3">
-          <span className="h-px w-8 bg-[#C8973E]/50" />
-          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C8973E]">What We Clean</span>
-          <span className="h-px w-8 bg-[#C8973E]/50" />
-        </div>
-        <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-4xl font-black text-center mb-10">Windows first. Everything else, covered.</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {WHAT_WE_CLEAN.map((svc) => {
-            const Icon = svc.icon
-            return (
-              <div key={svc.name} className="bg-[#121B16] border border-[#26352B] rounded-xl p-6 hover:border-[#5AA374]/40 transition-colors">
-                <Icon className="h-8 w-8 mb-3 text-[#5AA374]" />
-                <h3 className="font-semibold text-base mb-1 text-white">{svc.name}</h3>
-                <p className="text-sm text-[#A8C4B0]">{svc.description}</p>
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* ── Before / After ── */}
+      {/* ── What We Do + Transformations (merged, proof-driven) ── */}
       <section id="work" className="border-y border-[#26352B] bg-[#0a0f0c]">
-        <div className="max-w-5xl mx-auto px-5 py-16 md:py-20 grid md:grid-cols-2 gap-10 items-center">
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <span className="h-px w-8 bg-[#C8973E]/50" />
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C8973E]">See the Difference</span>
-            </div>
-            <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-4xl font-black mb-4">Drag to see the transformation.</h2>
-            <p className="text-[#A8C4B0] leading-relaxed mb-6">
-              Pollen, hard-water spots, and grime build up fast in Charlotte. We hand-scrub and squeegee every pane to a crystal-clear, streak-free finish — then keep it that way on a recurring plan.
-            </p>
-            <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#5AA374] hover:bg-[#3A6B4C] text-[#0C120F] font-semibold px-6 py-3.5 transition-colors">
+        <div className="max-w-6xl mx-auto px-5 py-16 md:py-20">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <span className="h-px w-8 bg-[#C8973E]/50" />
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C8973E]">What We Do · The Proof</span>
+            <span className="h-px w-8 bg-[#C8973E]/50" />
+          </div>
+          <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-4xl font-black text-center mb-3">Real Charlotte transformations.</h2>
+          <p className="text-center text-[#A8C4B0] max-w-xl mx-auto mb-12">Windows are our specialty — but we handle the whole exterior. Drag any slider to see the difference.</p>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {TRANSFORMATIONS.map((t) => (
+              <div key={t.name} className="flex flex-col">
+                <BeforeAfter before={t.before} after={t.after} label={t.name} />
+                <div className="mt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-lg text-white">{t.name}</h3>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${t.tag === "Our specialty" ? "bg-[#5AA374]/20 text-[#5AA374]" : "bg-[#C8973E]/15 text-[#C8973E]"}`}>{t.tag}</span>
+                  </div>
+                  <p className="text-sm text-[#A8C4B0] leading-relaxed">{t.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-12">
+            <p className="text-sm text-white/45 mb-5">Also: storefront glass, patios, pool decks &amp; pavers — add any to your plan.</p>
+            <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#5AA374] hover:bg-[#3A6B4C] text-[#0C120F] font-semibold px-7 py-3.5 transition-colors">
               Get My Free Quote <ChevronRight className="h-4 w-4" />
             </a>
           </div>
-          <BeforeAfter />
         </div>
       </section>
 
