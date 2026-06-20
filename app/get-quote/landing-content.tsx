@@ -12,6 +12,8 @@ import {
   Droplets,
   CalendarClock,
   Home,
+  Clock,
+  Heart,
 } from "lucide-react"
 import { BRAND, FONTS } from "@/lib/squeegee/brand"
 import { FAQ_DATA, FAQSchema } from "./faq-schema"
@@ -83,6 +85,12 @@ const PLANS = [
     features: ["Storefront glass & doors", "Before-hours service", "Monthly billing"],
     featured: false,
   },
+] as const
+
+const PROMISES = [
+  { icon: Clock, text: "We show up on time — which really means ten minutes early." },
+  { icon: CheckCircle, text: "We do what we say. Our word is everything, and we aim to beat your expectations on every job." },
+  { icon: Heart, text: "We leave your home cleaner than we found it. Every single visit." },
 ] as const
 
 const TOASTS = [
@@ -259,20 +267,14 @@ export function LandingContent() {
               <h1 style={{ fontFamily: FONTS.display }} className="text-4xl md:text-5xl lg:text-6xl font-black leading-[1.04] tracking-tight mb-5">
                 Streak-free windows,<br /><span className="text-[#5AA374]">every single time.</span>
               </h1>
-              <p className="text-lg text-[#A8C4B0] leading-relaxed mb-3 max-w-xl">
-                Inside and out, hand-cleaned and squeegeed to a spotless shine by uniformed Charlotte pros. Most homes done in under two hours — guaranteed streak-free.
-              </p>
-              <p className="text-sm text-white/55 mb-7 max-w-xl">
-                Homes &amp; storefronts. <span className="text-[#C8973E] font-medium">Add pressure washing</span> for the full exterior.
+              <p className="text-lg md:text-xl text-[#A8C4B0] leading-relaxed mb-7 max-w-md">
+                Charlotte&apos;s window cleaning specialists. Homes &amp; businesses.
               </p>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[#A8C4B0]">
                 <span className="flex items-center gap-2"><Shield className="h-4 w-4 text-[#5AA374]" />Licensed &amp; Insured</span>
                 <span className="flex items-center gap-1.5 text-[#C8973E]">★★★★★ <span className="text-[#A8C4B0]">5.0 Google rating</span></span>
                 <span className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[#5AA374]" />Cancel anytime</span>
               </div>
-              <a href="#work" className="inline-flex items-center gap-1.5 mt-6 text-sm font-medium text-white/80 hover:text-white transition-colors">
-                See real transformations <ChevronRight className="h-4 w-4" />
-              </a>
             </div>
             <div className="lg:pl-2">
               <QuickQuote id="get-quote" />
@@ -329,6 +331,32 @@ export function LandingContent() {
             <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#5AA374] hover:bg-[#3A6B4C] text-[#0C120F] font-semibold px-7 py-3.5 transition-colors">
               Get My Free Quote <ChevronRight className="h-4 w-4" />
             </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── The Dr. Squeegee Promise (retro cream panel) ── */}
+      <section className="bg-[#F2EBD9]">
+        <div className="max-w-4xl mx-auto px-5 py-16 md:py-20 text-center">
+          <img src="/images/squeegee/character-icon.png" alt="Dr. Squeegee mascot" className="h-24 w-auto mx-auto mb-4" />
+          <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-5xl font-black text-[#2F4A39] mb-3">
+            The Dr. Squeegee Promise
+          </h2>
+          <p className="text-[#2F4A39]/70 max-w-lg mx-auto mb-12">
+            Your time and your home should never be taken for granted. Here&apos;s what you can count on, every visit:
+          </p>
+          <div className="grid sm:grid-cols-3 gap-8 md:gap-10">
+            {PROMISES.map((p) => {
+              const Icon = p.icon
+              return (
+                <div key={p.text} className="flex flex-col items-center text-center">
+                  <div className="h-14 w-14 rounded-full bg-[#2F4A39]/10 border-2 border-[#2F4A39]/25 flex items-center justify-center text-[#2F4A39] mb-4">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <p className="text-[#2F4A39] font-medium leading-relaxed">{p.text}</p>
+                </div>
+              )
+            })}
           </div>
         </div>
       </section>
