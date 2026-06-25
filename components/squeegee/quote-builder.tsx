@@ -6,7 +6,7 @@ import { SqueegeeJob } from "@/lib/squeegee/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { FileText, Check, Copy, Loader2, ExternalLink, Trash2, Pencil, X, AlertTriangle } from "lucide-react"
+import { FileText, Check, Copy, Loader2, ExternalLink, Trash2, Pencil, X, AlertTriangle, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const QUOTE_SERVICES = [
@@ -96,9 +96,11 @@ export function QuoteBuilder({ job }: Props) {
   const [deletingToken, setDeletingToken] = useState<string | null>(null)
   const [confirmDeleteToken, setConfirmDeleteToken] = useState<string | null>(null)
   const [editingQuote, setEditingQuote] = useState<QuoteRecord | null>(null)
-  const [editPrices, setEditPrices] = useState<Record<string, string>>({})
+  const [editLines, setEditLines] = useState<{ key: string; name: string; price: string }[]>([])
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  let _editKey = 0
+  function newEditKey() { return `ek-${Date.now()}-${_editKey++}` }
   const [customEnabled, setCustomEnabled] = useState(false)
   const [customName, setCustomName] = useState("")
   const [customDescription, setCustomDescription] = useState("")
@@ -218,9 +220,7 @@ export function QuoteBuilder({ job }: Props) {
   }
 
   function openEditQuote(q: QuoteRecord) {
-    const prices: Record<string, string> = {}
-    q.services.forEach((s) => { prices[s.name] = String(s.price) })
-    setEditPrices(prices)
+    setEditLines(q.services.map((s) => ({ key: newEditKey(), name: s.name, price: String(s.price) })))
     setEditError(null)
     setEditingQuote(q)
   }
@@ -230,11 +230,11 @@ export function QuoteBuilder({ job }: Props) {
     setEditLoading(true)
     setEditError(null)
 
-    const services = editingQuote.services.map((s) => ({
-      name: s.name,
-      price: parseFloat(editPrices[s.name] ?? String(s.price)),
-    }))
+    const services = editLines
+      .filter((l) => l.name.trim())
+      .map((l) => ({ name: l.name.trim(), price: parseFloat(l.price) || 0 }))
 
+    if (services.length === 0) { setEditError("Add at least one service."); setEditLoading(false); return }
     if (services.some((s) => isNaN(s.price) || s.price < 0)) {
       setEditError("All prices must be valid numbers.")
       setEditLoading(false)
@@ -589,7 +589,7 @@ export function QuoteBuilder({ job }: Props) {
                   {editingQuote?.token === q.token && (
                     <div className="border border-[#3A6B4C]/30 rounded-md p-3 bg-[#3A6B4C]/5 space-y-3 mt-1">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium text-[#3A6B4C]">Edit Prices</p>
+                        <p className="text-xs font-medium text-[#3A6B4C]">Edit Lines</p>
                         <button
                           type="button"
                           onClick={() => { setEditingQuote(null); setEditError(null) }}
@@ -598,23 +598,46 @@ export function QuoteBuilder({ job }: Props) {
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <div className="space-y-2">
-                        {q.services.map((s) => (
-                          <div key={s.name} className="flex items-center gap-2">
-                            <span className="text-xs flex-1">{s.name}</span>
+                      <div className="space-y-1.5">
+                        {editLines.map((line) => (
+                          <div key={line.key} className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={line.name}
+                              onChange={(e) => setEditLines((prev) => prev.map((l) => l.key === line.key ? { ...l, name: e.target.value } : l))}
+                              placeholder="Service name"
+                              className="flex-1 h-7 rounded border border-input bg-background px-2 text-xs"
+                            />
                             <span className="text-xs text-muted-foreground">$</span>
                             <input
                               type="number"
                               min="0"
                               step="0.01"
-                              value={editPrices[s.name] ?? String(s.price)}
-                              onChange={(e) =>
-                                setEditPrices((prev) => ({ ...prev, [s.name]: e.target.value }))
-                              }
-                              className="w-24 h-7 rounded border border-input bg-background px-2 text-xs text-right"
+                              value={line.price}
+                              onChange={(e) => setEditLines((prev) => prev.map((l) => l.key === line.key ? { ...l, price: e.target.value } : l))}
+                              className="w-20 h-7 rounded border border-input bg-background px-2 text-xs text-right"
                             />
+                            {editLines.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setEditLines((prev) => prev.filter((l) => l.key !== line.key))}
+                                className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
                           </div>
                         ))}
+                        <button
+                          type="button"
+                          onClick={() => setEditLines((prev) => [...prev, { key: newEditKey(), name: '', price: '' }])}
+                          className="flex items-center gap-1 text-xs text-[#3A6B4C] hover:underline mt-1"
+                        >
+                          <Plus className="h-3 w-3" /> Add line
+                        </button>
+                      </div>
+                      <div className="text-xs text-muted-foreground text-right tabular-nums">
+                        Total: ${editLines.reduce((s, l) => s + (parseFloat(l.price) || 0), 0).toFixed(2)}
                       </div>
                       {editError && (
                         <div className="flex items-center gap-1.5 text-xs text-destructive">
@@ -630,7 +653,7 @@ export function QuoteBuilder({ job }: Props) {
                           className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#3A6B4C] text-white text-xs font-medium hover:bg-[#2F5A3F] transition-colors disabled:opacity-50"
                         >
                           {editLoading && <Loader2 className="h-3 w-3 animate-spin" />}
-                          Save Changes
+                          Save
                         </button>
                         <button
                           type="button"
