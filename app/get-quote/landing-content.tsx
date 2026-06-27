@@ -20,9 +20,9 @@ import { FAQ_DATA, FAQSchema } from "./faq-schema"
 import { QuickQuote } from "./quick-quote"
 
 /* ──────────────────────────────────────────────────────────
-   Dark theme tokens (window-first redesign)
-   ink  #0C120F · panel #121B16 · panel2 #16221B · line #26352B
-   green #3A6B4C · greenB #5AA374 · gold #C8973E · mute #A8C4B0
+   Dark theme tokens — black + white + teal
+   ink  #0A0A0A · panel #111111 · panel2 #1A1A1A · line #242424
+   teal #2D8C6F · tealDark #1F6B54 · mute #9CA3AF
    ────────────────────────────────────────────────────────── */
 
 const TRANSFORMATIONS = [
@@ -110,26 +110,27 @@ const REVIEWS = [
   { name: "Chris W.", neighborhood: "University Area", text: "Professional, great communication, fair price. The whole property looks 10 years newer. Will use again." },
 ]
 
-/* ── 50s oval logo crest (vector recreation of the embroidered patch:
-   cream merrowed border, dark-green field, cream athletic lettering) ── */
+/* ── Oval badge logo — black field, teal border ring, white athletic lettering ── */
 function Logo({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 240 96" className={className} role="img" aria-label="Dr. Squeegee">
-      {/* cream merrowed border */}
-      <ellipse cx="120" cy="48" rx="119" ry="47" fill="#E4DABE" />
-      {/* dark green field */}
-      <ellipse cx="120" cy="48" rx="110" ry="38.5" fill="#2F4A39" />
-      {/* cream athletic wordmark */}
+      {/* outer black edge */}
+      <ellipse cx="120" cy="48" rx="119" ry="47" fill="#0A0A0A" />
+      {/* teal border ring */}
+      <ellipse cx="120" cy="48" rx="113" ry="41" fill="#2D8C6F" />
+      {/* black field */}
+      <ellipse cx="120" cy="48" rx="106" ry="34.5" fill="#0A0A0A" />
+      {/* white athletic wordmark */}
       <text
         x="120"
         y="63"
         textAnchor="middle"
-        textLength="198"
+        textLength="190"
         lengthAdjust="spacingAndGlyphs"
         fontFamily="var(--font-logo), Oswald, Impact, sans-serif"
         fontWeight="700"
-        fontSize="40"
-        fill="#ECE3C8"
+        fontSize="38"
+        fill="#FFFFFF"
       >
         DR. SQUEEGEE
       </text>
@@ -173,18 +174,18 @@ function BeforeAfter({ before, after, label }: { before: string; after: string; 
   return (
     <div
       ref={ref}
-      className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-[#26352B] select-none cursor-ew-resize"
+      className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-[#242424] select-none cursor-ew-resize"
       onMouseDown={(e) => { dragging.current = true; setFromClientX(e.clientX) }}
       onTouchStart={(e) => { dragging.current = true; setFromClientX(e.touches[0].clientX) }}
     >
       <img src={after} alt={`${label} after cleaning`} className="absolute inset-0 w-full h-full object-cover" draggable={false} />
-      <span className="absolute bottom-3 right-3 text-[11px] font-bold uppercase tracking-widest bg-[#5AA374] text-[#0C120F] px-2.5 py-1 rounded-full">After</span>
+      <span className="absolute bottom-3 right-3 text-[11px] font-bold uppercase tracking-widest bg-[#2D8C6F] text-[#0A0A0A] px-2.5 py-1 rounded-full">After</span>
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
         <img src={before} alt={`${label} before cleaning`} className="absolute inset-0 w-full h-full object-cover" draggable={false} />
-        <span className="absolute bottom-3 left-3 text-[11px] font-bold uppercase tracking-widest bg-[#0C120F]/80 text-white px-2.5 py-1 rounded-full">Before</span>
+        <span className="absolute bottom-3 left-3 text-[11px] font-bold uppercase tracking-widest bg-[#0A0A0A]/80 text-white px-2.5 py-1 rounded-full">Before</span>
       </div>
       <div className="absolute top-0 bottom-0 w-0.5 bg-white/90 pointer-events-none" style={{ left: `${pos}%` }}>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-white shadow-lg flex items-center justify-center text-[#0C120F]">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-white shadow-lg flex items-center justify-center text-[#0A0A0A]">
           <ChevronRight className="h-3.5 w-3.5 -mr-1 rotate-180" />
           <ChevronRight className="h-3.5 w-3.5 -ml-1" />
         </div>
@@ -213,13 +214,13 @@ function SocialProofToast() {
   const t = TOASTS[i]
   return (
     <div className={`fixed bottom-5 left-5 z-50 transition-all duration-500 ${show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"}`}>
-      <div className="flex items-center gap-3 rounded-xl border border-[#26352B] bg-[#16221B]/95 backdrop-blur px-4 py-3 shadow-2xl max-w-xs">
-        <div className="h-9 w-9 shrink-0 rounded-full bg-[#5AA374]/15 flex items-center justify-center text-[#5AA374]">
+      <div className="flex items-center gap-3 rounded-xl border border-[#242424] bg-[#1A1A1A]/95 backdrop-blur px-4 py-3 shadow-2xl max-w-xs">
+        <div className="h-9 w-9 shrink-0 rounded-full bg-[#2D8C6F]/15 flex items-center justify-center text-[#2D8C6F]">
           <Sparkles className="h-4 w-4" />
         </div>
         <div className="text-sm leading-tight">
           <div className="font-semibold text-white">{t.name} {t.action}</div>
-          <div className="text-[#A8C4B0] text-xs">{t.area} · just now</div>
+          <div className="text-[#9CA3AF] text-xs">{t.area} · just now</div>
         </div>
       </div>
     </div>
@@ -228,23 +229,23 @@ function SocialProofToast() {
 
 export function LandingContent() {
   return (
-    <div className="bg-[#0C120F] text-white" style={{ fontFamily: FONTS.body }}>
+    <div className="bg-[#0A0A0A] text-white" style={{ fontFamily: FONTS.body }}>
       {/* ── Sticky Header ── */}
-      <header className="sticky top-0 z-50 bg-[#0C120F]/85 backdrop-blur border-b border-[#26352B]">
+      <header className="sticky top-0 z-50 bg-[#0A0A0A]/85 backdrop-blur border-b border-[#242424]">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-5 py-3">
           <Logo className="h-10 w-auto" />
-          <nav className="hidden md:flex items-center gap-8 text-sm text-[#A8C4B0]">
+          <nav className="hidden md:flex items-center gap-8 text-sm text-[#9CA3AF]">
             <a href="#plans" className="hover:text-white transition-colors">Plans</a>
             <a href="#work" className="hover:text-white transition-colors">Transformations</a>
             <a href="#why" className="hover:text-white transition-colors">Why Us</a>
             <a href="/blog" className="hover:text-white transition-colors">Tips &amp; Guides</a>
           </nav>
           <div className="flex items-center gap-4">
-            <a href={`tel:${BRAND.phoneTel}`} className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-[#A8C4B0] hover:text-white transition-colors">
+            <a href={`tel:${BRAND.phoneTel}`} className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-white transition-colors">
               <Phone className="h-4 w-4" />
               {BRAND.phone}
             </a>
-            <a href="#get-quote" className="inline-flex items-center gap-1.5 rounded-lg bg-[#5AA374] hover:bg-[#3A6B4C] text-[#0C120F] font-semibold text-sm px-4 py-2 transition-colors shadow-lg shadow-[#5AA374]/20">
+            <a href="#get-quote" className="inline-flex items-center gap-1.5 rounded-lg bg-[#2D8C6F] hover:bg-[#2D8C6F] text-[#0A0A0A] font-semibold text-sm px-4 py-2 transition-colors shadow-lg shadow-[#2D8C6F]/20">
               Get a Free Quote
             </a>
           </div>
@@ -254,26 +255,26 @@ export function LandingContent() {
       {/* ── Hero with top-of-page quote form ── */}
       <section className="relative">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/images/squeegee/hero-pool.jpg')" }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0C120F]/45 via-[#0C120F]/80 to-[#0C120F]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0C120F]/85 to-[#0C120F]/30" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A]/45 via-[#0A0A0A]/80 to-[#0A0A0A]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/85 to-[#0A0A0A]/30" />
 
         <div className="relative max-w-6xl mx-auto px-5 pt-14 pb-14 md:pt-20 md:pb-20">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
             <div>
               <div className="flex items-center gap-3 mb-6">
-                <span className="h-px w-8 bg-[#5AA374]" />
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C8973E]">Charlotte · Professional Window Cleaning</span>
+                <span className="h-px w-8 bg-[#2D8C6F]" />
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2D8C6F]">Charlotte · Professional Window Cleaning</span>
               </div>
               <h1 style={{ fontFamily: FONTS.display }} className="text-4xl md:text-5xl lg:text-6xl font-black leading-[1.04] tracking-tight mb-5">
-                Streak-free windows,<br /><span className="text-[#5AA374]">every single time.</span>
+                Streak-free windows,<br /><span className="text-[#2D8C6F]">every single time.</span>
               </h1>
-              <p className="text-lg md:text-xl text-[#A8C4B0] leading-relaxed mb-7 max-w-md">
+              <p className="text-lg md:text-xl text-[#9CA3AF] leading-relaxed mb-7 max-w-md">
                 Charlotte&apos;s window cleaning specialists. Homes &amp; businesses.
               </p>
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[#A8C4B0]">
-                <span className="flex items-center gap-2"><Shield className="h-4 w-4 text-[#5AA374]" />Licensed &amp; Insured</span>
-                <span className="flex items-center gap-1.5 text-[#C8973E]">★★★★★ <span className="text-[#A8C4B0]">5.0 Google rating</span></span>
-                <span className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[#5AA374]" />Cancel anytime</span>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[#9CA3AF]">
+                <span className="flex items-center gap-2"><Shield className="h-4 w-4 text-[#2D8C6F]" />Licensed &amp; Insured</span>
+                <span className="flex items-center gap-1.5 text-[#2D8C6F]">★★★★★ <span className="text-[#9CA3AF]">5.0 Google rating</span></span>
+                <span className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[#2D8C6F]" />Cancel anytime</span>
               </div>
             </div>
             <div className="lg:pl-2">
@@ -283,8 +284,8 @@ export function LandingContent() {
         </div>
 
         {/* Authority stat bar */}
-        <div className="relative border-t border-[#26352B] bg-[#0C120F]/70 backdrop-blur">
-          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 divide-x divide-[#26352B]">
+        <div className="relative border-t border-[#242424] bg-[#0A0A0A]/70 backdrop-blur">
+          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 divide-x divide-[#242424]">
             {[
               ["150+", "Homes Served"],
               ["5.0★", "Google Rating"],
@@ -293,7 +294,7 @@ export function LandingContent() {
             ].map(([big, small]) => (
               <div key={small} className="px-5 py-6 text-center">
                 <div style={{ fontFamily: FONTS.display }} className="text-2xl md:text-4xl font-black text-white">{big}</div>
-                <div className="text-[11px] uppercase tracking-widest text-[#A8C4B0] mt-1">{small}</div>
+                <div className="text-[11px] uppercase tracking-widest text-[#9CA3AF] mt-1">{small}</div>
               </div>
             ))}
           </div>
@@ -301,15 +302,15 @@ export function LandingContent() {
       </section>
 
       {/* ── What We Do + Transformations (merged, proof-driven) ── */}
-      <section id="work" className="border-y border-[#26352B] bg-[#0a0f0c]">
+      <section id="work" className="border-y border-[#242424] bg-[#0D0D0D]">
         <div className="max-w-6xl mx-auto px-5 py-16 md:py-20">
           <div className="flex items-center justify-center gap-3 mb-3">
-            <span className="h-px w-8 bg-[#C8973E]/50" />
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C8973E]">What We Do · The Proof</span>
-            <span className="h-px w-8 bg-[#C8973E]/50" />
+            <span className="h-px w-8 bg-[#2D8C6F]/50" />
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2D8C6F]">What We Do · The Proof</span>
+            <span className="h-px w-8 bg-[#2D8C6F]/50" />
           </div>
           <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-4xl font-black text-center mb-3">Real Charlotte transformations.</h2>
-          <p className="text-center text-[#A8C4B0] max-w-xl mx-auto mb-12">Windows are our specialty — but we handle the whole exterior. Drag any slider to see the difference.</p>
+          <p className="text-center text-[#9CA3AF] max-w-xl mx-auto mb-12">Windows are our specialty — but we handle the whole exterior. Drag any slider to see the difference.</p>
 
           <div className="grid md:grid-cols-3 gap-6">
             {TRANSFORMATIONS.map((t) => (
@@ -318,9 +319,9 @@ export function LandingContent() {
                 <div className="mt-4">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-lg text-white">{t.name}</h3>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${t.tag === "Our specialty" ? "bg-[#5AA374]/20 text-[#5AA374]" : "bg-[#C8973E]/15 text-[#C8973E]"}`}>{t.tag}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${t.tag === "Our specialty" ? "bg-[#2D8C6F]/20 text-[#2D8C6F]" : "bg-[#2D8C6F]/15 text-[#2D8C6F]"}`}>{t.tag}</span>
                   </div>
-                  <p className="text-sm text-[#A8C4B0] leading-relaxed">{t.description}</p>
+                  <p className="text-sm text-[#9CA3AF] leading-relaxed">{t.description}</p>
                 </div>
               </div>
             ))}
@@ -328,21 +329,21 @@ export function LandingContent() {
 
           <div className="text-center mt-12">
             <p className="text-sm text-white/45 mb-5">Also: storefront glass, patios, pool decks &amp; pavers — add any to your plan.</p>
-            <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#5AA374] hover:bg-[#3A6B4C] text-[#0C120F] font-semibold px-7 py-3.5 transition-colors">
+            <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#2D8C6F] hover:bg-[#2D8C6F] text-[#0A0A0A] font-semibold px-7 py-3.5 transition-colors">
               Get My Free Quote <ChevronRight className="h-4 w-4" />
             </a>
           </div>
         </div>
       </section>
 
-      {/* ── The Dr. Squeegee Promise (retro cream panel) ── */}
-      <section className="bg-[#F2EBD9]">
+      {/* ── The Dr. Squeegee Promise ── */}
+      <section className="bg-white">
         <div className="max-w-4xl mx-auto px-5 py-16 md:py-20 text-center">
           <img src="/images/squeegee/character-icon.png" alt="Dr. Squeegee mascot" className="h-24 w-auto mx-auto mb-4" />
-          <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-5xl font-black text-[#2F4A39] mb-3">
+          <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-5xl font-black text-[#0A0A0A] mb-3">
             The Dr. Squeegee Promise
           </h2>
-          <p className="text-[#2F4A39]/70 max-w-lg mx-auto mb-12">
+          <p className="text-[#0A0A0A]/60 max-w-lg mx-auto mb-12">
             Your time and your home should never be taken for granted. Here&apos;s what you can count on, every visit:
           </p>
           <div className="grid sm:grid-cols-3 gap-8 md:gap-10">
@@ -350,10 +351,10 @@ export function LandingContent() {
               const Icon = p.icon
               return (
                 <div key={p.text} className="flex flex-col items-center text-center">
-                  <div className="h-14 w-14 rounded-full bg-[#2F4A39]/10 border-2 border-[#2F4A39]/25 flex items-center justify-center text-[#2F4A39] mb-4">
+                  <div className="h-14 w-14 rounded-full bg-[#2D8C6F]/10 border-2 border-[#2D8C6F]/30 flex items-center justify-center text-[#2D8C6F] mb-4">
                     <Icon className="h-6 w-6" />
                   </div>
-                  <p className="text-[#2F4A39] font-medium leading-relaxed">{p.text}</p>
+                  <p className="text-[#0A0A0A] font-medium leading-relaxed">{p.text}</p>
                 </div>
               )
             })}
@@ -364,57 +365,57 @@ export function LandingContent() {
       {/* ── Reviews ── */}
       <section className="max-w-6xl mx-auto px-5 py-16 md:py-20">
         <div className="flex items-center justify-center gap-3 mb-3">
-          <span className="h-px w-8 bg-[#C8973E]/50" />
-          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C8973E]">Testimonials</span>
-          <span className="h-px w-8 bg-[#C8973E]/50" />
+          <span className="h-px w-8 bg-[#2D8C6F]/50" />
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2D8C6F]">Testimonials</span>
+          <span className="h-px w-8 bg-[#2D8C6F]/50" />
         </div>
         <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-4xl font-black text-center mb-10">What Charlotte says</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {REVIEWS.map((r) => (
-            <div key={r.name} className="bg-[#121B16] border border-[#26352B] rounded-xl p-5">
+            <div key={r.name} className="bg-[#111111] border border-[#242424] rounded-xl p-5">
               <div className="flex gap-0.5 mb-3">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-[#C8973E] text-[#C8973E]" />
+                  <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
                 ))}
               </div>
               <p className="text-sm text-white/85 mb-3 leading-relaxed">&ldquo;{r.text}&rdquo;</p>
-              <p className="text-xs text-[#A8C4B0]/70">{r.name} · {r.neighborhood}</p>
+              <p className="text-xs text-[#9CA3AF]/70">{r.name} · {r.neighborhood}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── Plans ── */}
-      <section id="plans" className="border-y border-[#26352B] bg-[#0a0f0c]">
+      <section id="plans" className="border-y border-[#242424] bg-[#0D0D0D]">
         <div className="max-w-6xl mx-auto px-5 py-16 md:py-20">
           <div className="flex items-center justify-center gap-3 mb-3">
-            <span className="h-px w-8 bg-[#C8973E]/50" />
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C8973E]">Set It &amp; Forget It</span>
-            <span className="h-px w-8 bg-[#C8973E]/50" />
+            <span className="h-px w-8 bg-[#2D8C6F]/50" />
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2D8C6F]">Set It &amp; Forget It</span>
+            <span className="h-px w-8 bg-[#2D8C6F]/50" />
           </div>
           <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-4xl font-black text-center mb-3">Pick your clean. We handle the rest.</h2>
-          <p className="text-center text-[#A8C4B0] max-w-xl mx-auto mb-12">One recurring visit keeps your glass spotless year-round. No contracts — pause or cancel anytime.</p>
+          <p className="text-center text-[#9CA3AF] max-w-xl mx-auto mb-12">One recurring visit keeps your glass spotless year-round. No contracts — pause or cancel anytime.</p>
 
           <div className="grid md:grid-cols-3 gap-5">
             {PLANS.map((p) => (
-              <div key={p.title} className={`rounded-2xl p-7 transition-colors ${p.featured ? "border-2 border-[#5AA374] bg-[#16221B] relative shadow-2xl shadow-[#5AA374]/10" : "border border-[#26352B] bg-[#121B16] hover:border-[#5AA374]/40"}`}>
+              <div key={p.title} className={`rounded-2xl p-7 transition-colors ${p.featured ? "border-2 border-[#2D8C6F] bg-[#1A1A1A] relative shadow-2xl shadow-[#2D8C6F]/10" : "border border-[#242424] bg-[#111111] hover:border-[#2D8C6F]/40"}`}>
                 {p.featured && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#C8973E] text-[#0C120F] text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">Best Value</span>
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2D8C6F] text-[#0A0A0A] text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">Best Value</span>
                 )}
-                <div className={`text-sm font-semibold uppercase tracking-widest mb-2 ${p.featured ? "text-[#C8973E]" : "text-[#5AA374]"}`}>{p.tag}</div>
+                <div className={`text-sm font-semibold uppercase tracking-widest mb-2 ${p.featured ? "text-[#2D8C6F]" : "text-[#2D8C6F]"}`}>{p.tag}</div>
                 <div style={{ fontFamily: FONTS.display }} className="text-4xl font-black mb-1">{p.title}</div>
-                <p className="text-[#A8C4B0] text-sm mb-6">{p.blurb}</p>
+                <p className="text-[#9CA3AF] text-sm mb-6">{p.blurb}</p>
                 <ul className="space-y-2.5 text-sm text-white/85 mb-7">
                   {p.features.map((f) => (
-                    <li key={f} className="flex gap-2"><CheckCircle className="h-4 w-4 text-[#5AA374] shrink-0 mt-0.5" />{f}</li>
+                    <li key={f} className="flex gap-2"><CheckCircle className="h-4 w-4 text-[#2D8C6F] shrink-0 mt-0.5" />{f}</li>
                   ))}
                 </ul>
-                <a href="#get-quote" className={`block text-center rounded-lg py-3 font-semibold transition-colors ${p.featured ? "bg-[#5AA374] hover:bg-[#3A6B4C] text-[#0C120F]" : "bg-[#16221B] border border-[#26352B] hover:border-[#5AA374]/50 text-white"}`}>Get My Price</a>
+                <a href="#get-quote" className={`block text-center rounded-lg py-3 font-semibold transition-colors ${p.featured ? "bg-[#2D8C6F] hover:bg-[#2D8C6F] text-[#0A0A0A]" : "bg-[#1A1A1A] border border-[#242424] hover:border-[#2D8C6F]/50 text-white"}`}>Get My Price</a>
               </div>
             ))}
           </div>
           <p className="text-center text-sm text-white/45 mt-8">
-            Need the whole exterior done? <span className="text-[#C8973E] font-medium">Add pressure washing</span> — driveways, siding, patios — to any plan.
+            Need the whole exterior done? <span className="text-[#2D8C6F] font-medium">Add pressure washing</span> — driveways, siding, patios — to any plan.
           </p>
         </div>
       </section>
@@ -433,10 +434,10 @@ export function LandingContent() {
           ].map(([Icon, title, body]) => {
             const I = Icon as typeof Sparkles
             return (
-              <div key={title as string} className="bg-[#121B16] border border-[#26352B] rounded-xl p-5">
-                <I className="h-7 w-7 text-[#5AA374] mb-3" />
+              <div key={title as string} className="bg-[#111111] border border-[#242424] rounded-xl p-5">
+                <I className="h-7 w-7 text-[#2D8C6F] mb-3" />
                 <h3 className="font-semibold text-white mb-1">{title as string}</h3>
-                <p className="text-sm text-[#A8C4B0]">{body as string}</p>
+                <p className="text-sm text-[#9CA3AF]">{body as string}</p>
               </div>
             )
           })}
@@ -446,47 +447,47 @@ export function LandingContent() {
       {/* ── FAQ ── */}
       <section className="max-w-3xl mx-auto px-5 py-16">
         <div className="flex items-center justify-center gap-3 mb-3">
-          <span className="h-px w-8 bg-[#C8973E]/50" />
-          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C8973E]">Common Questions</span>
-          <span className="h-px w-8 bg-[#C8973E]/50" />
+          <span className="h-px w-8 bg-[#2D8C6F]/50" />
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2D8C6F]">Common Questions</span>
+          <span className="h-px w-8 bg-[#2D8C6F]/50" />
         </div>
         <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-4xl font-black text-center mb-10">Frequently Asked Questions</h2>
         <div className="space-y-4">
           {FAQ_DATA.map((faq) => (
-            <details key={faq.question} className="bg-[#121B16] border border-[#26352B] rounded-xl overflow-hidden group">
-              <summary className="p-5 cursor-pointer font-semibold text-white hover:bg-[#16221B] transition-colors list-none flex items-center justify-between">
+            <details key={faq.question} className="bg-[#111111] border border-[#242424] rounded-xl overflow-hidden group">
+              <summary className="p-5 cursor-pointer font-semibold text-white hover:bg-[#1A1A1A] transition-colors list-none flex items-center justify-between">
                 {faq.question}
-                <ChevronRight className="h-4 w-4 text-[#A8C4B0]/50 transition-transform group-open:rotate-90" />
+                <ChevronRight className="h-4 w-4 text-[#9CA3AF]/50 transition-transform group-open:rotate-90" />
               </summary>
-              <div className="px-5 pb-5 text-sm text-[#A8C4B0] leading-relaxed">{faq.answer}</div>
+              <div className="px-5 pb-5 text-sm text-[#9CA3AF] leading-relaxed">{faq.answer}</div>
             </details>
           ))}
         </div>
       </section>
 
       {/* ── Final CTA band ── */}
-      <section className="border-y border-[#26352B] bg-[#0a0f0c]">
+      <section className="border-y border-[#242424] bg-[#0D0D0D]">
         <div className="max-w-3xl mx-auto px-5 py-16 text-center">
           <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-4xl font-black mb-3">Ready for spotless windows?</h2>
-          <p className="text-[#A8C4B0] mb-7">Free quote in under 60 seconds — we&apos;ll text you back within 2 hours.</p>
-          <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#5AA374] hover:bg-[#3A6B4C] text-[#0C120F] font-semibold text-lg px-8 py-4 transition-colors shadow-xl shadow-[#5AA374]/25">
+          <p className="text-[#9CA3AF] mb-7">Free quote in under 60 seconds — we&apos;ll text you back within 2 hours.</p>
+          <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#2D8C6F] hover:bg-[#2D8C6F] text-[#0A0A0A] font-semibold text-lg px-8 py-4 transition-colors shadow-xl shadow-[#2D8C6F]/25">
             Get My Free Quote <ChevronRight className="h-5 w-5" />
           </a>
         </div>
       </section>
 
       {/* ── Footer ── */}
-      <footer className="py-10 px-5 bg-[#0C120F]">
-        <div className="max-w-4xl mx-auto text-center text-[#A8C4B0]/60 text-sm space-y-2">
+      <footer className="py-10 px-5 bg-[#0A0A0A]">
+        <div className="max-w-4xl mx-auto text-center text-[#9CA3AF]/60 text-sm space-y-2">
           <Logo className="h-12 w-auto mx-auto mb-2" />
           <p>{BRAND.address}</p>
-          <p><a href={`tel:${BRAND.phoneTel}`} className="hover:text-[#5AA374] transition-colors">{BRAND.phone}</a></p>
+          <p><a href={`tel:${BRAND.phoneTel}`} className="hover:text-[#2D8C6F] transition-colors">{BRAND.phone}</a></p>
           <div className="flex items-center justify-center gap-3 pt-2">
-            <a href="/privacy" className="hover:text-[#5AA374] transition-colors underline">Privacy Policy</a>
+            <a href="/privacy" className="hover:text-[#2D8C6F] transition-colors underline">Privacy Policy</a>
             <span>·</span>
-            <a href="/terms" className="hover:text-[#5AA374] transition-colors underline">Terms of Service</a>
+            <a href="/terms" className="hover:text-[#2D8C6F] transition-colors underline">Terms of Service</a>
           </div>
-          <p className="text-xs text-[#A8C4B0]/30 pt-1">&copy; {new Date().getFullYear()} Dr. Squeegee House Washing. All rights reserved.</p>
+          <p className="text-xs text-[#9CA3AF]/30 pt-1">&copy; {new Date().getFullYear()} Dr. Squeegee House Washing. All rights reserved.</p>
         </div>
       </footer>
 

@@ -40,7 +40,7 @@ export function SqueegeeNav() {
             className="flex items-center gap-2 shrink-0"
           >
             <span
-              className="font-bold text-[#3A6B4C]"
+              className="font-bold text-[#2D8C6F]"
               style={{ fontFamily: "var(--font-brand-display), serif" }}
             >
               Dr. Squeegee
@@ -63,7 +63,7 @@ export function SqueegeeNav() {
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap shrink-0",
                     isActive
-                      ? "bg-[#E8F0EA] text-[#1E3E2B] dark:bg-[#1A2E21] dark:text-[#A8C4B0]"
+                      ? "bg-[#E6F5F0] text-[#0A0A0A] dark:bg-[#1F3D35] dark:text-[#9CA3AF]"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >

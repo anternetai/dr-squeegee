@@ -12,28 +12,19 @@ export const BRAND = {
   domain: "drsqueegeeclt.com",
 } as const
 
-// Color palette
+// Color palette — black + white + teal
 export const COLORS = {
-  green: "#3A6B4C",       // Primary — buttons, headers, accents
-  greenDark: "#2F5A3F",   // Hover state
-  cream: "#F5F0E1",       // Backgrounds, cards
-  gold: "#C8973E",        // Accent borders, badges, premium details
-  charcoal: "#2B2B2B",    // Body text, dark sections
-  warmWhite: "#FEFCF7",   // Page backgrounds
-  brickRed: "#B8453A",    // CTA highlights (sparingly)
-
-  // Derived / UI shades
-  greenLight: "#E8F0EA",    // Light green bg (active nav, badges)
-  greenLighter: "#F2F7F3",  // Very light green bg (calendar today)
-  greenDarkText: "#1E3E2B", // Dark green for text on light bg
-  greenDarkBg: "#1A2E21",   // Dark mode active bg
-  greenDarkerBg: "#152419",  // Dark mode revenue card bg
-  greenDarkestBg: "#121E16", // Dark mode calendar today bg
-  greenDarkHeader: "#182A1E",// Dark mode calendar today header
-  greenMutedText: "#A8C4B0", // Light green text on dark bg
-  greenMidText: "#234A32",   // Mid-dark green text
-  greenBorder: "#C8D8CE",    // Light green border
-  greenDarkBorder: "#1E3E2B",// Dark mode border
+  teal: "#2D8C6F",          // Primary accent — buttons, icons, borders
+  tealDark: "#1F6B54",      // Hover/pressed teal
+  tealLight: "#E6F5F0",     // Light teal bg (active nav, badges)
+  black: "#0A0A0A",         // Page backgrounds, panels
+  panelDark: "#111111",     // Dark card/panel
+  panelMid: "#1A1A1A",      // Mid panel
+  border: "#242424",        // Panel borders
+  white: "#FFFFFF",         // Text on dark, card backgrounds
+  mutedText: "#9CA3AF",     // Secondary text
+  charcoal: "#1A1A1A",      // Body text on light bg
+  brickRed: "#B8453A",      // Decline / destructive (sparingly)
 } as const
 
 // Font families (CSS variable names from layout.tsx)
