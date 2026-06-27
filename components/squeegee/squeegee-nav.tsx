@@ -36,7 +36,12 @@ export function SqueegeeNav() {
         <div className="flex h-14 items-center gap-4">
           {/* Brand */}
           <Link href="/crm" className="flex items-center shrink-0">
-            <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-8 w-auto" />
+            <svg viewBox="0 0 280 112" className="h-10 w-auto" role="img" aria-label="Dr. Squeegee">
+              <ellipse cx="140" cy="56" rx="139" ry="55" fill="#0A0A0A" />
+              <ellipse cx="140" cy="56" rx="131" ry="47" fill="#2D8C6F" />
+              <ellipse cx="140" cy="56" rx="121" ry="37" fill="#0A0A0A" />
+              <text x="140" y="73" textAnchor="middle" fontFamily="var(--font-brand-display), Impact, sans-serif" fontWeight="700" fontSize="42" fill="#FFFFFF" letterSpacing="1.5">DR. SQUEEGEE</text>
+            </svg>
           </Link>
 
           {/* Nav — scrollable on mobile */}
