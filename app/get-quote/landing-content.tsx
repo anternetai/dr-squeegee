@@ -110,31 +110,14 @@ const REVIEWS = [
   { name: "Chris W.", neighborhood: "University Area", text: "Professional, great communication, fair price. The whole property looks 10 years newer. Will use again." },
 ]
 
-/* ── Oval badge logo — black field, teal border ring, white athletic lettering ── */
+/* ── Oval badge logo — embroidered badge image ── */
 function Logo({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 240 96" className={className} role="img" aria-label="Dr. Squeegee">
-      {/* outer black edge */}
-      <ellipse cx="120" cy="48" rx="119" ry="47" fill="#0A0A0A" />
-      {/* teal border ring */}
-      <ellipse cx="120" cy="48" rx="113" ry="41" fill="#2D8C6F" />
-      {/* black field */}
-      <ellipse cx="120" cy="48" rx="106" ry="34.5" fill="#0A0A0A" />
-      {/* white athletic wordmark */}
-      <text
-        x="120"
-        y="63"
-        textAnchor="middle"
-        textLength="190"
-        lengthAdjust="spacingAndGlyphs"
-        fontFamily="var(--font-logo), Oswald, Impact, sans-serif"
-        fontWeight="700"
-        fontSize="38"
-        fill="#FFFFFF"
-      >
-        DR. SQUEEGEE
-      </text>
-    </svg>
+    <img
+      src="/images/squeegee/logo-badge.png"
+      alt="Dr. Squeegee"
+      className={className}
+    />
   )
 }
 

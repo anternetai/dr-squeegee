@@ -35,16 +35,8 @@ export function SqueegeeNav() {
       <div className="container mx-auto px-4 max-w-5xl">
         <div className="flex h-14 items-center gap-4">
           {/* Brand */}
-          <Link
-            href="/crm"
-            className="flex items-center gap-2 shrink-0"
-          >
-            <span
-              className="font-bold text-[#2D8C6F]"
-              style={{ fontFamily: "var(--font-brand-display), serif" }}
-            >
-              Dr. Squeegee
-            </span>
+          <Link href="/crm" className="flex items-center shrink-0">
+            <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-8 w-auto" />
           </Link>
 
           {/* Nav — scrollable on mobile */}
