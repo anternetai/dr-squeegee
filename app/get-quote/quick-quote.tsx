@@ -247,7 +247,7 @@ export function QuickQuote({ id }: { id?: string }) {
             <button
               onClick={handleSubmit}
               disabled={!first.trim() || !last.trim() || !phone.trim() || loading}
-              className="w-full font-semibold py-3.5 rounded-lg transition-colors text-[#0A0A0A] bg-[#2D8C6F] hover:bg-[#2D8C6F] disabled:bg-[#242424] disabled:text-[#9CA3AF]/40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full font-semibold py-3.5 rounded-lg transition-colors text-white bg-[#2D8C6F] hover:bg-[#1F6B54] disabled:bg-[#242424] disabled:text-[#9CA3AF]/40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? "Sending..." : "Get My Free Quote"}
               {!loading && <ChevronRight className="h-4 w-4" />}

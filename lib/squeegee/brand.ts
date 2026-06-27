@@ -29,6 +29,6 @@ export const COLORS = {
 
 // Font families (CSS variable names from layout.tsx)
 export const FONTS = {
-  display: "var(--font-brand-display)", // Fraunces — headings, brand name, prices
+  display: "var(--font-brand-display)", // Oswald — headings, brand name, prices (condensed, matches badge)
   body: "var(--font-brand-body)",       // Outfit — body text, UI, buttons
 } as const

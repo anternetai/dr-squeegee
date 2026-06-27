@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import type { SqueegeeQuote } from "./page"
+import { FONTS } from "@/lib/squeegee/brand"
 
 const SERVICE_DESCRIPTIONS: Record<string, string> = {
   "House Washing":
@@ -87,18 +88,11 @@ export function QuoteView({ quote: initialQuote }: Props) {
   const alreadyResponded = quote.status !== "pending"
 
   return (
-    <div className="min-h-screen bg-[#FFFFFF] py-8 px-4" style={{ fontFamily: "var(--font-brand-body), sans-serif" }}>
+    <div className="min-h-screen bg-[#FFFFFF] py-8 px-4" style={{ fontFamily: FONTS.body }}>
       <div className="max-w-lg mx-auto space-y-5">
         {/* Header */}
         <div className="text-center pb-2">
-          <div className="inline-flex items-center gap-2 mb-1">
-            <span
-              className="text-2xl font-black text-[#2D8C6F] tracking-tight"
-              style={{ fontFamily: "var(--font-brand-display), serif" }}
-            >
-              Dr. Squeegee
-            </span>
-          </div>
+          <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-14 w-auto mx-auto mb-2" />
           <p className="text-sm text-[#2B2B2B]/50">House Calls for a Cleaner Home</p>
         </div>
 
@@ -107,7 +101,7 @@ export function QuoteView({ quote: initialQuote }: Props) {
           <div className="px-5 py-4 border-b border-[#2D8C6F]/20 bg-[#2D8C6F]">
             <h1
               className="text-lg font-bold text-[#FFFFFF]"
-              style={{ fontFamily: "var(--font-brand-display), serif" }}
+              style={{ fontFamily: FONTS.display }}
             >
               Service Quote
             </h1>
@@ -160,7 +154,7 @@ export function QuoteView({ quote: initialQuote }: Props) {
                   <td className="pt-3 font-bold text-[#2B2B2B]">Total</td>
                   <td
                     className="pt-3 text-right font-black text-[#2D8C6F] text-base tabular-nums"
-                    style={{ fontFamily: "var(--font-brand-display), serif" }}
+                    style={{ fontFamily: FONTS.display }}
                   >
                     ${Number(quote.total_price).toFixed(2)}
                   </td>
@@ -250,7 +244,7 @@ export function QuoteView({ quote: initialQuote }: Props) {
         )}
 
         {/* Footer */}
-        <p className="text-center text-xs text-[#2B2B2B]/30 pb-4" style={{ fontFamily: "var(--font-brand-display), serif" }}>
+        <p className="text-center text-xs text-[#2B2B2B]/30 pb-4" style={{ fontFamily: FONTS.display }}>
           Dr. Squeegee &middot; House Calls for a Cleaner Home
         </p>
       </div>

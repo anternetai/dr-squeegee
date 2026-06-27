@@ -162,7 +162,7 @@ function BeforeAfter({ before, after, label }: { before: string; after: string; 
       onTouchStart={(e) => { dragging.current = true; setFromClientX(e.touches[0].clientX) }}
     >
       <img src={after} alt={`${label} after cleaning`} className="absolute inset-0 w-full h-full object-cover" draggable={false} />
-      <span className="absolute bottom-3 right-3 text-[11px] font-bold uppercase tracking-widest bg-[#2D8C6F] text-[#0A0A0A] px-2.5 py-1 rounded-full">After</span>
+      <span className="absolute bottom-3 right-3 text-[11px] font-bold uppercase tracking-widest bg-[#2D8C6F] text-white px-2.5 py-1 rounded-full">After</span>
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
         <img src={before} alt={`${label} before cleaning`} className="absolute inset-0 w-full h-full object-cover" draggable={false} />
         <span className="absolute bottom-3 left-3 text-[11px] font-bold uppercase tracking-widest bg-[#0A0A0A]/80 text-white px-2.5 py-1 rounded-full">Before</span>
@@ -228,7 +228,7 @@ export function LandingContent() {
               <Phone className="h-4 w-4" />
               {BRAND.phone}
             </a>
-            <a href="#get-quote" className="inline-flex items-center gap-1.5 rounded-lg bg-[#2D8C6F] hover:bg-[#2D8C6F] text-[#0A0A0A] font-semibold text-sm px-4 py-2 transition-colors shadow-lg shadow-[#2D8C6F]/20">
+            <a href="#get-quote" className="inline-flex items-center gap-1.5 rounded-lg bg-[#2D8C6F] hover:bg-[#2D8C6F] text-white font-semibold text-sm px-4 py-2 transition-colors shadow-lg shadow-[#2D8C6F]/20">
               Get a Free Quote
             </a>
           </div>
@@ -312,7 +312,7 @@ export function LandingContent() {
 
           <div className="text-center mt-12">
             <p className="text-sm text-white/45 mb-5">Also: storefront glass, patios, pool decks &amp; pavers — add any to your plan.</p>
-            <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#2D8C6F] hover:bg-[#2D8C6F] text-[#0A0A0A] font-semibold px-7 py-3.5 transition-colors">
+            <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#2D8C6F] hover:bg-[#2D8C6F] text-white font-semibold px-7 py-3.5 transition-colors">
               Get My Free Quote <ChevronRight className="h-4 w-4" />
             </a>
           </div>
@@ -383,7 +383,7 @@ export function LandingContent() {
             {PLANS.map((p) => (
               <div key={p.title} className={`rounded-2xl p-7 transition-colors ${p.featured ? "border-2 border-[#2D8C6F] bg-[#1A1A1A] relative shadow-2xl shadow-[#2D8C6F]/10" : "border border-[#242424] bg-[#111111] hover:border-[#2D8C6F]/40"}`}>
                 {p.featured && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2D8C6F] text-[#0A0A0A] text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">Best Value</span>
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2D8C6F] text-white text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">Best Value</span>
                 )}
                 <div className={`text-sm font-semibold uppercase tracking-widest mb-2 ${p.featured ? "text-[#2D8C6F]" : "text-[#2D8C6F]"}`}>{p.tag}</div>
                 <div style={{ fontFamily: FONTS.display }} className="text-4xl font-black mb-1">{p.title}</div>
@@ -393,7 +393,7 @@ export function LandingContent() {
                     <li key={f} className="flex gap-2"><CheckCircle className="h-4 w-4 text-[#2D8C6F] shrink-0 mt-0.5" />{f}</li>
                   ))}
                 </ul>
-                <a href="#get-quote" className={`block text-center rounded-lg py-3 font-semibold transition-colors ${p.featured ? "bg-[#2D8C6F] hover:bg-[#2D8C6F] text-[#0A0A0A]" : "bg-[#1A1A1A] border border-[#242424] hover:border-[#2D8C6F]/50 text-white"}`}>Get My Price</a>
+                <a href="#get-quote" className={`block text-center rounded-lg py-3 font-semibold transition-colors ${p.featured ? "bg-[#2D8C6F] hover:bg-[#2D8C6F] text-white" : "bg-[#1A1A1A] border border-[#242424] hover:border-[#2D8C6F]/50 text-white"}`}>Get My Price</a>
               </div>
             ))}
           </div>
@@ -453,7 +453,7 @@ export function LandingContent() {
         <div className="max-w-3xl mx-auto px-5 py-16 text-center">
           <h2 style={{ fontFamily: FONTS.display }} className="text-3xl md:text-4xl font-black mb-3">Ready for spotless windows?</h2>
           <p className="text-[#9CA3AF] mb-7">Free quote in under 60 seconds — we&apos;ll text you back within 2 hours.</p>
-          <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#2D8C6F] hover:bg-[#2D8C6F] text-[#0A0A0A] font-semibold text-lg px-8 py-4 transition-colors shadow-xl shadow-[#2D8C6F]/25">
+          <a href="#get-quote" className="inline-flex items-center gap-2 rounded-lg bg-[#2D8C6F] hover:bg-[#2D8C6F] text-white font-semibold text-lg px-8 py-4 transition-colors shadow-xl shadow-[#2D8C6F]/25">
             Get My Free Quote <ChevronRight className="h-5 w-5" />
           </a>
         </div>
