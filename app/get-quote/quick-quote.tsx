@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { CheckCircle, ChevronRight, Home, Building2, Loader2 } from "lucide-react"
 import { FONTS } from "@/lib/squeegee/brand"
+import { track } from "@vercel/analytics"
 
 /* ──────────────────────────────────────────────────────────
    High-converting top-of-page quick quote.
@@ -146,6 +147,7 @@ export function QuickQuote({ id }: { id?: string }) {
         }),
       })
       setSubmitted(true)
+      track("quote_submitted", { service, property_type: propertyType, frequency })
     } catch (err) {
       console.error("Submit error:", err)
     } finally {
