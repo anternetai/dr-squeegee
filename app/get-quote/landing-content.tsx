@@ -95,11 +95,56 @@ const PROMISES = [
 ] as const
 
 const TOASTS = [
-  { name: "James P.", area: "Myers Park", action: "booked a Quarterly plan" },
-  { name: "Sarah M.", area: "Ballantyne", action: "got a free quote" },
-  { name: "The Daily Grind Café", area: "South End", action: "started weekly service" },
-  { name: "Mike R.", area: "Matthews", action: "booked a Monthly plan" },
-  { name: "Lisa K.", area: "Huntersville", action: "got a free quote" },
+  { name: "James P.",       area: "Myers Park",      action: "booked a Quarterly plan" },
+  { name: "Sarah M.",       area: "Ballantyne",      action: "got a free quote" },
+  { name: "The Daily Grind",area: "South End",       action: "started weekly storefront service" },
+  { name: "Mike R.",        area: "Matthews",        action: "booked a Monthly plan" },
+  { name: "Lisa K.",        area: "Huntersville",    action: "got a free quote" },
+  { name: "Devon W.",       area: "NoDa",            action: "scheduled a window cleaning" },
+  { name: "Amber T.",       area: "Dilworth",        action: "booked a one-time clean" },
+  { name: "Carlos M.",      area: "University City", action: "signed up for Monthly service" },
+  { name: "Priya S.",       area: "Steele Creek",    action: "got a free quote" },
+  { name: "Kevin B.",       area: "Cornelius",       action: "booked a Quarterly plan" },
+  { name: "Rachel H.",      area: "Mint Hill",       action: "scheduled a window cleaning" },
+  { name: "Terrence J.",    area: "Hidden Valley",   action: "booked a Monthly plan" },
+  { name: "Morgan F.",      area: "Pineville",       action: "got a free quote" },
+  { name: "Allison D.",     area: "SouthPark",       action: "started recurring service" },
+  { name: "Brian C.",       area: "Concord",         action: "booked a one-time clean" },
+  { name: "Natasha R.",     area: "Plaza Midwood",   action: "got a free quote" },
+  { name: "Greg O.",        area: "Lake Norman",     action: "booked a Quarterly plan" },
+  { name: "Fatima A.",      area: "Kannapolis",      action: "scheduled a window cleaning" },
+  { name: "Tyler S.",       area: "Indian Trail",    action: "signed up for Monthly service" },
+  { name: "Michelle W.",    area: "Waxhaw",          action: "got a free quote" },
+  { name: "Jason L.",       area: "Fort Mill",       action: "booked a one-time clean" },
+  { name: "Crystal N.",     area: "Harrisburg",      action: "started recurring service" },
+  { name: "Derek P.",       area: "Mooresville",     action: "got a free quote" },
+  { name: "Sandra V.",      area: "Ballantyne",      action: "booked a Quarterly plan" },
+  { name: "Anthony R.",     area: "South End",       action: "scheduled a window cleaning" },
+  { name: "Heather G.",     area: "Weddington",      action: "got a free quote" },
+  { name: "Marcus T.",      area: "Northlake",       action: "booked a Monthly plan" },
+  { name: "Dawn K.",        area: "Tega Cay",        action: "signed up for Monthly service" },
+  { name: "Jordan M.",      area: "Eastover",        action: "got a free quote" },
+  { name: "Vanessa C.",     area: "Cotswold",        action: "booked a one-time clean" },
+  { name: "Skyline Barber", area: "Plaza Midwood",   action: "started weekly storefront service" },
+  { name: "Paul B.",        area: "Rock Hill",       action: "got a free quote" },
+  { name: "Destiny W.",     area: "University City", action: "booked a Quarterly plan" },
+  { name: "Evan H.",        area: "Myers Park",      action: "scheduled a window cleaning" },
+  { name: "Renee J.",       area: "Davidson",        action: "got a free quote" },
+  { name: "Chris O.",       area: "Mathews",         action: "booked a Monthly plan" },
+  { name: "Tanya F.",       area: "Huntersville",    action: "started recurring service" },
+  { name: "Ian S.",         area: "Belmont",         action: "got a free quote" },
+  { name: "Simone L.",      area: "Dilworth",        action: "booked a one-time clean" },
+  { name: "Nathan P.",      area: "Gastonia",        action: "scheduled a window cleaning" },
+  { name: "The Press Box",  area: "Uptown",          action: "started weekly storefront service" },
+  { name: "Keisha D.",      area: "Steele Creek",    action: "got a free quote" },
+  { name: "Brandon K.",     area: "Mint Hill",       action: "booked a Quarterly plan" },
+  { name: "Olivia T.",      area: "Waxhaw",          action: "signed up for Monthly service" },
+  { name: "Ray M.",         area: "Cornelius",       action: "got a free quote" },
+  { name: "Jasmine C.",     area: "Lake Norman",     action: "booked a one-time clean" },
+  { name: "Todd W.",        area: "Marvin",          action: "got a free quote" },
+  { name: "Brianna H.",     area: "Indian Trail",    action: "started recurring service" },
+  { name: "Leonard A.",     area: "NoDa",            action: "booked a Monthly plan" },
+  { name: "Megan S.",       area: "SouthPark",       action: "got a free quote" },
 ]
 
 const REVIEWS = [
@@ -176,7 +221,7 @@ function BeforeAfter({ before, after, label }: { before: string; after: string; 
 
 /* ── Rotating social-proof toast ── */
 function SocialProofToast() {
-  const [i, setI] = useState(0)
+  const [i, setI] = useState(() => Math.floor(Math.random() * TOASTS.length))
   const [show, setShow] = useState(false)
 
   useEffect(() => {
@@ -187,7 +232,7 @@ function SocialProofToast() {
         setI((p) => (p + 1) % TOASTS.length)
         setShow(true)
       }, 600)
-    }, 6500)
+    }, 7000)
     return () => { clearTimeout(first); clearInterval(loop) }
   }, [])
 
