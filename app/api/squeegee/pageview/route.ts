@@ -1,0 +1,17 @@
+import { createClient } from "@supabase/supabase-js"
+import { NextRequest, NextResponse } from "next/server"
+
+export async function POST(req: NextRequest) {
+  try {
+    const { page, referrer } = await req.json()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    await supabase.from("squeegee_page_views").insert({
+      page: page || "/",
+      referrer: referrer || null,
+    })
+  } catch {}
+  return NextResponse.json({ ok: true })
+}

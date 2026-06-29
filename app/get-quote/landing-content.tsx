@@ -18,6 +18,7 @@ import {
 import { BRAND, FONTS } from "@/lib/squeegee/brand"
 import { FAQ_DATA, FAQSchema } from "./faq-schema"
 import { QuickQuote } from "./quick-quote"
+import { PageViewTracker } from "@/components/squeegee/page-view-tracker"
 
 /* ──────────────────────────────────────────────────────────
    Dark theme tokens — black + white + teal
@@ -225,6 +226,7 @@ function SocialProofToast() {
 export function LandingContent() {
   return (
     <div className="bg-[#0A0A0A] text-white" style={{ fontFamily: FONTS.body }}>
+      <PageViewTracker />
       {/* ── Sticky Header ── */}
       <header className="sticky top-0 z-50 bg-[#0A0A0A]/85 backdrop-blur border-b border-[#242424]">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-5 py-3">
