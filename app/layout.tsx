@@ -28,9 +28,9 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.drsqueegeeclt.com"),
-  title: "Dr. Squeegee | Professional House Washing",
+  title: "Dr. Squeegee | Window Cleaning Charlotte NC",
   description:
-    "Charlotte's trusted pressure washing specialist. House washing, driveways, patios — done right, every time.",
+    "Charlotte's window cleaning specialists. Streak-free windows, house washing, driveways — licensed & insured.",
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Dr. Squeegee — House Calls for a Cleaner Home",
+    title: "Dr. Squeegee — Streak-Free Windows, Every Time",
     description:
-      "Charlotte's trusted pressure washing specialist. Free estimates, licensed & insured.",
+      "Charlotte's window cleaning specialists. Homes & businesses. Free quotes, licensed & insured.",
     url: "https://www.drsqueegeeclt.com",
     siteName: "Dr. Squeegee",
     type: "website",
