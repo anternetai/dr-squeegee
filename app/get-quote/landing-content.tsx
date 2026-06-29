@@ -120,13 +120,12 @@ function Logo({ className = "" }: { className?: string }) {
       <ellipse cx="140" cy="56" rx="121" ry="37" fill="#0A0A0A" />
       <text
         x="140"
-        y="73"
+        y="74"
         textAnchor="middle"
-        fontFamily="var(--font-brand-display), Impact, sans-serif"
+        style={{ fontFamily: "var(--font-brand-display), 'Oswald', Impact, sans-serif", letterSpacing: "2px" }}
         fontWeight="700"
-        fontSize="42"
+        fontSize="40"
         fill="#FFFFFF"
-        letterSpacing="1.5"
       >
         DR. SQUEEGEE
       </text>
@@ -230,7 +229,7 @@ export function LandingContent() {
       {/* ── Sticky Header ── */}
       <header className="sticky top-0 z-50 bg-[#0A0A0A]/85 backdrop-blur border-b border-[#242424]">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-5 py-3">
-          <Logo className="h-14 w-auto" />
+          <Logo className="h-16 w-auto" />
           <nav className="hidden md:flex items-center gap-8 text-sm text-[#9CA3AF]">
             <a href="#plans" className="hover:text-white transition-colors">Plans</a>
             <a href="#work" className="hover:text-white transition-colors">Transformations</a>

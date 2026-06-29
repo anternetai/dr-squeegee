@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { ThemeProvider } from "next-themes"
-import { SqueegeeNav } from "@/components/squeegee/squeegee-nav"
+import { CrmShell } from "@/components/squeegee/crm-shell"
 
 export const metadata: Metadata = {
   title: "Dr. Squeegee | CRM",
@@ -24,12 +24,7 @@ export const metadata: Metadata = {
 export default function SqueegeeLayout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <div className="min-h-screen bg-background">
-        <SqueegeeNav />
-        <main className="container mx-auto px-4 py-6 max-w-5xl">
-          {children}
-        </main>
-      </div>
+      <CrmShell>{children}</CrmShell>
     </ThemeProvider>
   )
 }
