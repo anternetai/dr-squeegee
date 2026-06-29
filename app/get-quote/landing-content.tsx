@@ -114,22 +114,7 @@ const REVIEWS = [
 /* ── Oval badge logo — inline SVG, Oswald via CSS var ── */
 function Logo({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 280 112" className={className} role="img" aria-label="Dr. Squeegee">
-      <ellipse cx="140" cy="56" rx="139" ry="55" fill="#0A0A0A" />
-      <ellipse cx="140" cy="56" rx="131" ry="47" fill="#2D8C6F" />
-      <ellipse cx="140" cy="56" rx="121" ry="37" fill="#0A0A0A" />
-      <text
-        x="140"
-        y="74"
-        textAnchor="middle"
-        style={{ fontFamily: "var(--font-brand-display), 'Oswald', Impact, sans-serif", letterSpacing: "2px" }}
-        fontWeight="700"
-        fontSize="40"
-        fill="#FFFFFF"
-      >
-        DR. SQUEEGEE
-      </text>
-    </svg>
+    <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className={className} />
   )
 }
 
@@ -229,7 +214,7 @@ export function LandingContent() {
       {/* ── Sticky Header ── */}
       <header className="sticky top-0 z-50 bg-[#0A0A0A]/85 backdrop-blur border-b border-[#242424]">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-5 py-3">
-          <Logo className="h-16 w-auto" />
+          <Logo className="h-20 w-auto" />
           <nav className="hidden md:flex items-center gap-8 text-sm text-[#9CA3AF]">
             <a href="#plans" className="hover:text-white transition-colors">Plans</a>
             <a href="#work" className="hover:text-white transition-colors">Transformations</a>
@@ -475,7 +460,7 @@ export function LandingContent() {
       {/* ── Footer ── */}
       <footer className="py-10 px-5 bg-[#0A0A0A]">
         <div className="max-w-4xl mx-auto text-center text-[#9CA3AF]/60 text-sm space-y-2">
-          <Logo className="h-16 w-auto mx-auto mb-2" />
+          <Logo className="h-20 w-auto mx-auto mb-2" />
           <p>{BRAND.address}</p>
           <p><a href={`tel:${BRAND.phoneTel}`} className="hover:text-[#2D8C6F] transition-colors">{BRAND.phone}</a></p>
           <div className="flex items-center justify-center gap-3 pt-2">
