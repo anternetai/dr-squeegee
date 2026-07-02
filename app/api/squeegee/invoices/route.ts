@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { verifyCrmAuth } from '@/lib/crm-auth-check'
 
 function getAdmin() {
   return createClient(
@@ -17,6 +18,9 @@ function getStripe() {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!(await verifyCrmAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const body = await request.json()
     const { job_id, client_id, amount, due_date, notes } = body
 
