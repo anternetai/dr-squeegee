@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyCrmAuth } from '@/lib/crm-auth-check'
 
 function getAdmin() {
   return createClient(
@@ -39,6 +40,9 @@ export async function PATCH(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    if (!(await verifyCrmAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const { token } = await params
     const body = await request.json()
     const { services, total_price, notes, status } = body as {
@@ -49,6 +53,19 @@ export async function PATCH(
     }
 
     const supabase = getAdmin()
+
+    // Business rule: never modify a signed quote — only pending quotes are editable.
+    const { data: existing } = await supabase
+      .from('squeegee_quotes')
+      .select('status')
+      .eq('token', token)
+      .single()
+    if (existing && existing.status !== 'pending') {
+      return NextResponse.json(
+        { error: 'Accepted or declined quotes cannot be modified — create a new quote instead.' },
+        { status: 409 }
+      )
+    }
 
     const updatePayload: Record<string, unknown> = {}
 
@@ -97,6 +114,9 @@ export async function DELETE(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    if (!(await verifyCrmAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const { token } = await params
     const supabase = getAdmin()
 

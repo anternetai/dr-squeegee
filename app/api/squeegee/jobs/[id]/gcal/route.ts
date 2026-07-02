@@ -5,6 +5,7 @@ import {
   updateCalendarEvent,
   deleteCalendarEvent,
 } from "@/lib/google-calendar"
+import { verifyCrmAuth } from "@/lib/crm-auth-check"
 
 function getAdmin() {
   return createClient(
@@ -18,6 +19,9 @@ export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!(await verifyCrmAuth())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
   const { id } = await params
   const supabase = getAdmin()
 
@@ -86,6 +90,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!(await verifyCrmAuth())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
   const { id } = await params
   const supabase = getAdmin()
 

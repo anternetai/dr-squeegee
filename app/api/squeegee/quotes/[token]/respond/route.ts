@@ -178,6 +178,13 @@ export async function POST(
       return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
     }
 
+    // Idempotency guard: a quote can only be responded to once. Repeat POSTs
+    // (double-tap, retries) must not re-run status changes or spawn a second
+    // invoice + Stripe payment link.
+    if (quote.status !== 'pending') {
+      return NextResponse.json({ ok: true, alreadyResponded: true })
+    }
+
     // Update quote status
     const { error: updateError } = await supabase
       .from('squeegee_quotes')

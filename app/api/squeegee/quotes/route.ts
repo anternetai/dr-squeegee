@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyCrmAuth } from '@/lib/crm-auth-check'
 
 function getAdmin() {
   return createClient(
@@ -27,6 +28,9 @@ interface CreateQuoteBody {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!(await verifyCrmAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const body = (await request.json()) as CreateQuoteBody
 
     const { job_id, client_name, client_phone, client_email, address, services, discount_type, discount_value } = body
@@ -92,6 +96,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    if (!(await verifyCrmAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const { searchParams } = new URL(request.url)
     const job_id = searchParams.get('job_id')
 
