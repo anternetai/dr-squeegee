@@ -95,7 +95,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Keep the plan's email in sync for future reminders
     await supabase.from('squeegee_plans').update({ client_email: email }).eq('id', plan.id)
 
-    sendAccountEmail(email, plan.client_name, member.member_number, member.slug).catch(() => {})
+    // Await — on serverless, un-awaited sends can be frozen mid-flight
+    await sendAccountEmail(email, plan.client_name, member.member_number, member.slug)
 
     const response = NextResponse.json({
       ok: true,

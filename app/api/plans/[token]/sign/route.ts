@@ -90,7 +90,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     if (plan.client_email) {
-      sendWelcomeEmail({
+      // Await — on serverless, un-awaited sends can be frozen mid-flight
+      await sendWelcomeEmail({
         client_name: plan.client_name,
         client_email: plan.client_email,
         address: plan.address,

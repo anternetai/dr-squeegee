@@ -35,7 +35,8 @@ export async function POST(request: NextRequest) {
         .eq('id', member.plan_id)
         .single()
       if (plan) {
-        sendMagicLinkEmail(email, plan.client_name, plan.portal_token).catch(() => {})
+        // Await — on serverless, un-awaited sends can be frozen mid-flight
+        await sendMagicLinkEmail(email, plan.client_name, plan.portal_token)
       }
     }
     return ok
