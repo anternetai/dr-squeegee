@@ -136,7 +136,8 @@ export async function sendAccountEmail(
   await send(to, `Your ${CLUB_NAME} login is ready`, html)
 }
 
-// (c) Forgot password — send their magic link.
+// (c) Forgot password — send their magic link. Subject/copy deliberately avoid
+// "sign in" phrasing: Gmail silently dropped that pattern in testing.
 export async function sendMagicLinkEmail(
   to: string,
   clientName: string,
@@ -144,10 +145,10 @@ export async function sendMagicLinkEmail(
 ): Promise<void> {
   const first = escapeHtml(clientName.split(" ")[0])
   const html = layout(`
-    <h1 style="margin:0 0 6px;font-size:22px;">Your sign-in link, ${first}</h1>
+    <h1 style="margin:0 0 6px;font-size:22px;">Here you go, ${first}!</h1>
     <p style="color:rgba(255,255,255,0.6);margin:0 0 16px;font-size:14px;line-height:1.6;">
-      Tap below to open your ${CLUB_NAME} portal — no password needed. You can set a
-      new password from there if you'd like.
+      Tap below to open your ${CLUB_NAME} portal — your visit schedule, rescheduling,
+      and everything else. No password needed, and you can set a new one from there.
     </p>
     <div style="text-align:center;">
       ${button(`${SITE}/portal/${portalToken}`, "Open My Portal")}
@@ -156,5 +157,5 @@ export async function sendMagicLinkEmail(
       Didn't request this? You can safely ignore this email.
     </p>
   `)
-  await send(to, `Sign in to your ${CLUB_NAME} portal`, html)
+  await send(to, `Your ${CLUB_NAME} portal link`, html)
 }
