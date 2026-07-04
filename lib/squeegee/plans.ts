@@ -38,6 +38,15 @@ export interface SqueegeePlan {
   signature_data: string | null
   signed_ip: string | null
   notes: string | null
+  onboarded_at: string | null
+  schedule_prefs: SchedulePick[] | null
+}
+
+// A customer's month choices from portal onboarding.
+// months are "YYYY-MM" strings; count matches the service's visits_per_year.
+export interface SchedulePick {
+  service_name: string
+  months: string[]
 }
 
 export interface PlanVisit {
@@ -184,6 +193,125 @@ function addMonthsISO(start: Date, months: number): string {
   // Clamp overflow (e.g., Jan 31 + 1mo) back into the target month
   if (d.getMonth() !== (start.getMonth() + months) % 12) d.setDate(0)
   return d.toISOString().slice(0, 10)
+}
+
+// ---- Onboarding: month picking + recommendations ----
+
+export const MONTH_LABELS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const
+
+export function monthKeyLabel(key: string): string {
+  const m = Number(key.slice(5, 7)) - 1
+  return `${MONTH_LABELS[m]} ${key.slice(0, 4)}`
+}
+
+// 12 schedulable months ("YYYY-MM"), starting with the month the plan begins.
+export function termMonthKeys(start: Date): string[] {
+  const keys: string[] = []
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth() + i, 1)
+    keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
+  }
+  return keys
+}
+
+// Evenly-spaced rotation options for a recurring service (e.g. quarterly windows).
+// Offsets start next month so the first visit never lands in a rush.
+export function rotationOptions(termKeys: string[], visitsPerYear: number): string[][] {
+  const interval = Math.max(1, Math.floor(12 / visitsPerYear))
+  if (interval <= 1) return [termKeys.slice(0, visitsPerYear)]
+  const options: string[][] = []
+  for (let offset = 1; offset <= Math.min(3, interval); offset++) {
+    const months: string[] = []
+    for (let i = 0; i < visitsPerYear; i++) {
+      months.push(termKeys[(offset + i * interval) % 12])
+    }
+    options.push(months)
+  }
+  return options
+}
+
+// Best month for a one-off service, with the "why" — shown during onboarding.
+export function recommendMonth(
+  serviceName: string,
+  termKeys: string[],
+  usedKeys: string[] = []
+): { month: string; reason: string } {
+  const name = serviceName.toLowerCase()
+
+  function keyForCalendarMonth(target: number): string {
+    return termKeys.find((k) => Number(k.slice(5, 7)) - 1 === target) ?? termKeys[2]
+  }
+  function avoidCollision(key: string): string {
+    if (!usedKeys.includes(key)) return key
+    const idx = termKeys.indexOf(key)
+    for (let step = 1; step < 12; step++) {
+      const next = termKeys[(idx + step) % 12]
+      if (!usedKeys.includes(next)) return next
+    }
+    return key
+  }
+
+  let pick: { month: string; reason: string }
+  if (name.includes("gutter")) {
+    pick = { month: keyForCalendarMonth(10), reason: "After the leaves drop — the perfect gutter reset" }
+  } else if (name.includes("roof")) {
+    const apr = keyForCalendarMonth(3)
+    const oct = keyForCalendarMonth(9)
+    pick = {
+      month: termKeys.indexOf(apr) <= termKeys.indexOf(oct) ? apr : oct,
+      reason: "Mild weather is ideal for soft-washing your roof",
+    }
+  } else if (name.includes("house")) {
+    pick = { month: keyForCalendarMonth(3), reason: "Spring refresh — washes away winter grime and pollen" }
+  } else if (name.includes("pool")) {
+    pick = { month: keyForCalendarMonth(4), reason: "A clean deck right before pool season" }
+  } else if (
+    name.includes("driveway") || name.includes("surface") ||
+    name.includes("paver") || name.includes("courtyard")
+  ) {
+    pick = { month: keyForCalendarMonth(5), reason: "Warm, dry weather gives concrete the best results" }
+  } else {
+    pick = { month: termKeys[2], reason: "A quiet spot in your schedule" }
+  }
+  return { ...pick, month: avoidCollision(pick.month) }
+}
+
+// Turn onboarding month picks into dated visits. Day-of-month is a mid-month
+// anchor — Anthony confirms exact dates with the customer before each visit.
+export function buildVisitsFromPicks(
+  picks: SchedulePick[],
+  services: PlanService[],
+  now: Date = new Date()
+): { service_name: string; seq: number; scheduled_date: string }[] | { error: string } {
+  const minFirst = new Date(now.getTime() + 10 * 864e5)
+  const maxDate = new Date(now.getTime() + 380 * 864e5)
+  const visits: { service_name: string; seq: number; scheduled_date: string }[] = []
+
+  for (const svc of services) {
+    const pick = picks.find((p) => p.service_name === svc.name)
+    if (!pick || !Array.isArray(pick.months) || pick.months.length !== Number(svc.visits_per_year)) {
+      return { error: `Month selection missing for ${svc.name}` }
+    }
+    const sorted = [...pick.months].sort()
+    for (let i = 0; i < sorted.length; i++) {
+      const key = sorted[i]
+      if (!/^\d{4}-\d{2}$/.test(key)) return { error: "Invalid month format" }
+      let date = new Date(`${key}-15T12:00:00`)
+      if (isNaN(date.getTime()) || date > maxDate) return { error: "Month is outside your plan year" }
+      if (date < minFirst) date = new Date(now.getTime() + 14 * 864e5)
+      visits.push({
+        service_name: svc.name,
+        seq: i + 1,
+        scheduled_date: date.toISOString().slice(0, 10),
+      })
+    }
+  }
+
+  visits.sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
+  return visits
 }
 
 // Reschedule parameters for the member portal

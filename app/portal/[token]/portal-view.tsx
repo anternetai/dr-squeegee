@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { BRAND, FONTS } from "@/lib/squeegee/brand"
 import {
   formatMoney,
@@ -9,11 +9,27 @@ import {
   type PlanVisit,
   type SqueegeePlan,
 } from "@/lib/squeegee/plans"
+import { PortalOnboarding } from "./onboarding"
 
 interface Props {
   plan: SqueegeePlan
   initialVisits: PlanVisit[]
 }
+
+const TOUR_STEPS = [
+  {
+    title: "Your next visit, always front and center",
+    body: "We'll text you before every visit to confirm the exact day — no surprises.",
+  },
+  {
+    title: "Life happens — reschedule in two taps",
+    body: `Tap Reschedule on any visit to move it, up to ${RESCHEDULE_MIN_NOTICE_HOURS} hours before.`,
+  },
+  {
+    title: "A real human, one tap away",
+    body: "Questions, special requests, anything — call or text us right from here.",
+  },
+] as const
 
 function formatVisitDate(dateStr: string | null): string {
   if (!dateStr) return "Date coming soon"
@@ -27,11 +43,26 @@ function formatVisitDate(dateStr: string | null): string {
 
 export function PortalView({ plan, initialVisits }: Props) {
   const [visits, setVisits] = useState(initialVisits)
+  const [showOnboarding, setShowOnboarding] = useState(
+    Boolean(plan.signed_at) && !plan.onboarded_at
+  )
+  const [tourStep, setTourStep] = useState<number | null>(null)
   const [rescheduleFor, setRescheduleFor] = useState<string | null>(null)
   const [newDate, setNewDate] = useState("")
   const [note, setNote] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  const heroRef = useRef<HTMLDivElement>(null)
+  const upcomingRef = useRef<HTMLDivElement>(null)
+  const contactRef = useRef<HTMLDivElement>(null)
+  const tourRefs = [heroRef, upcomingRef, contactRef]
+
+  useEffect(() => {
+    if (tourStep === null) return
+    tourRefs[tourStep]?.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourStep])
 
   const firstName = plan.client_name.split(" ")[0]
   const services = Array.isArray(plan.services) ? plan.services : []
@@ -45,6 +76,17 @@ export function PortalView({ plan, initialVisits }: Props) {
   )
   const nextVisit = upcoming[0] ?? null
   const completedCount = visits.filter((v) => v.status === "completed").length
+
+  function handleOnboardingComplete(newVisits: PlanVisit[]) {
+    if (newVisits.length > 0) setVisits(newVisits)
+    setShowOnboarding(false)
+    setTourStep(0)
+    window.scrollTo({ top: 0 })
+  }
+
+  function tourClass(step: number) {
+    return tourStep === step ? "relative z-[60] ring-2 ring-[#2D8C6F] rounded-2xl" : ""
+  }
 
   async function submitReschedule(visitId: string) {
     if (!newDate || submitting) return
@@ -153,6 +195,16 @@ export function PortalView({ plan, initialVisits }: Props) {
     )
   }
 
+  if (showOnboarding) {
+    return (
+      <PortalOnboarding
+        plan={plan}
+        hasVisits={initialVisits.length > 0}
+        onComplete={handleOnboardingComplete}
+      />
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] py-8 px-4" style={{ fontFamily: FONTS.body }}>
       <div className="max-w-lg mx-auto space-y-6">
@@ -178,14 +230,16 @@ export function PortalView({ plan, initialVisits }: Props) {
 
         {/* Next visit hero */}
         {nextVisit && (
-          <div className="rounded-2xl bg-gradient-to-br from-[#2D8C6F] to-[#1F6B54] px-5 py-5">
-            <p className="text-[11px] uppercase tracking-widest text-white/60 font-bold">
-              Your next visit
-            </p>
-            <p className="text-2xl font-black text-white mt-1" style={{ fontFamily: FONTS.display }}>
-              {nextVisit.service_name}
-            </p>
-            <p className="text-sm text-white/80 mt-0.5">{formatVisitDate(nextVisit.scheduled_date)}</p>
+          <div ref={heroRef} className={tourClass(0)}>
+            <div className="rounded-2xl bg-gradient-to-br from-[#2D8C6F] to-[#1F6B54] px-5 py-5">
+              <p className="text-[11px] uppercase tracking-widest text-white/60 font-bold">
+                Your next visit
+              </p>
+              <p className="text-2xl font-black text-white mt-1" style={{ fontFamily: FONTS.display }}>
+                {nextVisit.service_name}
+              </p>
+              <p className="text-sm text-white/80 mt-0.5">{formatVisitDate(nextVisit.scheduled_date)}</p>
+            </div>
           </div>
         )}
 
@@ -211,7 +265,7 @@ export function PortalView({ plan, initialVisits }: Props) {
         </div>
 
         {/* Upcoming */}
-        <div className="space-y-2.5">
+        <div ref={upcomingRef} className={`space-y-2.5 ${tourClass(1)}`}>
           <h2 className="text-sm font-bold text-white uppercase tracking-widest" style={{ fontFamily: FONTS.display }}>
             Upcoming Visits
           </h2>
@@ -261,25 +315,70 @@ export function PortalView({ plan, initialVisits }: Props) {
         </div>
 
         {/* Contact */}
-        <div className="grid grid-cols-2 gap-3">
-          <a
-            href={`tel:${BRAND.phoneTel}`}
-            className="h-12 rounded-xl bg-[#111111] border border-[#242424] flex items-center justify-center gap-2 text-sm font-semibold text-white hover:border-[#2D8C6F]/50 transition-colors"
-          >
-            &#128222; Call us
-          </a>
-          <a
-            href={`sms:${BRAND.phoneTel}`}
-            className="h-12 rounded-xl bg-[#111111] border border-[#242424] flex items-center justify-center gap-2 text-sm font-semibold text-white hover:border-[#2D8C6F]/50 transition-colors"
-          >
-            &#128172; Text us
-          </a>
+        <div ref={contactRef} className={tourClass(2)}>
+          <div className="grid grid-cols-2 gap-3">
+            <a
+              href={`tel:${BRAND.phoneTel}`}
+              className="h-12 rounded-xl bg-[#111111] border border-[#242424] flex items-center justify-center gap-2 text-sm font-semibold text-white hover:border-[#2D8C6F]/50 transition-colors"
+            >
+              &#128222; Call us
+            </a>
+            <a
+              href={`sms:${BRAND.phoneTel}`}
+              className="h-12 rounded-xl bg-[#111111] border border-[#242424] flex items-center justify-center gap-2 text-sm font-semibold text-white hover:border-[#2D8C6F]/50 transition-colors"
+            >
+              &#128172; Text us
+            </a>
+          </div>
         </div>
 
         <p className="text-center text-xs text-white/25 pb-4" style={{ fontFamily: FONTS.display }}>
           {BRAND.name} &middot; {BRAND.tagline}
         </p>
       </div>
+
+      {/* Tour overlay */}
+      {tourStep !== null && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/70" onClick={() => setTourStep(null)} />
+          <div className="fixed bottom-4 left-4 right-4 z-[70] max-w-lg mx-auto">
+            <div className="rounded-2xl bg-white px-5 py-4 shadow-2xl">
+              <p className="text-sm font-bold text-[#0A0A0A]" style={{ fontFamily: FONTS.display }}>
+                {TOUR_STEPS[tourStep].title}
+              </p>
+              <p className="text-xs text-[#2B2B2B]/60 mt-1 leading-relaxed">
+                {TOUR_STEPS[tourStep].body}
+              </p>
+              <div className="flex items-center justify-between mt-3">
+                <button
+                  onClick={() => setTourStep(null)}
+                  className="text-xs text-[#2B2B2B]/40 hover:text-[#2B2B2B]/70 transition-colors"
+                >
+                  Skip tour
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1">
+                    {TOUR_STEPS.map((_, i) => (
+                      <span
+                        key={i}
+                        className={`w-1.5 h-1.5 rounded-full ${i === tourStep ? "bg-[#2D8C6F]" : "bg-[#2B2B2B]/15"}`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={() =>
+                      tourStep < TOUR_STEPS.length - 1 ? setTourStep(tourStep + 1) : setTourStep(null)
+                    }
+                    className="h-9 px-4 rounded-lg bg-[#2D8C6F] hover:bg-[#1F6B54] text-white text-xs font-bold transition-colors"
+                  >
+                    {tourStep < TOUR_STEPS.length - 1 ? "Next" : "Got it!"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

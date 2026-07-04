@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import {
-  LayoutDashboard, Briefcase, Users, CalendarDays, MapPin,
+  LayoutDashboard, Briefcase, Users, CalendarDays, CalendarRange, MapPin,
   MessageSquareHeart, Sun, Moon, LogOut, Menu, X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -14,6 +14,7 @@ const NAV = [
   { label: "Dashboard",  href: "/crm",             icon: LayoutDashboard },
   { label: "Jobs",       href: "/crm/jobs",         icon: Briefcase },
   { label: "Clients",    href: "/crm/clients",      icon: Users },
+  { label: "Plans",      href: "/crm/plans",        icon: CalendarRange },
   { label: "Follow-Ups", href: "/crm/followups",    icon: MessageSquareHeart },
   { label: "Calendar",   href: "/crm/calendar",     icon: CalendarDays },
   { label: "Territories",href: "/crm/territories",  icon: MapPin },

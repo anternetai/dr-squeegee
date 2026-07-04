@@ -286,7 +286,9 @@ export function PlanDetailClient({ plan, visits }: Props) {
         {visits.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              No visits yet. Generate the year&apos;s schedule (auto-created when the customer signs, or do it now):
+              {plan.signed_at && !plan.onboarded_at
+                ? "Customer hasn't picked their schedule yet — they choose their months in the portal's setup flow. Generate here only to override:"
+                : "No visits yet. The customer picks their months in the portal after signing, or generate a schedule now:"}
             </p>
             <div className="flex items-center gap-2">
               <input

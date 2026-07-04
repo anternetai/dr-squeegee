@@ -1,7 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-import { generateVisitSchedule, type PlanService } from '@/lib/squeegee/plans'
-
 function getAdmin() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -80,29 +78,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Could not save signature. Please try again.' }, { status: 500 })
     }
 
-    // Kick off the year: generate the visit schedule if none exists yet,
-    // so the member portal has dates the moment they sign.
-    const { count } = await supabase
-      .from('squeegee_plan_visits')
-      .select('id', { count: 'exact', head: true })
-      .eq('plan_id', plan.id)
-
-    if (!count) {
-      const termStartStr: string = plan.term_start || new Date().toISOString().slice(0, 10)
-      const termStart = new Date(termStartStr + 'T12:00:00')
-      const termEnd = new Date(termStart)
-      termEnd.setFullYear(termEnd.getFullYear() + 1)
-
-      const schedule = generateVisitSchedule(plan.services as PlanService[], termStart)
-      if (schedule.length > 0) {
-        await supabase
-          .from('squeegee_plan_visits')
-          .insert(schedule.map((v) => ({ ...v, plan_id: plan.id })))
-        await supabase
-          .from('squeegee_plans')
-          .update({ term_start: termStartStr, term_end: termEnd.toISOString().slice(0, 10) })
-          .eq('id', plan.id)
-      }
+    // Term starts the day they sign. The visit schedule itself is built in the
+    // member portal's onboarding, where the customer picks their months.
+    if (!plan.term_start) {
+      await supabase
+        .from('squeegee_plans')
+        .update({ term_start: new Date().toISOString().slice(0, 10) })
+        .eq('id', plan.id)
     }
 
     return NextResponse.json({ ok: true, portal_token: plan.portal_token })

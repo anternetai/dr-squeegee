@@ -155,18 +155,20 @@ export function AgreementView({ plan }: Props) {
               </svg>
             </div>
             <p className="text-white font-bold text-lg" style={{ fontFamily: FONTS.display }}>
-              You&apos;re all set{plan.signed_name ? `, ${plan.signed_name.split(" ")[0]}` : ""}!
+              You&apos;re all set, {(plan.signed_name ?? fullName).split(" ")[0]}!
             </p>
             <p className="text-white/80 text-sm mt-1">
-              Your Annual Exterior Care Plan is signed. Your member portal has your full
-              visit schedule — bookmark it!
+              {plan.signed_at
+                ? "Your Annual Exterior Care Plan is signed. Your member portal has your full visit schedule — bookmark it!"
+                : "Your plan is signed. One more fun step: pick the months for your visits — takes about a minute."}
             </p>
             {portalToken && (
               <a
                 href={`/portal/${portalToken}`}
                 className="mt-4 inline-flex items-center justify-center h-12 px-6 rounded-xl bg-white text-[#0A0A0A] font-bold text-sm hover:bg-white/90 transition-colors"
+                style={{ fontFamily: FONTS.display }}
               >
-                Open My Member Portal &rarr;
+                {plan.signed_at ? "OPEN MY MEMBER PORTAL →" : "SET UP MY SCHEDULE →"}
               </a>
             )}
           </div>
