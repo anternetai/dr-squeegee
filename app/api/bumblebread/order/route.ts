@@ -95,7 +95,7 @@ export async function POST(request: Request) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "Bumblebread Orders <anthony@homefieldhub.com>",
+            from: "Bumblebread Orders <orders@drsqueegeeclt.com>",
             to: [ownerEmail],
             subject: `New Order: ${customer_name.trim().replace(/[^\w\s'-]/g, "").slice(0, 50)}`,
             html: `

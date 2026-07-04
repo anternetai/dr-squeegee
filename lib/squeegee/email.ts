@@ -1,12 +1,11 @@
 // Dr. Squeegee Care Club — transactional email via Resend (raw API, no SDK).
-// Sends from the Resend-verified HFH address until drsqueegeeclt.com is
-// verified as a sending domain; replies route to care@drsqueegeeclt.com
-// (Cloudflare Email Routing → Gmail). Always fire-and-forget — never block
-// the customer's flow on email delivery.
+// Sends from care@drsqueegeeclt.com (verified Resend domain; inbound replies
+// forward to Gmail via Cloudflare Email Routing). Sends never throw — the
+// customer's flow must not fail on email delivery.
 
 import { BRAND, CLUB_NAME } from "@/lib/squeegee/brand"
 
-const FROM = "Dr. Squeegee <anthony@homefieldhub.com>"
+const FROM = "Dr. Squeegee <care@drsqueegeeclt.com>"
 const REPLY_TO = "care@drsqueegeeclt.com"
 const SITE = "https://www.drsqueegeeclt.com"
 const LOGO = `${SITE}/images/squeegee/logo-badge.png`

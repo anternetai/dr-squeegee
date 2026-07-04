@@ -71,7 +71,7 @@ export async function POST(request: Request) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "The Bumblebread Club <anthony@homefieldhub.com>",
+            from: "The Bumblebread Club <orders@drsqueegeeclt.com>",
             to: [ownerEmail],
             subject: "New Club Member!",
             html: `
