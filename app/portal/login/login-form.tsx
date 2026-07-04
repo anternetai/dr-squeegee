@@ -131,6 +131,13 @@ export function LoginForm({ next }: Props) {
           <div className="text-center">
             <p className="text-3xl mb-3">&#128236;</p>
             <p className="text-white/80 text-sm leading-relaxed">{infoMsg}</p>
+            <p className="text-white/40 text-xs leading-relaxed mt-3">
+              Nothing after a few minutes? Check spam — or just text us at{" "}
+              <a href={`sms:${BRAND.phoneTel}`} className="text-[#2D8C6F]">
+                {BRAND.phone}
+              </a>{" "}
+              and we&apos;ll send your link.
+            </p>
             <button
               onClick={() => {
                 setMode("login")
