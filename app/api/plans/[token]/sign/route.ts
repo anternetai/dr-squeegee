@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { sendWelcomeEmail } from '@/lib/squeegee/email'
+
 function getAdmin() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -85,6 +87,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         .from('squeegee_plans')
         .update({ term_start: new Date().toISOString().slice(0, 10) })
         .eq('id', plan.id)
+    }
+
+    if (plan.client_email) {
+      sendWelcomeEmail({
+        client_name: plan.client_name,
+        client_email: plan.client_email,
+        address: plan.address,
+        total_price: plan.total_price,
+        annual_value: plan.annual_value,
+        billing: plan.billing,
+        portal_token: plan.portal_token,
+        services: plan.services ?? [],
+      }).catch(() => {})
     }
 
     return NextResponse.json({ ok: true, portal_token: plan.portal_token })

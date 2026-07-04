@@ -14,9 +14,17 @@ import {
   type SqueegeePlan,
 } from "@/lib/squeegee/plans"
 
+interface PlanMember {
+  member_number: number
+  slug: string | null
+  email: string
+  created_at: string
+}
+
 interface Props {
   plan: SqueegeePlan
   visits: PlanVisit[]
+  member: PlanMember | null
 }
 
 const STATUS_BADGE: Record<PlanStatus, string> = {
@@ -43,7 +51,7 @@ function smsHref(phone: string | null, body: string): string {
   return `sms:${normalized}?&body=${encodeURIComponent(body)}`
 }
 
-export function PlanDetailClient({ plan, visits }: Props) {
+export function PlanDetailClient({ plan, visits, member }: Props) {
   const router = useRouter()
   const [copied, setCopied] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -228,6 +236,34 @@ export function PlanDetailClient({ plan, visits }: Props) {
           >
             Cancel Plan
           </Button>
+        )}
+      </div>
+
+      {/* Care Club membership */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
+          Care Club Membership
+        </p>
+        {member ? (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <span className="font-bold text-[#2D8C6F] tabular-nums">
+              Member #{String(member.member_number).padStart(4, "0")}
+            </span>
+            <span className="text-muted-foreground">{member.email}</span>
+            {member.slug && (
+              <span className="text-muted-foreground">
+                drsqueegeeclt.com/portal/<span className="text-foreground">{member.slug}</span>
+              </span>
+            )}
+            <span className="text-xs text-muted-foreground">
+              since {new Date(member.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+            </span>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No login yet — they&apos;ll create one right after signing, or from the
+            &ldquo;finish setup&rdquo; banner in their portal.
+          </p>
         )}
       </div>
 

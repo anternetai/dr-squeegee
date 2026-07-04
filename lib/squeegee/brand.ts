@@ -1,6 +1,9 @@
 // Dr. Squeegee — Brand Constants
 // "The house-call doctor for your home's exterior."
 
+// The membership program — used on the portal, membership card, emails, PWA icon
+export const CLUB_NAME = "Dr. Squeegee Care Club"
+
 export const BRAND = {
   name: "Dr. Squeegee",
   tagline: "House Calls for a Cleaner Home",

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { BRAND, FONTS } from "@/lib/squeegee/brand"
+import { BRAND, CLUB_NAME, FONTS } from "@/lib/squeegee/brand"
 import {
   formatMoney,
   totalVisits,
@@ -159,8 +159,8 @@ export function AgreementView({ plan }: Props) {
             </p>
             <p className="text-white/80 text-sm mt-1">
               {plan.signed_at
-                ? "Your Annual Exterior Care Plan is signed. Your member portal has your full visit schedule — bookmark it!"
-                : "Your plan is signed. One more fun step: pick the months for your visits — takes about a minute."}
+                ? `Your ${CLUB_NAME} plan is signed. Your member portal has your full visit schedule — bookmark it!`
+                : `Welcome to the ${CLUB_NAME}! One more fun step: pick the months for your visits — takes about a minute.`}
             </p>
             {portalToken && (
               <a

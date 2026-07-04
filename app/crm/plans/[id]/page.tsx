@@ -28,16 +28,24 @@ export default async function PlanDetailPage({ params }: PageProps) {
 
   if (error || !plan) notFound()
 
-  const { data: visits } = await supabase
-    .from("squeegee_plan_visits")
-    .select("*")
-    .eq("plan_id", id)
-    .order("scheduled_date", { ascending: true })
+  const [{ data: visits }, { data: member }] = await Promise.all([
+    supabase
+      .from("squeegee_plan_visits")
+      .select("*")
+      .eq("plan_id", id)
+      .order("scheduled_date", { ascending: true }),
+    supabase
+      .from("squeegee_members")
+      .select("member_number, slug, email, created_at")
+      .eq("plan_id", id)
+      .maybeSingle(),
+  ])
 
   return (
     <PlanDetailClient
       plan={plan as SqueegeePlan}
       visits={(visits ?? []) as PlanVisit[]}
+      member={member ?? null}
     />
   )
 }

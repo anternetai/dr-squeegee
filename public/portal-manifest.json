@@ -1,0 +1,23 @@
+{
+  "name": "Dr. Squeegee Care Club",
+  "short_name": "Care Club",
+  "description": "Your Dr. Squeegee Care Club — visit schedule, rescheduling, and more.",
+  "start_url": "/portal",
+  "scope": "/portal",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "icons": [
+    {
+      "src": "/images/squeegee/logo-badge.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

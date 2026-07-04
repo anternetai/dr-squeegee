@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { BRAND, FONTS } from "@/lib/squeegee/brand"
+import { useRouter } from "next/navigation"
+import { BRAND, CLUB_NAME, FONTS } from "@/lib/squeegee/brand"
 import {
   formatMoney,
   RESCHEDULE_MIN_NOTICE_HOURS,
@@ -11,9 +12,17 @@ import {
 } from "@/lib/squeegee/plans"
 import { PortalOnboarding } from "./onboarding"
 
+export interface PortalMember {
+  member_number: number
+  slug: string | null
+  email: string
+  created_at: string
+}
+
 interface Props {
   plan: SqueegeePlan
   initialVisits: PlanVisit[]
+  member: PortalMember | null
 }
 
 const TOUR_STEPS = [
@@ -41,12 +50,16 @@ function formatVisitDate(dateStr: string | null): string {
   })
 }
 
-export function PortalView({ plan, initialVisits }: Props) {
+export function PortalView({ plan, initialVisits, member }: Props) {
+  const router = useRouter()
   const [visits, setVisits] = useState(initialVisits)
   const [showOnboarding, setShowOnboarding] = useState(
     Boolean(plan.signed_at) && !plan.onboarded_at
   )
   const [tourStep, setTourStep] = useState<number | null>(null)
+  const [afterTourHomescreen, setAfterTourHomescreen] = useState(false)
+  const [homescreenOpen, setHomescreenOpen] = useState(false)
+  const [device, setDevice] = useState<"iphone" | "android" | null>(null)
   const [rescheduleFor, setRescheduleFor] = useState<string | null>(null)
   const [newDate, setNewDate] = useState("")
   const [note, setNote] = useState("")
@@ -80,8 +93,25 @@ export function PortalView({ plan, initialVisits }: Props) {
   function handleOnboardingComplete(newVisits: PlanVisit[]) {
     if (newVisits.length > 0) setVisits(newVisits)
     setShowOnboarding(false)
+    setAfterTourHomescreen(true)
     setTourStep(0)
     window.scrollTo({ top: 0 })
+    router.refresh()
+  }
+
+  function endTour() {
+    setTourStep(null)
+    if (afterTourHomescreen) {
+      setAfterTourHomescreen(false)
+      setHomescreenOpen(true)
+      setDevice(null)
+    }
+  }
+
+  async function logout() {
+    await fetch("/api/portal/auth/logout", { method: "POST" })
+    router.push("/portal/login")
+    router.refresh()
   }
 
   function tourClass(step: number) {
@@ -222,11 +252,24 @@ export function PortalView({ plan, initialVisits }: Props) {
           <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#2D8C6F]/10 border border-[#2D8C6F]/30 px-3.5 py-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-[#2D8C6F]" />
             <span className="text-xs font-bold text-[#2D8C6F] uppercase tracking-widest">
-              {plan.plan_name}
+              {CLUB_NAME}
               {plan.billing === "paid_in_full" ? " · Paid in Full" : ""}
             </span>
           </div>
         </div>
+
+        {/* Finish-login banner */}
+        {!member && plan.signed_at && (
+          <button
+            onClick={() => setShowOnboarding(true)}
+            className="w-full rounded-xl border border-[#E8B44A]/40 bg-[#E8B44A]/10 px-4 py-3 text-left"
+          >
+            <p className="text-sm font-semibold text-[#E8B44A]">Finish setting up your login</p>
+            <p className="text-xs text-white/50 mt-0.5">
+              Create your Club login so you can sign in from any device — takes 30 seconds.
+            </p>
+          </button>
+        )}
 
         {/* Next visit hero */}
         {nextVisit && (
@@ -240,6 +283,41 @@ export function PortalView({ plan, initialVisits }: Props) {
               </p>
               <p className="text-sm text-white/80 mt-0.5">{formatVisitDate(nextVisit.scheduled_date)}</p>
             </div>
+          </div>
+        )}
+
+        {/* Membership card */}
+        {member && (
+          <div className="rounded-2xl bg-gradient-to-br from-[#111111] to-[#1A1A1A] border border-[#2D8C6F]/40 px-5 py-5">
+            <div className="flex items-center justify-between">
+              <img src="/images/squeegee/logo-badge.png" alt="" className="h-9 w-auto" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#2D8C6F]">
+                {CLUB_NAME}
+              </p>
+            </div>
+            <p className="text-lg font-bold text-white mt-4" style={{ fontFamily: FONTS.display }}>
+              {plan.client_name}
+            </p>
+            <div className="flex items-end justify-between mt-2">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/40">Member No.</p>
+                <p className="text-base font-bold text-[#2D8C6F] tabular-nums" style={{ fontFamily: FONTS.display }}>
+                  #{String(member.member_number).padStart(4, "0")}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] uppercase tracking-widest text-white/40">Member since</p>
+                <p className="text-xs text-white/70">
+                  {new Date(member.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                </p>
+              </div>
+            </div>
+            {member.slug && (
+              <p className="text-[11px] text-white/35 mt-3 pt-3 border-t border-[#242424]">
+                Your personal link:{" "}
+                <span className="text-[#2D8C6F]">drsqueegeeclt.com/portal/{member.slug}</span>
+              </p>
+            )}
           </div>
         )}
 
@@ -321,15 +399,41 @@ export function PortalView({ plan, initialVisits }: Props) {
               href={`tel:${BRAND.phoneTel}`}
               className="h-12 rounded-xl bg-[#111111] border border-[#242424] flex items-center justify-center gap-2 text-sm font-semibold text-white hover:border-[#2D8C6F]/50 transition-colors"
             >
-              &#128222; Call us
+              <svg className="w-4 h-4 text-[#2D8C6F]" fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24 11.4 11.4 0 003.57.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.4 11.4 0 00.57 3.57 1 1 0 01-.25 1.01l-2.2 2.21z"/></svg>
+              Call us
             </a>
             <a
               href={`sms:${BRAND.phoneTel}`}
               className="h-12 rounded-xl bg-[#111111] border border-[#242424] flex items-center justify-center gap-2 text-sm font-semibold text-white hover:border-[#2D8C6F]/50 transition-colors"
             >
-              &#128172; Text us
+              <svg className="w-4 h-4 text-[#2D8C6F]" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 00-2 2v18l4-4h14a2 2 0 002-2V4a2 2 0 00-2-2z"/></svg>
+              Text us
             </a>
           </div>
+        </div>
+
+        {/* Footer — account + homescreen */}
+        <div className="rounded-2xl bg-[#111111] border border-[#242424] divide-y divide-[#242424]">
+          <button
+            onClick={() => {
+              setHomescreenOpen(true)
+              setDevice(null)
+            }}
+            className="w-full px-5 py-3.5 text-left text-sm text-white/70 hover:text-white transition-colors"
+          >
+            &#128241; Add this portal to your home screen
+          </button>
+          {member && (
+            <div className="px-5 py-3.5 flex items-center justify-between">
+              <p className="text-xs text-white/40 truncate">{member.email}</p>
+              <button
+                onClick={logout}
+                className="text-xs text-white/50 hover:text-white transition-colors shrink-0 ml-3"
+              >
+                Log out
+              </button>
+            </div>
+          )}
         </div>
 
         <p className="text-center text-xs text-white/25 pb-4" style={{ fontFamily: FONTS.display }}>
@@ -340,7 +444,7 @@ export function PortalView({ plan, initialVisits }: Props) {
       {/* Tour overlay */}
       {tourStep !== null && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/70" onClick={() => setTourStep(null)} />
+          <div className="fixed inset-0 z-50 bg-black/70" onClick={endTour} />
           <div className="fixed bottom-4 left-4 right-4 z-[70] max-w-lg mx-auto">
             <div className="rounded-2xl bg-white px-5 py-4 shadow-2xl">
               <p className="text-sm font-bold text-[#0A0A0A]" style={{ fontFamily: FONTS.display }}>
@@ -351,7 +455,7 @@ export function PortalView({ plan, initialVisits }: Props) {
               </p>
               <div className="flex items-center justify-between mt-3">
                 <button
-                  onClick={() => setTourStep(null)}
+                  onClick={endTour}
                   className="text-xs text-[#2B2B2B]/40 hover:text-[#2B2B2B]/70 transition-colors"
                 >
                   Skip tour
@@ -367,7 +471,7 @@ export function PortalView({ plan, initialVisits }: Props) {
                   </div>
                   <button
                     onClick={() =>
-                      tourStep < TOUR_STEPS.length - 1 ? setTourStep(tourStep + 1) : setTourStep(null)
+                      tourStep < TOUR_STEPS.length - 1 ? setTourStep(tourStep + 1) : endTour()
                     }
                     className="h-9 px-4 rounded-lg bg-[#2D8C6F] hover:bg-[#1F6B54] text-white text-xs font-bold transition-colors"
                   >
@@ -375,6 +479,90 @@ export function PortalView({ plan, initialVisits }: Props) {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Add-to-homescreen sheet */}
+      {homescreenOpen && (
+        <>
+          <div className="fixed inset-0 z-[80] bg-black/70" onClick={() => setHomescreenOpen(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-[90] max-w-lg mx-auto">
+            <div className="rounded-t-3xl bg-[#111111] border border-[#242424] px-5 pt-5 pb-8">
+              <div className="w-10 h-1 rounded-full bg-white/15 mx-auto mb-4" />
+              {device === null ? (
+                <>
+                  <p className="text-lg font-bold text-white text-center" style={{ fontFamily: FONTS.display }}>
+                    Put your portal one tap away
+                  </p>
+                  <p className="text-sm text-white/50 text-center mt-1">
+                    Save it to your home screen like an app. Which phone do you have?
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 mt-5">
+                    <button
+                      onClick={() => setDevice("iphone")}
+                      className="h-20 rounded-2xl bg-[#0A0A0A] border border-[#242424] hover:border-[#2D8C6F]/60 transition-colors text-white font-semibold"
+                    >
+                      <span className="text-2xl block mb-1">&#63743;</span>
+                      iPhone
+                    </button>
+                    <button
+                      onClick={() => setDevice("android")}
+                      className="h-20 rounded-2xl bg-[#0A0A0A] border border-[#242424] hover:border-[#2D8C6F]/60 transition-colors text-white font-semibold"
+                    >
+                      <span className="text-2xl block mb-1">&#129302;</span>
+                      Android
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setHomescreenOpen(false)}
+                    className="w-full text-center text-xs text-white/35 hover:text-white/60 mt-4"
+                  >
+                    Maybe later
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-bold text-white text-center" style={{ fontFamily: FONTS.display }}>
+                    {device === "iphone" ? "On your iPhone" : "On your Android"}
+                  </p>
+                  <ol className="mt-4 space-y-3">
+                    {(device === "iphone"
+                      ? [
+                          <>Tap the <strong className="text-white">Share</strong> button in Safari — the square with the arrow &#8593; at the bottom of your screen</>,
+                          <>Scroll down and tap <strong className="text-white">&ldquo;Add to Home Screen&rdquo;</strong></>,
+                          <>Tap <strong className="text-white">Add</strong> — that&apos;s it! Look for the Dr. Squeegee badge on your home screen</>,
+                        ]
+                      : [
+                          <>Tap the <strong className="text-white">&#8942; menu</strong> in the top-right corner of Chrome</>,
+                          <>Tap <strong className="text-white">&ldquo;Add to Home screen&rdquo;</strong> (or &ldquo;Install app&rdquo;)</>,
+                          <>Tap <strong className="text-white">Add</strong> — done! The Club is now on your home screen</>,
+                        ]
+                    ).map((step, i) => (
+                      <li key={i} className="flex gap-3 text-sm text-white/70 leading-relaxed">
+                        <span className="shrink-0 w-6 h-6 rounded-full bg-[#2D8C6F] text-white text-xs font-bold flex items-center justify-center mt-0.5">
+                          {i + 1}
+                        </span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  <button
+                    onClick={() => setHomescreenOpen(false)}
+                    className="w-full h-12 rounded-xl bg-[#2D8C6F] hover:bg-[#1F6B54] text-white font-bold text-sm mt-5 transition-colors"
+                    style={{ fontFamily: FONTS.display }}
+                  >
+                    DONE — I&apos;M ALL SET
+                  </button>
+                  <button
+                    onClick={() => setDevice(null)}
+                    className="w-full text-center text-xs text-white/35 hover:text-white/60 mt-3"
+                  >
+                    &larr; Other phone
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </>
