@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -346,6 +347,12 @@ export function FollowupsBoard({ customers }: { customers: FollowupCustomer[] })
                     <Button onClick={() => callCustomer(c)} size="sm" variant="outline">
                       <Phone className="h-4 w-4 mr-1.5" />
                       Call
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="border-[#2D8C6F]/50 text-[#2D8C6F] hover:bg-[#2D8C6F]/10">
+                      <Link href={`/crm/pitch?phone=${c.phone10}`}>
+                        <Sparkles className="h-4 w-4 mr-1.5" />
+                        Pitch Club
+                      </Link>
                     </Button>
                     <Button
                       onClick={() => {

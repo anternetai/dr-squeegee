@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { SqueegeeJob, STATUS_ORDER, STATUS_LABELS, JobStatus } from "@/lib/squeegee/types"
 import { formatDate, formatTime } from "@/lib/squeegee/utils"
@@ -29,6 +30,7 @@ import {
   CalendarPlus,
   CalendarSync,
   Send,
+  Sparkles,
   Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -439,6 +441,24 @@ export function JobDetailClient({ job: initialJob }: Props) {
             <a href={`/api/squeegee/jobs/${job.id}/calendar`} download>
               <CalendarPlus className="h-4 w-4" />
             </a>
+          </Button>
+        </div>
+      )}
+
+      {/* Care Club upsell — the moment the job's done is the moment to pitch */}
+      {job.client_phone && (
+        <div className="flex items-center gap-3 rounded-xl border border-[#2D8C6F]/40 bg-[#2D8C6F]/5 px-4 py-3">
+          <Sparkles className="h-5 w-5 text-[#2D8C6F] shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">Job done? Pitch the Care Club.</p>
+            <p className="text-xs text-muted-foreground">
+              Their pricing history loads automatically — member rates in one tap.
+            </p>
+          </div>
+          <Button asChild size="sm" className="bg-[#2D8C6F] hover:bg-[#1F6B54] text-white shrink-0">
+            <Link href={`/crm/pitch?phone=${job.client_phone.replace(/[^0-9]/g, "").slice(-10)}`}>
+              Pitch
+            </Link>
           </Button>
         </div>
       )}

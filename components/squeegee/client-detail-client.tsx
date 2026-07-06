@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { SqueegeeClient } from "@/lib/squeegee/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Phone, Mail, MapPin, FileText, Pencil, Save, X, Loader2, Trash2, ShieldBan, ShieldCheck } from "lucide-react"
+import { Phone, Mail, MapPin, FileText, Pencil, Save, X, Loader2, Trash2, ShieldBan, ShieldCheck, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface Props {
@@ -288,10 +289,18 @@ export function ClientDetailClient({ client: initialClient }: Props) {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Client Info</CardTitle>
-            <Button size="sm" variant="outline" onClick={startEdit}>
-              <Pencil className="h-3.5 w-3.5 mr-1.5" />
-              Edit
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" asChild className="bg-[#2D8C6F] hover:bg-[#1F6B54] text-white">
+                <Link href={`/crm/pitch?client=${client.id}`}>
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                  Pitch Club
+                </Link>
+              </Button>
+              <Button size="sm" variant="outline" onClick={startEdit}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Edit
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

@@ -1,6 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-import { buildVisitsFromPicks, type PlanService, type SchedulePick } from '@/lib/squeegee/plans'
+import {
+  buildVisitsFromPicks,
+  generateVisitSchedule,
+  isHighFrequencyPlan,
+  type PlanService,
+  type SchedulePick,
+} from '@/lib/squeegee/plans'
 
 function getAdmin() {
   return createClient(
@@ -45,8 +51,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .eq('plan_id', plan.id)
 
     let visits: unknown[] = []
-    if (!count && picks.length > 0) {
-      const built = buildVisitsFromPicks(picks, plan.services as PlanService[])
+    const services = plan.services as PlanService[]
+
+    // High-frequency plans (storefront routes, >12×/yr) skip month-picking —
+    // build their day-spaced schedule automatically on onboarding completion.
+    let effectiveBuild: { service_name: string; seq: number; scheduled_date: string }[] | null = null
+    if (!count && picks.length === 0 && isHighFrequencyPlan(services)) {
+      const termStartStr = plan.term_start || new Date().toISOString().slice(0, 10)
+      effectiveBuild = generateVisitSchedule(services, new Date(termStartStr + 'T12:00:00'))
+    }
+
+    if (!count && (picks.length > 0 || effectiveBuild)) {
+      const built = effectiveBuild ?? buildVisitsFromPicks(picks, services)
       if ('error' in built) {
         return NextResponse.json({ error: built.error }, { status: 400 })
       }

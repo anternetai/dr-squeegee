@@ -143,8 +143,15 @@ export function totalVisits(services: PlanService[]): number {
   return services.reduce((sum, s) => sum + Number(s.visits_per_year), 0)
 }
 
+// True when any service runs more often than monthly (storefront routes) —
+// those plans skip customer month-picking and auto-schedule by day spacing.
+export function isHighFrequencyPlan(services: PlanService[]): boolean {
+  return services.some((s) => Number(s.visits_per_year) > 12)
+}
+
 // Spread a plan's visits across a 12-month term. Recurring services are evenly
 // spaced (quarterly for 4x, etc.); one-off services fill the gaps between them.
+// Services above 12×/year are day-spaced (365/n) instead of month-slotted.
 // All dates are editable in the CRM afterward.
 export function generateVisitSchedule(
   services: PlanService[],
@@ -152,8 +159,22 @@ export function generateVisitSchedule(
 ): { service_name: string; seq: number; scheduled_date: string }[] {
   const visits: { service_name: string; seq: number; scheduled_date: string }[] = []
 
-  const recurring = services.filter((s) => s.visits_per_year > 1)
+  const highFreq = services.filter((s) => s.visits_per_year > 12)
+  const recurring = services.filter((s) => s.visits_per_year > 1 && s.visits_per_year <= 12)
   const oneOffs = services.filter((s) => s.visits_per_year === 1)
+
+  for (const s of highFreq) {
+    const stepDays = Math.max(1, Math.floor(365 / s.visits_per_year))
+    // First route visit ~a week out; then every stepDays.
+    for (let i = 0; i < s.visits_per_year; i++) {
+      const d = new Date(termStart.getTime() + (7 + i * stepDays) * 864e5)
+      visits.push({
+        service_name: s.name,
+        seq: i + 1,
+        scheduled_date: d.toISOString().slice(0, 10),
+      })
+    }
+  }
 
   const usedMonths = new Set<number>()
 
@@ -220,12 +241,14 @@ export function termMonthKeys(start: Date): string[] {
 // Evenly-spaced rotation options for a recurring service (e.g. quarterly windows).
 // Offsets start next month so the first visit never lands in a rush.
 export function rotationOptions(termKeys: string[], visitsPerYear: number): string[][] {
-  const interval = Math.max(1, Math.floor(12 / visitsPerYear))
-  if (interval <= 1) return [termKeys.slice(0, visitsPerYear)]
+  // Month-picking caps at monthly; >12×/yr plans auto-schedule by day spacing.
+  const n = Math.min(visitsPerYear, 12)
+  const interval = Math.max(1, Math.floor(12 / n))
+  if (interval <= 1) return [termKeys.slice(0, n)]
   const options: string[][] = []
   for (let offset = 1; offset <= Math.min(3, interval); offset++) {
     const months: string[] = []
-    for (let i = 0; i < visitsPerYear; i++) {
+    for (let i = 0; i < n; i++) {
       months.push(termKeys[(offset + i * interval) % 12])
     }
     options.push(months)

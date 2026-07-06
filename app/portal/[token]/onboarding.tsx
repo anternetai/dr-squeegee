@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { BRAND, CLUB_NAME, FONTS } from "@/lib/squeegee/brand"
 import {
+  isHighFrequencyPlan,
   monthKeyLabel,
   recommendMonth,
   rotationOptions,
@@ -61,8 +62,11 @@ function Confetti() {
 // defaults preselected everywhere.
 export function PortalOnboarding({ plan, hasVisits, onComplete }: Props) {
   const services = Array.isArray(plan.services) ? plan.services : []
-  const recurring = hasVisits ? [] : services.filter((s) => s.visits_per_year > 1)
-  const oneOffs = hasVisits ? [] : services.filter((s) => s.visits_per_year === 1)
+  // High-frequency route plans (>12×/yr) are auto-scheduled server-side —
+  // no month-picking, straight to celebration + account + tour.
+  const autoScheduled = hasVisits || isHighFrequencyPlan(services)
+  const recurring = autoScheduled ? [] : services.filter((s) => s.visits_per_year > 1)
+  const oneOffs = autoScheduled ? [] : services.filter((s) => s.visits_per_year === 1)
 
   const termStart = useMemo(
     () => (plan.term_start ? new Date(plan.term_start + "T12:00:00") : new Date()),
@@ -77,7 +81,7 @@ export function PortalOnboarding({ plan, hasVisits, onComplete }: Props) {
     ]
     recurring.forEach((_, i) => list.push({ kind: "recurring", serviceIdx: i }))
     oneOffs.forEach((_, i) => list.push({ kind: "oneoff", serviceIdx: i }))
-    if (!hasVisits) list.push({ kind: "review" })
+    if (!autoScheduled) list.push({ kind: "review" })
     return list
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -129,7 +133,7 @@ export function PortalOnboarding({ plan, hasVisits, onComplete }: Props) {
       const res = await fetch(`/api/portal/${plan.portal_token}/setup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ picks: hasVisits ? [] : picksToSend }),
+        body: JSON.stringify({ picks: autoScheduled ? [] : picksToSend }),
       })
       const json = await res.json()
       if (!res.ok) {
@@ -374,17 +378,19 @@ export function PortalOnboarding({ plan, hasVisits, onComplete }: Props) {
             <p className="text-white/60 mt-3 leading-relaxed">
               {hasVisits
                 ? "Your year is already mapped out. Let us show you around your member portal — it takes 30 seconds."
-                : "Your plan is signed. Now the fun part: let's map out your year of service. Takes about a minute, and you can change any of it later."}
+                : autoScheduled
+                  ? "Your plan is signed and your route schedule is set automatically — evenly spaced visits, all year. Let us show you around your member portal."
+                  : "Your plan is signed. Now the fun part: let's map out your year of service. Takes about a minute, and you can change any of it later."}
             </p>
             <button
-              onClick={hasVisits ? () => submit([]) : next}
+              onClick={autoScheduled ? () => submit([]) : next}
               disabled={submitting}
               className="mt-8 h-14 rounded-xl bg-[#2D8C6F] hover:bg-[#1F6B54] text-white font-bold text-base transition-colors disabled:opacity-50"
               style={{ fontFamily: FONTS.display }}
             >
-              {hasVisits ? (submitting ? "ONE SEC..." : "SHOW ME AROUND") : "LET'S MAP MY YEAR"}
+              {autoScheduled ? (submitting ? "ONE SEC..." : "SHOW ME AROUND") : "LET'S MAP MY YEAR"}
             </button>
-            {!hasVisits && (
+            {!autoScheduled && (
               <button
                 onClick={() => submit(allPicks)}
                 disabled={submitting}
