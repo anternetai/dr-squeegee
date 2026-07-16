@@ -34,6 +34,22 @@ function CrawlerFallback() {
         >
           Call (980) 242-8048
         </a>
+        {/* SMS opt-in disclosure — server-rendered so carrier/A2P vetting crawlers
+            can verify the consent language that appears in the quote form. */}
+        <div className="text-left max-w-md mx-auto mt-10 text-xs text-[#9CA3AF]/60 space-y-2">
+          <p>
+            SMS consent: when requesting a quote you may optionally check a box that reads: &quot;I agree to
+            receive SMS text messages from Dr. Squeegee at the number provided (quote follow-ups, reminders,
+            service updates). Msg frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out.&quot;
+            Reply HELP for help. Consent is not a condition of purchase. No mobile information will be shared
+            with third parties or affiliates for marketing or promotional purposes.
+          </p>
+          <p>
+            <a href="/sms" className="underline">SMS Program</a> ·{" "}
+            <a href="/privacy" className="underline">Privacy Policy</a> ·{" "}
+            <a href="/terms" className="underline">Terms of Service</a>
+          </p>
+        </div>
       </div>
     </div>
   )
