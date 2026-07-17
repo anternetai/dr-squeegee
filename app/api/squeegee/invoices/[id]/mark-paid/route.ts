@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyCrmAuth } from '@/lib/crm-auth-check'
+import { reviewAskLine } from '@/lib/squeegee/review-ask'
 
 function getAdmin() {
   return createClient(
@@ -69,6 +70,23 @@ export async function POST(
       type: 'payment_received',
       note: `Invoice marked as paid - $${Number(invoice.amount).toFixed(2)}${paymentMethod ? ` (${paymentMethod})` : ''}`,
     })
+
+    // Manual payments are Anthony's own action — no "payment received" noise,
+    // but the review moment still deserves a nudge (only when the URL is set).
+    const reviewAsk = await reviewAskLine(supabase, invoice.job_id)
+    if (reviewAsk && process.env.SLACK_BOT_TOKEN) {
+      await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
+        },
+        body: JSON.stringify({
+          channel: 'U0ABZDLENJ1',
+          text: `💵 Invoice ${invoice.invoice_number} marked paid.${reviewAsk}`,
+        }),
+      }).catch((e) => console.error('review-ask Slack post failed:', e))
+    }
 
     return NextResponse.json(invoice)
   } catch (err) {

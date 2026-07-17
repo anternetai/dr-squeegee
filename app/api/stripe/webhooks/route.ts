@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
+import { reviewAskLine } from '@/lib/squeegee/review-ask'
 
 function getAdmin() {
   return createClient(
@@ -91,9 +92,10 @@ export async function POST(request: NextRequest) {
             })
           }
 
-          // Notify via Slack
+          // Notify via Slack (+ paste-ready review ask when GOOGLE_REVIEW_URL is set)
+          const reviewAsk = await reviewAskLine(supabase, invoice.job_id)
           await sendSlackNotification(
-            `💵 *Payment Received!*\n*Invoice:* ${invoice.invoice_number}\n*Amount:* $${Number(invoice.amount).toFixed(2)}\n*Status:* Paid ✅`
+            `💵 *Payment Received!*\n*Invoice:* ${invoice.invoice_number}\n*Amount:* $${Number(invoice.amount).toFixed(2)}\n*Status:* Paid ✅${reviewAsk}`
           )
         }
       }
