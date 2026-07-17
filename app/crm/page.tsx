@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { SqueegeeJob, STATUS_LABELS, STATUS_ORDER, JobStatus } from "@/lib/squeegee/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +10,7 @@ import {
   Eye, Users, TrendingUp, BarChart2,
 } from "lucide-react"
 import { formatDistanceToNow } from "@/lib/squeegee/utils"
+import { AgingQuotes, type AgingItem } from "@/components/squeegee/aging-quotes"
 
 const STATUS_COLORS: Record<JobStatus, string> = {
   new: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -20,6 +22,11 @@ const STATUS_COLORS: Record<JobStatus, string> = {
 
 export default async function SqueegeePortalPage() {
   const supabase = await createClient()
+  // squeegee_plans is service-role-only (zero RLS policies) — anon client returns nothing.
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
   const now = new Date()
   const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -33,6 +40,8 @@ export default async function SqueegeePortalPage() {
     { count: leads7 },
     { count: totalLeads },
     { data: quotes },
+    { data: pendingQuotes },
+    { data: sentPlans },
   ] = await Promise.all([
     supabase.from("squeegee_jobs").select("*").order("created_at", { ascending: false }),
     supabase.from("squeegee_page_views").select("*", { count: "exact", head: true }).gte("created_at", d30),
@@ -41,6 +50,16 @@ export default async function SqueegeePortalPage() {
     supabase.from("squeegee_leads").select("*", { count: "exact", head: true }).gte("created_at", d7),
     supabase.from("squeegee_leads").select("*", { count: "exact", head: true }),
     supabase.from("squeegee_quotes").select("status").in("status", ["accepted", "declined"]),
+    supabase
+      .from("squeegee_quotes")
+      .select("id, token, job_id, client_name, total_price, status, created_at")
+      .in("status", ["pending", "help"])
+      .order("created_at", { ascending: true }),
+    admin
+      .from("squeegee_plans")
+      .select("id, token, client_name, plan_name, total_price, created_at")
+      .eq("status", "sent")
+      .order("created_at", { ascending: true }),
   ])
 
   const allJobs = (jobs || []) as SqueegeeJob[]
@@ -59,6 +78,39 @@ export default async function SqueegeePortalPage() {
   const accepted = (quotes || []).filter((q) => q.status === "accepted").length
   const responded = (quotes || []).length
   const quoteAcceptRate = responded > 0 ? Math.round((accepted / responded) * 100) : null
+
+  const allAging: AgingItem[] = [
+    ...(pendingQuotes || []).map((q) => ({
+      id: q.id as string,
+      kind: "quote" as const,
+      clientName: (q.client_name as string) || "Unknown",
+      amount: Number(q.total_price) || 0,
+      createdAt: q.created_at as string,
+      publicPath: `/q/${q.token}`,
+      // 5 legacy quotes have no job_id — fall back to the customer view instead of a 404
+      crmPath: q.job_id ? `/crm/jobs/${q.job_id}` : `/q/${q.token}`,
+      needsReply: q.status === "help",
+      label: "Quote",
+    })),
+    ...(sentPlans || []).map((p) => ({
+      id: p.id as string,
+      kind: "plan" as const,
+      clientName: (p.client_name as string) || "Unknown",
+      amount: Number(p.total_price) || 0,
+      createdAt: p.created_at as string,
+      publicPath: `/a/${p.token}`,
+      crmPath: `/crm/plans/${p.id}`,
+      needsReply: false,
+      label: (p.plan_name as string) || "Care plan",
+    })),
+  ]
+  // 45-day winnable window, biggest money first; older pending = probably dead, just counted.
+  const WINNABLE_MS = 45 * 24 * 60 * 60 * 1000
+  const agingItems = allAging
+    .filter((i) => Date.now() - new Date(i.createdAt).getTime() <= WINNABLE_MS)
+    .sort((a, b) => b.amount - a.amount)
+  const staleItems = allAging.filter((i) => Date.now() - new Date(i.createdAt).getTime() > WINNABLE_MS)
+  const staleTotal = staleItems.reduce((sum, i) => sum + i.amount, 0)
 
   const conversionRate = (totalLeads || 0) > 0
     ? Math.round((allJobs.length / (totalLeads || 1)) * 100)
@@ -105,6 +157,9 @@ export default async function SqueegeePortalPage() {
           </Link>
         ))}
       </div>
+
+      {/* Money waiting on a customer response */}
+      <AgingQuotes items={agingItems} staleCount={staleItems.length} staleTotal={staleTotal} />
 
       {/* Analytics */}
       <div>
