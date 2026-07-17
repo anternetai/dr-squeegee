@@ -178,10 +178,16 @@ export async function POST(
       return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
     }
 
-    // Idempotency guard: a quote can only be responded to once. Repeat POSTs
-    // (double-tap, retries) must not re-run status changes or spawn a second
-    // invoice + Stripe payment link.
-    if (quote.status !== 'pending') {
+    // Idempotency guard: only pending/help quotes accept a response.
+    // accepted/declined are terminal — repeat POSTs (double-tap, retries)
+    // must not re-run status changes or spawn a second invoice + Stripe
+    // payment link. 'help' stays open: a client who asked questions can
+    // still accept or decline once they hear back.
+    if (quote.status !== 'pending' && quote.status !== 'help') {
+      return NextResponse.json({ ok: true, alreadyResponded: true })
+    }
+    // Repeat "I have questions" taps shouldn't re-notify.
+    if (quote.status === 'help' && action === 'help') {
       return NextResponse.json({ ok: true, alreadyResponded: true })
     }
 

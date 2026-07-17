@@ -75,6 +75,14 @@ export function QuoteView({ quote: initialQuote }: Props) {
       })
 
       if (res.ok) {
+        const json = (await res.json()) as { alreadyResponded?: boolean }
+        if (json.alreadyResponded) {
+          // Stale tab — the quote was already responded to elsewhere.
+          // Reload so the page shows the real state instead of pretending
+          // this tap went through.
+          window.location.reload()
+          return
+        }
         setQuote((prev) => ({ ...prev, status: action }))
         setResponseMessage(RESPONSE_MESSAGES[action])
       }
@@ -85,7 +93,9 @@ export function QuoteView({ quote: initialQuote }: Props) {
     }
   }
 
-  const alreadyResponded = quote.status !== "pending"
+  // accepted/declined are final; "help" keeps the quote open so the client
+  // can still accept or decline after their question is answered.
+  const locked = quote.status === "accepted" || quote.status === "declined"
 
   return (
     <div className="min-h-screen bg-[#FFFFFF] py-8 px-4" style={{ fontFamily: FONTS.body }}>
@@ -199,8 +209,8 @@ export function QuoteView({ quote: initialQuote }: Props) {
           </p>
         </div>
 
-        {/* Action buttons or response */}
-        {responseMessage ? (
+        {/* Response message (help keeps the buttons below it) */}
+        {responseMessage && (
           <div className="bg-white rounded-2xl shadow-sm border border-[#2D8C6F]/10 px-5 py-6 text-center">
             {quote.status === "accepted" && (
               <div className="w-12 h-12 bg-[#2D8C6F]/10 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -216,26 +226,34 @@ export function QuoteView({ quote: initialQuote }: Props) {
               <p className="text-4xl mb-3">&#128172;</p>
             )}
             <p className="text-[#2B2B2B] font-medium text-base">{responseMessage}</p>
+            {quote.status === "help" && (
+              <p className="text-xs text-[#2B2B2B]/50 mt-2">
+                Got your answer? You can still accept or decline below.
+              </p>
+            )}
           </div>
-        ) : (
+        )}
+
+        {/* Action buttons */}
+        {!locked && (
           <div className="space-y-3">
             <button
               onClick={() => handleAction("accepted")}
-              disabled={submitting || alreadyResponded}
+              disabled={submitting}
               className="w-full h-14 rounded-xl bg-[#2D8C6F] hover:bg-[#1F6B54] active:bg-[#175C47] text-[#FFFFFF] font-bold text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               Accept Quote
             </button>
             <button
               onClick={() => handleAction("help")}
-              disabled={submitting || alreadyResponded}
+              disabled={submitting}
               className="w-full h-14 rounded-xl bg-white hover:bg-[#FFFFFF]/50 active:bg-[#FFFFFF] text-[#2B2B2B] font-semibold text-base border border-[#2D8C6F]/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               I Have Questions
             </button>
             <button
               onClick={() => handleAction("declined")}
-              disabled={submitting || alreadyResponded}
+              disabled={submitting}
               className="w-full h-14 rounded-xl bg-white hover:bg-[#B8453A]/5 active:bg-[#B8453A]/10 text-[#B8453A] font-semibold text-base border border-[#B8453A]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               Decline
