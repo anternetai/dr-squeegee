@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { ThemeProvider } from 'next-themes'
 import { QuoteView } from './quote-view'
 import type { Metadata } from 'next'
 
@@ -29,6 +30,14 @@ export interface SqueegeeQuote {
   status: 'pending' | 'accepted' | 'declined' | 'help'
   client_response_at: string | null
   created_at: string
+}
+
+export interface QuoteInvoice {
+  id: string
+  invoice_number: string
+  amount: number
+  tip_amount: number | null
+  status: 'draft' | 'sent' | 'paid' | 'overdue'
 }
 
 function getAdmin() {
@@ -94,5 +103,19 @@ export default async function QuotePage({ params }: PageProps) {
     )
   }
 
-  return <QuoteView quote={data as SqueegeeQuote} />
+  // Pull the linked invoice (if any) so an accepted quote can show the pay card
+  // immediately — including on a later revisit of the same link.
+  const { data: invoiceData } = await supabase
+    .from('squeegee_invoices')
+    .select('id, invoice_number, amount, tip_amount, status')
+    .eq('quote_id', data.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <QuoteView quote={data as SqueegeeQuote} invoice={(invoiceData as QuoteInvoice) ?? null} />
+    </ThemeProvider>
+  )
 }
