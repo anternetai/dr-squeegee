@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import {
   Plus, Briefcase, CheckCircle2, Clock, DollarSign, ClipboardList,
-  Eye, Users, TrendingUp, BarChart2,
+  Eye, Users, TrendingUp, BarChart2, FileText,
 } from "lucide-react"
 import { formatDistanceToNow } from "@/lib/squeegee/utils"
 import { AgingQuotes, type AgingItem } from "@/components/squeegee/aging-quotes"
@@ -132,9 +132,14 @@ export default async function SqueegeePortalPage() {
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-sm text-muted-foreground">{allJobs.length} total job{allJobs.length !== 1 ? "s" : ""}</p>
         </div>
-        <Button asChild className="bg-[#2D8C6F] hover:bg-[#1F6B54] text-white">
-          <Link href="/crm/jobs/new"><Plus className="h-4 w-4 mr-2" />New Job</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/crm/jobs/new"><Plus className="h-4 w-4 mr-2" />New Job</Link>
+          </Button>
+          <Button asChild className="bg-[#2D8C6F] hover:bg-[#1F6B54] text-white">
+            <Link href="/crm/quotes/new"><FileText className="h-4 w-4 mr-2" />New Quote</Link>
+          </Button>
+        </div>
       </div>
 
       {/* Job status cards */}
@@ -266,9 +271,9 @@ export default async function SqueegeePortalPage() {
           {recentJobs.length === 0 ? (
             <div className="px-6 py-8 text-center text-muted-foreground">
               <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">No jobs yet. Create your first job to get started.</p>
+              <p className="text-sm">No jobs yet. Create your first quote to get started.</p>
               <Button asChild className="mt-4 bg-[#2D8C6F] hover:bg-[#1F6B54] text-white">
-                <Link href="/crm/jobs/new"><Plus className="h-4 w-4 mr-2" />New Job</Link>
+                <Link href="/crm/quotes/new"><FileText className="h-4 w-4 mr-2" />New Quote</Link>
               </Button>
             </div>
           ) : (

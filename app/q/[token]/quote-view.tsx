@@ -131,7 +131,10 @@ export function QuoteView({ quote: initialQuote }: Props) {
                   <tr key={i}>
                     <td className="py-2.5">
                       <div className="text-[#2B2B2B] font-medium">{s.name}</div>
-                      {(s.description || SERVICE_DESCRIPTIONS[s.name]) && (
+                      {s.detail && (
+                        <div className="text-xs text-[#2D8C6F]/70 mt-0.5">{s.detail}</div>
+                      )}
+                      {!s.detail && (s.description || SERVICE_DESCRIPTIONS[s.name]) && (
                         <div className="text-xs text-[#2B2B2B]/50 mt-0.5">{s.description || SERVICE_DESCRIPTIONS[s.name]}</div>
                       )}
                     </td>

@@ -6,12 +6,13 @@ import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import {
   LayoutDashboard, Briefcase, Users, CalendarDays, CalendarRange, MapPin,
-  MessageSquareHeart, Sparkles, Sun, Moon, LogOut, Menu, X,
+  MessageSquareHeart, Sparkles, Sun, Moon, LogOut, Menu, X, FileText,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const NAV = [
   { label: "Dashboard",  href: "/crm",             icon: LayoutDashboard },
+  { label: "New Quote",  href: "/crm/quotes/new",  icon: FileText },
   { label: "Jobs",       href: "/crm/jobs",         icon: Briefcase },
   { label: "Clients",    href: "/crm/clients",      icon: Users },
   { label: "Plans",      href: "/crm/plans",        icon: CalendarRange },

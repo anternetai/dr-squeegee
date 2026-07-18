@@ -8,26 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FileText, Check, Copy, Loader2, ExternalLink, Trash2, Pencil, X, AlertTriangle, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-const QUOTE_SERVICES = [
-  "House Washing",
-  "Window Cleaning",
-  "Surface Cleaning",
-  "Driveway",
-  "Pool Deck",
-  "Pavers",
-] as const
-
-const SERVICE_DESCRIPTIONS: Record<string, string> = {
-  "House Washing": "Soft wash of exterior siding, eaves, and trim",
-  "Window Cleaning": "Streak-free interior and exterior window cleaning",
-  "Surface Cleaning": "High-pressure cleaning of walkways and patios",
-  Driveway: "Full driveway pressure wash — oil stains, tire marks, buildup",
-  "Pool Deck": "Pressure wash and surface treatment of pool deck",
-  Pavers: "Paver pressure wash with joint sand preservation",
-}
-
-type QuoteService = (typeof QUOTE_SERVICES)[number]
+import { SmartQuoteLines, QuoteLine, linesToServices } from "@/components/squeegee/smart-quote-lines"
 
 interface QuoteRecord {
   id: string
@@ -84,8 +65,7 @@ interface Props {
 
 export function QuoteBuilder({ job }: Props) {
   const router = useRouter()
-  const [selected, setSelected] = useState<Record<string, boolean>>({})
-  const [prices, setPrices] = useState<Record<string, string>>({})
+  const [lines, setLines] = useState<QuoteLine[]>([])
   const [discountType, setDiscountType] = useState<"percent" | "dollar">("dollar")
   const [discountValue, setDiscountValue] = useState("")
   const [loading, setLoading] = useState(false)
@@ -101,10 +81,6 @@ export function QuoteBuilder({ job }: Props) {
   const [editError, setEditError] = useState<string | null>(null)
   let _editKey = 0
   function newEditKey() { return `ek-${Date.now()}-${_editKey++}` }
-  const [customEnabled, setCustomEnabled] = useState(false)
-  const [customName, setCustomName] = useState("")
-  const [customDescription, setCustomDescription] = useState("")
-  const [customPrice, setCustomPrice] = useState("")
 
   const fetchPastQuotes = useCallback(async () => {
     setLoadingQuotes(true)
@@ -125,12 +101,8 @@ export function QuoteBuilder({ job }: Props) {
     fetchPastQuotes()
   }, [fetchPastQuotes])
 
-  const selectedServices = QUOTE_SERVICES.filter((s) => selected[s])
-  const customPriceNum = parseFloat(customPrice) || 0
-  const subtotal = selectedServices.reduce((sum, s) => {
-    const p = parseFloat(prices[s] ?? "")
-    return sum + (isNaN(p) ? 0 : p)
-  }, 0) + (customEnabled ? customPriceNum : 0)
+  const services = linesToServices(lines)
+  const subtotal = services.reduce((sum, s) => sum + s.price, 0)
 
   const discountNum = parseFloat(discountValue) || 0
   const discountAmount =
@@ -139,15 +111,7 @@ export function QuoteBuilder({ job }: Props) {
       : discountNum
   const total = Math.max(0, subtotal - discountAmount)
 
-  const hasStandardServices =
-    selectedServices.length > 0 &&
-    selectedServices.every((s) => {
-      const p = parseFloat(prices[s] ?? "")
-      return !isNaN(p) && p > 0
-    })
-  const hasValidCustom =
-    customEnabled && customName.trim().length > 0 && customPriceNum > 0
-  const canGenerate = hasStandardServices || hasValidCustom
+  const canGenerate = services.length > 0
 
   const quoteUrl = generatedToken
     ? `https://www.drsqueegeeclt.com/q/${generatedToken}`
@@ -157,20 +121,6 @@ export function QuoteBuilder({ job }: Props) {
     if (!canGenerate) return
     setLoading(true)
     setError(null)
-
-    const services: { name: string; price: number; description?: string }[] =
-      selectedServices.map((name) => ({
-        name,
-        price: parseFloat(prices[name]),
-      }))
-
-    if (customEnabled && customName.trim() && customPriceNum > 0) {
-      services.push({
-        name: customName.trim(),
-        price: customPriceNum,
-        ...(customDescription.trim() && { description: customDescription.trim() }),
-      })
-    }
 
     try {
       const res = await fetch("/api/squeegee/quotes", {
@@ -264,17 +214,6 @@ export function QuoteBuilder({ job }: Props) {
     }
   }
 
-  function toggleService(service: QuoteService) {
-    setSelected((prev) => ({ ...prev, [service]: !prev[service] }))
-    if (selected[service]) {
-      setPrices((prev) => {
-        const next = { ...prev }
-        delete next[service]
-        return next
-      })
-    }
-  }
-
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -284,106 +223,16 @@ export function QuoteBuilder({ job }: Props) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Service selection */}
+        {/* Service selection — smart lines with auto-calculated pricing */}
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Select Services
+            Services
           </p>
-          <div className="space-y-2">
-            {QUOTE_SERVICES.map((service) => (
-              <div key={service} className="flex items-center gap-3">
-                <label className="flex items-center gap-2.5 cursor-pointer min-w-[160px]">
-                  <input
-                    type="checkbox"
-                    checked={!!selected[service]}
-                    onChange={() => toggleService(service)}
-                    className="h-4 w-4 rounded border-border accent-[#3A6B4C]"
-                  />
-                  <div>
-                    <span className="text-sm font-medium">{service}</span>
-                    {SERVICE_DESCRIPTIONS[service] && (
-                      <p className="text-[11px] text-muted-foreground leading-tight">{SERVICE_DESCRIPTIONS[service]}</p>
-                    )}
-                  </div>
-                </label>
-                {selected[service] && (
-                  <div className="flex items-center gap-1.5 flex-1">
-                    <span className="text-sm text-muted-foreground">$</span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={prices[service] ?? ""}
-                      onChange={(e) =>
-                        setPrices((prev) => ({ ...prev, [service]: e.target.value }))
-                      }
-                      className="h-8 w-28 text-sm"
-                      autoFocus
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {/* Custom service */}
-            <div className="border-t pt-2 mt-1">
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2.5 cursor-pointer min-w-[160px]">
-                  <input
-                    type="checkbox"
-                    checked={customEnabled}
-                    onChange={() => {
-                      setCustomEnabled((prev) => !prev)
-                      if (customEnabled) {
-                        setCustomName("")
-                        setCustomDescription("")
-                        setCustomPrice("")
-                      }
-                    }}
-                    className="h-4 w-4 rounded border-border accent-[#3A6B4C]"
-                  />
-                  <div>
-                    <span className="text-sm font-medium">Custom Service</span>
-                    <p className="text-[11px] text-muted-foreground leading-tight">Add a service not listed above</p>
-                  </div>
-                </label>
-              </div>
-              {customEnabled && (
-                <div className="ml-6 mt-2 space-y-2">
-                  <Input
-                    placeholder="Service name"
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    className="h-8 text-sm"
-                    autoFocus
-                  />
-                  <Input
-                    placeholder="Description (optional)"
-                    value={customDescription}
-                    onChange={(e) => setCustomDescription(e.target.value)}
-                    className="h-8 text-sm"
-                  />
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm text-muted-foreground">$</span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={customPrice}
-                      onChange={(e) => setCustomPrice(e.target.value)}
-                      className="h-8 w-28 text-sm"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <SmartQuoteLines lines={lines} onChange={setLines} />
         </div>
 
         {/* Discount */}
-        {(selectedServices.length > 0 || hasValidCustom) && (
+        {services.length > 0 && (
           <div className="space-y-2 border-t pt-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Discount (optional)
@@ -434,7 +283,7 @@ export function QuoteBuilder({ job }: Props) {
         )}
 
         {/* Total */}
-        {(selectedServices.length > 0 || hasValidCustom) && (
+        {services.length > 0 && (
           <div className="border-t pt-3 space-y-1">
             {discountAmount > 0 && (
               <div className="flex items-center justify-between text-sm text-muted-foreground">

@@ -10,6 +10,7 @@ interface QuoteService {
   name: string
   price: number
   description?: string
+  detail?: string
 }
 
 export interface SqueegeeQuote {

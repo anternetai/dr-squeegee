@@ -1,38 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { SqueegeeInvoice } from "@/lib/squeegee/types"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { FileText, DollarSign, CheckCircle2, AlertCircle } from "lucide-react"
-
-type InvoiceStatus = SqueegeeInvoice["status"]
-
-const STATUS_BADGE: Record<InvoiceStatus, string> = {
-  draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  sent: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  paid: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  overdue: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-}
-
-const STATUS_LABEL: Record<InvoiceStatus, string> = {
-  draft: "Draft",
-  sent: "Sent",
-  paid: "Paid",
-  overdue: "Overdue",
-}
-
-interface InvoiceRow extends SqueegeeInvoice {
-  job_client_name?: string | null
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—"
-  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
-}
+import { InvoicesTable, type InvoiceRow } from "@/components/squeegee/invoices-table"
 
 export default async function InvoicesPage() {
   const supabase = await createClient()
@@ -147,87 +119,7 @@ export default async function InvoicesPage() {
           </CardContent>
         </Card>
       ) : (
-        <>
-          {/* Desktop table */}
-          <div className="hidden md:block">
-            <Card>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/40">
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Invoice #</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Client</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Due Date</th>
-                      <th className="text-right px-4 py-3 font-medium text-muted-foreground">Amount</th>
-                      <th className="text-right px-4 py-3 font-medium text-muted-foreground">Job</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {allInvoices.map((inv) => (
-                      <tr key={inv.id} className="hover:bg-muted/40 transition-colors group">
-                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                          <Link href={`/crm/jobs/${inv.job_id}`} className="block">{inv.invoice_number}</Link>
-                        </td>
-                        <td className="px-4 py-3 font-medium">
-                          <Link href={`/crm/jobs/${inv.job_id}`} className="block">{inv.job_client_name || "—"}</Link>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Link href={`/crm/jobs/${inv.job_id}`} className="block">
-                            <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[inv.status]}`}>
-                              {STATUS_LABEL[inv.status]}
-                            </span>
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">
-                          <Link href={`/crm/jobs/${inv.job_id}`} className="block">{formatDate(inv.due_date)}</Link>
-                        </td>
-                        <td className="px-4 py-3 text-right font-semibold">
-                          <Link href={`/crm/jobs/${inv.job_id}`} className="block">${Number(inv.amount).toFixed(2)}</Link>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Link
-                            href={`/crm/jobs/${inv.job_id}`}
-                            className="text-xs text-[#3A6B4C] group-hover:underline"
-                          >
-                            View Job →
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="md:hidden space-y-3">
-            {allInvoices.map((inv) => (
-              <Link key={inv.id} href={`/crm/jobs/${inv.job_id}`}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium">{inv.job_client_name || "Unknown client"}</p>
-                        <p className="text-xs font-mono text-muted-foreground">{inv.invoice_number}</p>
-                      </div>
-                      <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[inv.status]}`}>
-                        {STATUS_LABEL[inv.status]}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        Due {formatDate(inv.due_date)}
-                      </p>
-                      <p className="font-bold">${Number(inv.amount).toFixed(2)}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </>
+        <InvoicesTable invoices={allInvoices} />
       )}
     </div>
   )
