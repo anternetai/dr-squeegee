@@ -207,7 +207,12 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceRow[] }) {
                         <Link href={`/crm/jobs/${inv.job_id}`} className="block">{formatDate(inv.due_date)}</Link>
                       </td>
                       <td className="px-4 py-3 text-right font-semibold">
-                        <Link href={`/crm/jobs/${inv.job_id}`} className="block">${Number(inv.amount).toFixed(2)}</Link>
+                        <Link href={`/crm/jobs/${inv.job_id}`} className="block">
+                          ${Number(inv.amount).toFixed(2)}
+                          {Number(inv.tip_amount) > 0 && (
+                            <span className="block text-xs font-normal text-[#2D8C6F]">+ ${Number(inv.tip_amount).toFixed(2)} tip</span>
+                          )}
+                        </Link>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link href={`/crm/jobs/${inv.job_id}`} className="text-xs text-[#3A6B4C] group-hover:underline">
@@ -251,7 +256,12 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceRow[] }) {
                 </div>
                 <Link href={`/crm/jobs/${inv.job_id}`} className="flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">Due {formatDate(inv.due_date)}</p>
-                  <p className="font-bold">${Number(inv.amount).toFixed(2)}</p>
+                  <div className="text-right">
+                    <p className="font-bold">${Number(inv.amount).toFixed(2)}</p>
+                    {Number(inv.tip_amount) > 0 && (
+                      <p className="text-xs font-normal text-[#2D8C6F]">+ ${Number(inv.tip_amount).toFixed(2)} tip</p>
+                    )}
+                  </div>
                 </Link>
               </div>
             </Card>

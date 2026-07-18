@@ -86,6 +86,7 @@ async function createInvoiceForQuote(quote: SqueegeeQuote) {
     .from('squeegee_invoices')
     .insert({
       job_id: quote.job_id,
+      quote_id: quote.id,
       invoice_number: invoiceNumber,
       amount: Number(quote.total_price),
       due_date: dueDate.toISOString().split('T')[0],
@@ -110,13 +111,18 @@ async function createInvoiceForQuote(quote: SqueegeeQuote) {
     })
   }
 
-  return { invoiceNumber, paymentUrl: paymentLink.url }
+  return {
+    invoiceId: invoice.id,
+    invoiceNumber,
+    amount: Number(quote.total_price),
+    paymentUrl: paymentLink.url,
+  }
 }
 
 async function sendSlackNotification(
   quote: SqueegeeQuote,
   action: QuoteAction,
-  invoiceInfo?: { invoiceNumber: string; paymentUrl: string } | null
+  invoiceInfo?: { invoiceNumber: string; paymentUrl: string; amount?: number; invoiceId?: string } | null
 ) {
   const services = Array.isArray(quote.services) ? quote.services : []
   const serviceNames = services.map((s: QuoteService) => s.name).join(', ')
@@ -223,7 +229,9 @@ export async function POST(
     }
 
     // Auto-generate invoice when accepted
-    let invoiceInfo: { invoiceNumber: string; paymentUrl: string } | null = null
+    let invoiceInfo:
+      | { invoiceId: string; invoiceNumber: string; amount: number; paymentUrl: string }
+      | null = null
     if (action === 'accepted') {
       invoiceInfo = await createInvoiceForQuote(typedQuote)
     }
@@ -231,7 +239,18 @@ export async function POST(
     // Send Slack notification (includes payment link if accepted)
     await sendSlackNotification(typedQuote, action, invoiceInfo)
 
-    return NextResponse.json({ ok: true })
+    // Return invoice info so the quote page can show the pay card immediately
+    // after accept, with no second round-trip.
+    return NextResponse.json({
+      ok: true,
+      invoice: invoiceInfo
+        ? {
+            id: invoiceInfo.invoiceId,
+            invoice_number: invoiceInfo.invoiceNumber,
+            amount: invoiceInfo.amount,
+          }
+        : null,
+    })
   } catch (err) {
     console.error('Respond quote error:', err)
     const message = err instanceof Error ? err.message : 'Internal server error'

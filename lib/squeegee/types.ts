@@ -54,10 +54,12 @@ export interface SqueegeeClient {
 export interface SqueegeeInvoice {
   id: string
   created_at: string
-  job_id: string
+  job_id: string | null
   client_id: string | null
+  quote_id: string | null
   invoice_number: string
   amount: number
+  tip_amount: number
   status: "draft" | "sent" | "paid" | "overdue"
   due_date: string | null
   paid_at: string | null

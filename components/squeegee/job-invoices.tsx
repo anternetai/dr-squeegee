@@ -458,7 +458,12 @@ function InvoiceRow({
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="font-semibold">${Number(invoice.amount).toFixed(2)}</span>
+          <span className="font-semibold">
+            ${Number(invoice.amount).toFixed(2)}
+            {Number(invoice.tip_amount) > 0 && (
+              <span className="ml-1 text-xs font-normal text-[#2D8C6F]">+ ${Number(invoice.tip_amount).toFixed(2)} tip</span>
+            )}
+          </span>
           {/* Edit button */}
           {invoice.status !== "paid" && (
             <button
