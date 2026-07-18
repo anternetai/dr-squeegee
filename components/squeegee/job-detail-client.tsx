@@ -119,9 +119,46 @@ export function JobDetailClient({ job: initialJob }: Props) {
   const currentStatusIdx = STATUS_ORDER.indexOf(job.status)
   const nextStatus = STATUS_ORDER[currentStatusIdx + 1] as JobStatus | undefined
 
+  // Leaving 'scheduled' for anything other than 'complete' is treated as an
+  // unschedule: cancels the Cal.com booking + clears appointment fields via
+  // the schedule route, then (if the target isn't 'approved', which is what
+  // unschedule defaults to) finishes the move to the requested status.
+  // 'complete' is exempt — the appointment already happened, keep the record.
+  async function leaveScheduled(newStatus: JobStatus): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/squeegee/jobs/${job.id}/schedule`, { method: "DELETE" })
+      if (!res.ok) return false
+      const data = (await res.json()) as SqueegeeJob
+      setJob(data)
+      if (job.google_calendar_event_id) {
+        await syncCalendar(job.id, "delete")
+      }
+      setCalSynced(false)
+      if (newStatus !== "approved") {
+        const supabase = createClient()
+        const { data: final, error } = await supabase
+          .from("squeegee_jobs")
+          .update({ status: newStatus })
+          .eq("id", job.id)
+          .select("*")
+          .single()
+        if (!error && final) setJob(final as SqueegeeJob)
+      }
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async function advanceStatus() {
     if (!nextStatus) return
+    if (nextStatus === "scheduled") return // enforced via the Schedule card below
     setUpdatingStatus(true)
+    if (job.status === "scheduled") {
+      await leaveScheduled(nextStatus)
+      setUpdatingStatus(false)
+      return
+    }
     const supabase = createClient()
     const { data, error } = await supabase
       .from("squeegee_jobs")
@@ -129,29 +166,21 @@ export function JobDetailClient({ job: initialJob }: Props) {
       .eq("id", job.id)
       .select("*")
       .single()
-
-    if (!error && data) {
-      const updated = data as SqueegeeJob
-      setJob(updated)
-      // Auto-sync to Google Calendar when scheduled
-      if (nextStatus === "scheduled" && updated.appointment_date) {
-        setCalSyncing(true)
-        await syncCalendar(job.id, "create")
-        setCalSynced(true)
-        setCalSyncing(false)
-      }
-      // Remove calendar event when moving away from scheduled (e.g. back to approved)
-      if (job.status === "scheduled" && nextStatus !== "scheduled" && updated.google_calendar_event_id) {
-        await syncCalendar(job.id, "delete")
-        setCalSynced(false)
-      }
-    }
+    if (!error && data) setJob(data as SqueegeeJob)
     setUpdatingStatus(false)
   }
 
   async function setStatus(status: JobStatus) {
-    const wasScheduled = job.status === "scheduled"
+    if (status === "scheduled") {
+      alert("Use the Schedule card below to pick a date & time — jobs can't move to Scheduled without booking a slot.")
+      return
+    }
     setUpdatingStatus(true)
+    if (job.status === "scheduled") {
+      await leaveScheduled(status)
+      setUpdatingStatus(false)
+      return
+    }
     const supabase = createClient()
     const { data, error } = await supabase
       .from("squeegee_jobs")
@@ -159,23 +188,7 @@ export function JobDetailClient({ job: initialJob }: Props) {
       .eq("id", job.id)
       .select("*")
       .single()
-
-    if (!error && data) {
-      const updated = data as SqueegeeJob
-      setJob(updated)
-      // Auto-sync to Google Calendar when set to scheduled
-      if (status === "scheduled" && updated.appointment_date) {
-        setCalSyncing(true)
-        await syncCalendar(job.id, "create")
-        setCalSynced(true)
-        setCalSyncing(false)
-      }
-      // Remove calendar event when moving away from scheduled
-      if (wasScheduled && status !== "scheduled" && updated.google_calendar_event_id) {
-        await syncCalendar(job.id, "delete")
-        setCalSynced(false)
-      }
-    }
+    if (!error && data) setJob(data as SqueegeeJob)
     setUpdatingStatus(false)
   }
 
@@ -283,7 +296,7 @@ export function JobDetailClient({ job: initialJob }: Props) {
             })}
           </div>
 
-          {nextStatus && (
+          {nextStatus && nextStatus !== "scheduled" && (
             <div className="mt-3">
               <Button
                 size="sm"
@@ -295,6 +308,11 @@ export function JobDetailClient({ job: initialJob }: Props) {
                 Mark as {STATUS_LABELS[nextStatus]}
               </Button>
             </div>
+          )}
+          {nextStatus === "scheduled" && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Pick a date &amp; time in the Schedule section below to move this job to Scheduled.
+            </p>
           )}
         </CardContent>
       </Card>
@@ -403,43 +421,21 @@ export function JobDetailClient({ job: initialJob }: Props) {
         </Card>
       )}
 
-      {/* Appointment fields (quick-edit when not in full edit mode) */}
-      {!editing && showAppointmentFields && (
-        <AppointmentQuickEdit job={job} onUpdate={(updated) => {
-          setJob(updated)
-          // Re-sync calendar if already synced and appointment changed
-          if (updated.google_calendar_event_id && updated.appointment_date) {
-            syncCalendar(updated.id, "create")
-          }
-        }} />
+      {/* Schedule — the enforced path to a booked slot (Cal.com + status -> scheduled) */}
+      {!editing && (job.status === "quoted" || job.status === "approved" || job.status === "scheduled") && (
+        <ScheduleCard job={job} onUpdate={setJob} />
       )}
 
-      {/* Calendar sync */}
+      {/* Manual Google sync button removed: the OAuth integration was never
+          configured in prod (env vars absent since March), and Cal.com
+          scheduling now lands on the same Google Calendar automatically —
+          the button could only error or double-book. .ics download stays. */}
       {job.appointment_date && (
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="flex-1 gap-2"
-            disabled={calSyncing}
-            onClick={async () => {
-              setCalSyncing(true)
-              await syncCalendar(job.id, "create")
-              setCalSynced(true)
-              setCalSyncing(false)
-            }}
-          >
-            {calSyncing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : calSynced ? (
-              <CalendarSync className="h-4 w-4 text-green-600" />
-            ) : (
-              <CalendarPlus className="h-4 w-4" />
-            )}
-            {calSynced ? "Synced to Google Calendar" : "Sync to Google Calendar"}
-          </Button>
-          <Button asChild variant="outline" size="icon" title="Download .ics file">
+          <Button asChild variant="outline" className="flex-1 gap-2" title="Download .ics file">
             <a href={`/api/squeegee/jobs/${job.id}/calendar`} download>
               <CalendarPlus className="h-4 w-4" />
+              Download .ics
             </a>
           </Button>
         </div>
@@ -608,79 +604,157 @@ function InfoRow({
   )
 }
 
-function AppointmentQuickEdit({
+function ScheduleCard({
   job,
   onUpdate,
 }: {
   job: SqueegeeJob
   onUpdate: (j: SqueegeeJob) => void
 }) {
+  const isScheduled = job.status === "scheduled" && !!job.appointment_date
+  const [editing, setEditing] = useState(!isScheduled)
   const [date, setDate] = useState(job.appointment_date || "")
-  const [time, setTime] = useState(job.appointment_time || "")
+  const [time, setTime] = useState(job.appointment_time ? job.appointment_time.slice(0, 5) : "")
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [unscheduling, setUnscheduling] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  async function handleSave() {
+  async function handleSchedule() {
+    if (!date || !time) return
     setSaving(true)
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from("squeegee_jobs")
-      .update({ appointment_date: date || null, appointment_time: time || null })
-      .eq("id", job.id)
-      .select("*")
-      .single()
-
-    if (!error && data) {
+    setError(null)
+    try {
+      const res = await fetch(`/api/squeegee/jobs/${job.id}/schedule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, time }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || "Failed to schedule")
+        return
+      }
       onUpdate(data as SqueegeeJob)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      setEditing(false)
+    } catch {
+      setError("Network error — job was not scheduled.")
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
+  }
+
+  async function handleUnschedule() {
+    if (!window.confirm("Remove this job from the schedule?")) return
+    setUnscheduling(true)
+    setError(null)
+    try {
+      // Clean up the legacy Google Calendar event too, if one was manually synced.
+      if (job.google_calendar_event_id) {
+        await syncCalendar(job.id, "delete")
+      }
+      const res = await fetch(`/api/squeegee/jobs/${job.id}/schedule`, { method: "DELETE" })
+      const data = await res.json()
+      if (res.ok) {
+        onUpdate(data as SqueegeeJob)
+        setDate("")
+        setTime("")
+        setEditing(true)
+      } else {
+        setError(data.error || "Failed to unschedule")
+      }
+    } catch {
+      setError("Network error — job was not unscheduled.")
+    } finally {
+      setUnscheduling(false)
+    }
   }
 
   return (
-    <Card>
+    <Card className="border-[#2D8C6F]/30">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Appointment</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="space-y-1.5">
-            <Label>Date</Label>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-44"
-            />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarCheck className="h-4 w-4 text-[#2D8C6F]" />
+            <CardTitle className="text-base">Schedule</CardTitle>
           </div>
-          <div className="space-y-1.5">
-            <Label>Time</Label>
-            <Input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="w-36"
-            />
-          </div>
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            size="sm"
-            className={cn(
-              "bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white",
-              saved && "bg-green-600 hover:bg-green-600"
-            )}
-          >
-            {saving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : saved ? (
-              <><Check className="h-3.5 w-3.5 mr-1.5" />Saved</>
-            ) : (
-              "Save"
-            )}
-          </Button>
+          {isScheduled && !editing && (
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+              Scheduled
+            </span>
+          )}
         </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error && (
+          <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">{error}</p>
+        )}
+
+        {isScheduled && !editing ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">
+                {formatDate(job.appointment_date!)} at {formatTime(job.appointment_time!)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {job.cal_booking_uid
+                  ? "Synced to Google Calendar via Cal.com"
+                  : "In CRM only — Cal.com sync unavailable"}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Reschedule
+              </Button>
+              <Button size="sm" variant="destructive" onClick={handleUnschedule} disabled={unscheduling}>
+                {unscheduling ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <X className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                Unschedule
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="space-y-1.5">
+              <Label>Date</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-44" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Time</Label>
+              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-36" />
+            </div>
+            <Button
+              onClick={handleSchedule}
+              disabled={saving || !date || !time}
+              size="sm"
+              className="bg-[#2D8C6F] hover:bg-[#1F6B54] text-white"
+            >
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <CalendarCheck className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              {isScheduled ? "Save New Time" : "Schedule"}
+            </Button>
+            {isScheduled && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditing(false)
+                  setError(null)
+                  setDate(job.appointment_date || "")
+                  setTime(job.appointment_time ? job.appointment_time.slice(0, 5) : "")
+                }}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -1,19 +1,71 @@
-import { createClient } from "@/lib/supabase/server"
-import { SqueegeeJob } from "@/lib/squeegee/types"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { CalendarDays, Clock, MapPin } from "lucide-react"
+import { createClient } from "@/lib/supabase/server"
+import { SqueegeeJob, JobStatus } from "@/lib/squeegee/types"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
+import { NeedsScheduling, type NeedsSchedulingItem } from "@/components/squeegee/needs-scheduling"
 
-function getWeekDays(startDate: Date): Date[] {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(startDate)
-    d.setDate(startDate.getDate() + i)
-    return d
-  })
+const CHIP_COLORS: Record<JobStatus, string> = {
+  new: "bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/20",
+  quoted: "bg-yellow-500/15 text-yellow-800 dark:text-yellow-300 border-yellow-500/20",
+  approved: "bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/20",
+  scheduled: "bg-[#2D8C6F]/15 text-[#1F6B54] dark:text-[#5FBFA0] border-[#2D8C6F]/25",
+  complete: "bg-green-500/15 text-green-800 dark:text-green-300 border-green-500/20",
 }
 
-function toDateStr(date: Date): string {
-  return date.toISOString().split("T")[0]
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+]
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+/** Today's calendar date in America/New_York, as "YYYY-MM-DD" — avoids UTC-server drift. */
+function todayET(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date())
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0")
+}
+
+function addDays(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d + n))
+  return `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth() + 1)}-${pad2(dt.getUTCDate())}`
+}
+
+function dayOfWeek(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+}
+
+function lastDayOfMonth(year: number, month: number): number {
+  // month is 1-indexed; Date.UTC's month param is 0-indexed, so passing
+  // `month` (not month-1) with day 0 rolls back to the last day of `month`.
+  return new Date(Date.UTC(year, month, 0)).getUTCDate()
+}
+
+/** Builds a full-week-padded month grid of "YYYY-MM-DD" strings. */
+function buildMonthGrid(year: number, month: number): string[][] {
+  const firstOfMonth = `${year}-${pad2(month)}-01`
+  const gridStart = addDays(firstOfMonth, -dayOfWeek(firstOfMonth))
+
+  const lastDay = lastDayOfMonth(year, month)
+  const lastOfMonth = `${year}-${pad2(month)}-${pad2(lastDay)}`
+  const gridEnd = addDays(lastOfMonth, 6 - dayOfWeek(lastOfMonth))
+
+  const days: string[] = []
+  for (let cur = gridStart; cur <= gridEnd; cur = addDays(cur, 1)) {
+    days.push(cur)
+  }
+  const weeks: string[][] = []
+  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7))
+  return weeks
 }
 
 function formatTime(timeStr: string | null): string {
@@ -26,240 +78,254 @@ function formatTime(timeStr: string | null): string {
   return `${displayHour}:${minute} ${ampm}`
 }
 
-function formatDayLabel(date: Date): string {
-  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+function formatDayLabel(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  })
 }
 
-function isToday(date: Date): boolean {
-  const today = new Date()
-  return (
-    date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate()
-  )
+interface PageProps {
+  searchParams: Promise<{ y?: string; m?: string }>
 }
 
-export default async function CalendarPage() {
+export default async function CalendarPage({ searchParams }: PageProps) {
+  const { y, m } = await searchParams
+  const today = todayET()
+  const [todayYear, todayMonth] = today.split("-").map(Number)
+
+  const year = Number(y) || todayYear
+  const month = Number(m) && Number(m) >= 1 && Number(m) <= 12 ? Number(m) : todayMonth
+
+  const weeks = buildMonthGrid(year, month)
+  const gridStart = weeks[0][0]
+  const gridEnd = weeks[weeks.length - 1][6]
+
+  // Current week (Sun-Sat containing "today"), independent of month nav —
+  // always shows what's actually coming up this week.
+  const weekStart = addDays(today, -dayOfWeek(today))
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
   const supabase = await createClient()
 
-  // Fetch all scheduled/approved jobs with appointment dates
-  const { data: jobs } = await supabase
-    .from("squeegee_jobs")
-    .select("*")
-    .in("status", ["scheduled", "approved"])
-    .not("appointment_date", "is", null)
-    .order("appointment_date", { ascending: true })
-    .order("appointment_time", { ascending: true })
+  const [{ data: rangeJobs }, { data: weekJobsRaw }, { data: needsSchedJobs }] = await Promise.all([
+    supabase
+      .from("squeegee_jobs")
+      .select("*")
+      .gte("appointment_date", gridStart)
+      .lte("appointment_date", gridEnd)
+      .not("appointment_date", "is", null)
+      .order("appointment_time", { ascending: true }),
+    supabase
+      .from("squeegee_jobs")
+      .select("*")
+      .gte("appointment_date", weekDays[0])
+      .lte("appointment_date", weekDays[6])
+      .not("appointment_date", "is", null)
+      .order("appointment_time", { ascending: true }),
+    supabase
+      .from("squeegee_jobs")
+      .select("id, client_name, service_type, price, created_at")
+      .eq("status", "approved")
+      .is("appointment_date", null)
+      .order("created_at", { ascending: true }),
+  ])
 
-  const allJobs = (jobs || []) as SqueegeeJob[]
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const weekDays = getWeekDays(today)
-  const weekStart = toDateStr(weekDays[0])
-  const weekEnd = toDateStr(weekDays[6])
-
-  // Group jobs into week buckets
-  const weekJobsMap: Record<string, SqueegeeJob[]> = {}
-  for (const day of weekDays) {
-    weekJobsMap[toDateStr(day)] = []
-  }
-
-  const weekJobs: SqueegeeJob[] = []
-  const futureJobs: SqueegeeJob[] = []
-
-  for (const job of allJobs) {
+  const monthJobsByDate: Record<string, SqueegeeJob[]> = {}
+  for (const job of (rangeJobs || []) as SqueegeeJob[]) {
     if (!job.appointment_date) continue
-    if (job.appointment_date >= weekStart && job.appointment_date <= weekEnd) {
-      weekJobs.push(job)
-      weekJobsMap[job.appointment_date] = [
-        ...(weekJobsMap[job.appointment_date] || []),
-        job,
-      ]
-    } else if (job.appointment_date > weekEnd) {
-      futureJobs.push(job)
-    }
+    ;(monthJobsByDate[job.appointment_date] ||= []).push(job)
   }
 
-  const hasWeekJobs = weekJobs.length > 0
+  const weekJobsByDate: Record<string, SqueegeeJob[]> = {}
+  for (const job of (weekJobsRaw || []) as SqueegeeJob[]) {
+    if (!job.appointment_date) continue
+    ;(weekJobsByDate[job.appointment_date] ||= []).push(job)
+  }
+
+  const needsSchedulingItems: NeedsSchedulingItem[] = (needsSchedJobs || []).map((j) => ({
+    id: j.id as string,
+    clientName: j.client_name as string,
+    serviceType: j.service_type as string,
+    amount: j.price != null ? Number(j.price) : null,
+    createdAt: j.created_at as string,
+  }))
+
+  // Prev/next month, wrapping year correctly.
+  const prevMonth = month === 1 ? 12 : month - 1
+  const prevYear = month === 1 ? year - 1 : year
+  const nextMonth = month === 12 ? 1 : month + 1
+  const nextYear = month === 12 ? year + 1 : year
 
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Calendar</h1>
-        <p className="text-sm text-muted-foreground">
-          Scheduled &amp; approved jobs · This week
-        </p>
+        <p className="text-sm text-muted-foreground">Booked jobs &amp; what still needs a slot</p>
       </div>
 
-      {/* Week view */}
-      <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
-        {weekDays.map((day) => {
-          const dateStr = toDateStr(day)
-          const dayJobs = weekJobsMap[dateStr] || []
-          const today_ = isToday(day)
+      {/* Needs scheduling — same tray as the dashboard */}
+      <NeedsScheduling items={needsSchedulingItems} />
 
-          return (
-            <div
-              key={dateStr}
-              className={`rounded-lg border ${
-                today_
-                  ? "border-[#3A6B4C] bg-[#F2F7F3] dark:bg-[#121E16]"
-                  : "border-border bg-card"
-              } flex flex-col min-h-[80px] overflow-hidden`}
-            >
-              {/* Day header */}
-              <div
-                className={`px-2 py-1.5 text-xs font-semibold ${
-                  today_
-                    ? "text-[#3A6B4C] bg-[#E8F0EA] dark:bg-[#182A1E]"
-                    : "text-muted-foreground bg-muted/40"
-                }`}
-              >
-                {formatDayLabel(day)}
-                {today_ && (
-                  <span className="ml-1 text-[10px] font-bold uppercase tracking-wider opacity-70">
-                    Today
-                  </span>
-                )}
-              </div>
-
-              {/* Jobs */}
-              <div className="flex flex-col gap-1 p-1.5 flex-1">
-                {dayJobs.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground/50 text-center py-2">—</p>
-                ) : (
-                  dayJobs.map((job) => (
-                    <Link
-                      key={job.id}
-                      href={`/crm/jobs/${job.id}`}
-                      className="block rounded-md bg-[#3A6B4C]/10 hover:bg-[#3A6B4C]/20 border border-[#3A6B4C]/20 px-2 py-1.5 transition-colors group"
-                    >
-                      <p className="text-xs font-semibold text-[#234A32] dark:text-[#A8C4B0] truncate group-hover:underline">
-                        {job.client_name}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate">{job.service_type}</p>
-                      {job.appointment_time && (
-                        <p className="text-[11px] text-[#3A6B4C] font-medium">
-                          {formatTime(job.appointment_time)}
-                        </p>
-                      )}
-                    </Link>
-                  ))
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* If no jobs this week, show upcoming list */}
-      {!hasWeekJobs && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-[#3A6B4C]" />
-              Upcoming This Month
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {futureJobs.length === 0 ? (
-              <div className="px-6 py-10 text-center text-muted-foreground">
-                <CalendarDays className="h-10 w-10 mx-auto mb-3 opacity-25" />
-                <p className="text-sm">No scheduled jobs coming up.</p>
-                <p className="text-xs mt-1">
-                  Jobs with status &quot;Scheduled&quot; or &quot;Approved&quot; and an appointment date will appear here.
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {futureJobs.slice(0, 20).map((job) => (
-                  <Link
-                    key={job.id}
-                    href={`/crm/jobs/${job.id}`}
-                    className="flex items-center justify-between px-6 py-3 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="pt-0.5 shrink-0 text-center">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {new Date(job.appointment_date! + "T00:00:00").toLocaleDateString("en-US", { month: "short" })}
-                        </p>
-                        <p className="text-lg font-bold leading-none">
-                          {new Date(job.appointment_date! + "T00:00:00").getDate()}
-                        </p>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm">{job.client_name}</p>
-                        <p className="text-xs text-muted-foreground">{job.service_type}</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          {job.address}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="shrink-0 ml-3 text-right">
-                      {job.appointment_time && (
-                        <p className="text-sm text-[#3A6B4C] font-medium flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {formatTime(job.appointment_time)}
-                        </p>
-                      )}
-                      {job.price != null && (
-                        <p className="text-xs text-muted-foreground">${Number(job.price).toFixed(2)}</p>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* If there are jobs this week, also show next upcoming */}
-      {hasWeekJobs && futureJobs.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-[#3A6B4C]" />
-              After This Week
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {futureJobs.slice(0, 10).map((job) => (
-                <Link
-                  key={job.id}
-                  href={`/crm/jobs/${job.id}`}
-                  className="flex items-center justify-between px-6 py-3 hover:bg-muted/50 transition-colors"
+      {/* This week — agenda strip, always the real current week */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-[#3A6B4C]" />
+            This Week
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
+            {weekDays.map((dateStr) => {
+              const dayJobs = weekJobsByDate[dateStr] || []
+              const isToday = dateStr === today
+              return (
+                <div
+                  key={dateStr}
+                  className={`rounded-lg border ${
+                    isToday
+                      ? "border-[#3A6B4C] bg-[#F2F7F3] dark:bg-[#121E16]"
+                      : "border-border bg-card"
+                  } flex flex-col min-h-[70px] overflow-hidden`}
                 >
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="pt-0.5 shrink-0 text-center min-w-[2.5rem]">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {new Date(job.appointment_date! + "T00:00:00").toLocaleDateString("en-US", { month: "short" })}
-                      </p>
-                      <p className="text-lg font-bold leading-none">
-                        {new Date(job.appointment_date! + "T00:00:00").getDate()}
-                      </p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm">{job.client_name}</p>
-                      <p className="text-xs text-muted-foreground">{job.service_type}</p>
-                    </div>
+                  <div
+                    className={`px-2 py-1.5 text-xs font-semibold ${
+                      isToday
+                        ? "text-[#3A6B4C] bg-[#E8F0EA] dark:bg-[#182A1E]"
+                        : "text-muted-foreground bg-muted/40"
+                    }`}
+                  >
+                    {formatDayLabel(dateStr)}
+                    {isToday && (
+                      <span className="ml-1 text-[10px] font-bold uppercase tracking-wider opacity-70">
+                        Today
+                      </span>
+                    )}
                   </div>
-                  {job.appointment_time && (
-                    <p className="text-sm text-[#3A6B4C] font-medium flex items-center gap-1 shrink-0 ml-3">
-                      <Clock className="h-3.5 w-3.5" />
-                      {formatTime(job.appointment_time)}
-                    </p>
-                  )}
-                </Link>
-              ))}
+                  <div className="flex flex-col gap-1 p-1.5 flex-1">
+                    {dayJobs.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground/50 text-center py-2">—</p>
+                    ) : (
+                      dayJobs.map((job) => (
+                        <Link
+                          key={job.id}
+                          href={`/crm/jobs/${job.id}`}
+                          className={`block rounded-md border px-2 py-1 transition-colors hover:opacity-80 ${CHIP_COLORS[job.status]}`}
+                        >
+                          <p className="text-[11px] font-semibold truncate">{job.client_name}</p>
+                          {job.appointment_time && (
+                            <p className="text-[10px] opacity-80">{formatTime(job.appointment_time)}</p>
+                          )}
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Month grid */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">
+              {MONTH_NAMES[month - 1]} {year}
+            </CardTitle>
+            <div className="flex items-center gap-1">
+              <Link
+                href={`/crm/calendar?y=${prevYear}&m=${prevMonth}`}
+                className="p-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
+                aria-label="Previous month"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/crm/calendar"
+                className="px-2 py-1.5 text-xs rounded-md border border-border hover:bg-muted/60 transition-colors"
+              >
+                Today
+              </Link>
+              <Link
+                href={`/crm/calendar?y=${nextYear}&m=${nextMonth}`}
+                className="p-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
+                aria-label="Next month"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Link>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+            {WEEKDAY_LABELS.map((label) => (
+              <div key={label} className="text-center text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-1">
+                {label}
+              </div>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            {weeks.map((week, wi) => (
+              <div key={wi} className="grid grid-cols-7 gap-1.5">
+                {week.map((dateStr) => {
+                  const inMonth = Number(dateStr.slice(5, 7)) === month
+                  const dayJobs = monthJobsByDate[dateStr] || []
+                  const isToday = dateStr === today
+                  const dayNum = Number(dateStr.slice(8, 10))
+                  return (
+                    <div
+                      key={dateStr}
+                      className={`rounded-lg border min-h-[84px] p-1 flex flex-col gap-1 ${
+                        isToday
+                          ? "border-[#3A6B4C] bg-[#F2F7F3] dark:bg-[#121E16]"
+                          : inMonth
+                          ? "border-border bg-card"
+                          : "border-border/40 bg-muted/20"
+                      }`}
+                    >
+                      <span
+                        className={`text-[11px] font-semibold px-0.5 ${
+                          isToday
+                            ? "text-[#3A6B4C]"
+                            : inMonth
+                            ? "text-foreground"
+                            : "text-muted-foreground/40"
+                        }`}
+                      >
+                        {dayNum}
+                      </span>
+                      <div className="flex flex-col gap-0.5 overflow-hidden">
+                        {dayJobs.slice(0, 3).map((job) => (
+                          <Link
+                            key={job.id}
+                            href={`/crm/jobs/${job.id}`}
+                            className={`block rounded border px-1 py-0.5 text-[10px] leading-tight truncate transition-colors hover:opacity-80 ${CHIP_COLORS[job.status]}`}
+                            title={`${job.client_name} — ${job.service_type}`}
+                          >
+                            {job.appointment_time && <span className="font-medium">{formatTime(job.appointment_time)} </span>}
+                            {job.client_name}
+                          </Link>
+                        ))}
+                        {dayJobs.length > 3 && (
+                          <span className="text-[9px] text-muted-foreground px-0.5">
+                            +{dayJobs.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

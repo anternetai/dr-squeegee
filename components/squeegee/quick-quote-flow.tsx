@@ -19,7 +19,7 @@ import {
   Copy,
   ExternalLink,
   Send,
-  Briefcase,
+  CalendarCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SmartQuoteLines, QuoteLine, linesToServices } from "@/components/squeegee/smart-quote-lines"
@@ -181,10 +181,10 @@ export function QuickQuoteFlow({ clients }: Props) {
                 Open
               </a>
             </Button>
-            <Button asChild size="sm" variant="outline" className="gap-1.5">
+            <Button asChild size="sm" variant="outline" className="gap-1.5 border-[#2D8C6F]/40 text-[#2D8C6F] hover:bg-[#2D8C6F]/5">
               <Link href={`/crm/jobs/${result.job_id}`}>
-                <Briefcase className="h-3.5 w-3.5" />
-                View Job
+                <CalendarCheck className="h-3.5 w-3.5" />
+                Open job to schedule →
               </Link>
             </Button>
           </div>

@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { formatDistanceToNow } from "@/lib/squeegee/utils"
 import { AgingQuotes, type AgingItem } from "@/components/squeegee/aging-quotes"
+import { NeedsScheduling, type NeedsSchedulingItem } from "@/components/squeegee/needs-scheduling"
 
 const STATUS_COLORS: Record<JobStatus, string> = {
   new: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -74,6 +75,19 @@ export default async function SqueegeePortalPage() {
     .reduce((sum, j) => sum + (j.price || 0), 0)
 
   const recentJobs = allJobs.slice(0, 8)
+
+  // Approved jobs with no appointment date yet — the "actually schedule
+  // people" enforcement tray. Oldest first (longest-waiting job first).
+  const needsSchedulingItems: NeedsSchedulingItem[] = allJobs
+    .filter((j) => j.status === "approved" && !j.appointment_date)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .map((j) => ({
+      id: j.id,
+      clientName: j.client_name,
+      serviceType: j.service_type,
+      amount: j.price != null ? Number(j.price) : null,
+      createdAt: j.created_at,
+    }))
 
   const accepted = (quotes || []).filter((q) => q.status === "accepted").length
   const responded = (quotes || []).length
@@ -165,6 +179,9 @@ export default async function SqueegeePortalPage() {
 
       {/* Money waiting on a customer response */}
       <AgingQuotes items={agingItems} staleCount={staleItems.length} staleTotal={staleTotal} />
+
+      {/* Approved jobs sitting with no appointment booked */}
+      <NeedsScheduling items={needsSchedulingItems} />
 
       {/* Analytics */}
       <div>

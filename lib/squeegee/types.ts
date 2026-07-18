@@ -15,6 +15,7 @@ export interface SqueegeeJob {
   appointment_time: string | null
   client_id?: string | null
   google_calendar_event_id?: string | null
+  cal_booking_uid?: string | null
 }
 
 export const STATUS_ORDER: JobStatus[] = ["new", "quoted", "approved", "scheduled", "complete"]
