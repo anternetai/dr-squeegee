@@ -25,6 +25,16 @@ export default async function JobDetailPage({ params }: PageProps) {
 
   const job = data as SqueegeeJob
 
+  // Latest quote token — the branded /q page is the ONLY customer-facing
+  // payment URL (embedded pay card w/ Apple Pay lives there).
+  const { data: latestQuote } = await supabase
+    .from("squeegee_quotes")
+    .select("token")
+    .eq("job_id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
   return (
     <div className="space-y-5">
       <div>
@@ -46,7 +56,7 @@ export default async function JobDetailPage({ params }: PageProps) {
       </div>
 
       <JobDetailClient job={job} />
-      <JobInvoices job={job} />
+      <JobInvoices job={job} quoteToken={latestQuote?.token ?? null} />
       <JobActivity jobId={job.id} />
     </div>
   )

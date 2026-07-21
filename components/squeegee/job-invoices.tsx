@@ -68,9 +68,10 @@ function CopyButton({ text }: { text: string }) {
 
 interface Props {
   job: SqueegeeJob
+  quoteToken?: string | null
 }
 
-export function JobInvoices({ job }: Props) {
+export function JobInvoices({ job, quoteToken }: Props) {
   const [invoices, setInvoices] = useState<SqueegeeInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -345,6 +346,7 @@ export function JobInvoices({ job }: Props) {
               <InvoiceRow
                 key={inv.id}
                 invoice={inv}
+                quoteToken={quoteToken ?? null}
                 isUpdating={updatingId === inv.id}
                 isDeleting={deletingId === inv.id}
                 confirmingDelete={confirmDeleteId === inv.id}
@@ -379,6 +381,7 @@ const PAYMENT_METHOD_LABEL: Record<string, string> = {
 
 function InvoiceRow({
   invoice,
+  quoteToken,
   isUpdating,
   isDeleting,
   confirmingDelete,
@@ -390,6 +393,7 @@ function InvoiceRow({
   onEdit,
 }: {
   invoice: SqueegeeInvoice
+  quoteToken: string | null
   isUpdating: boolean
   isDeleting: boolean
   confirmingDelete: boolean
@@ -603,8 +607,12 @@ function InvoiceRow({
           )}
 
           <div className="flex flex-wrap gap-2">
-            {/* Payment link */}
-            {invoice.stripe_payment_link ? (
+            {/* Pay link — the branded /q page (embedded pay card w/ Apple Pay)
+                is the customer-facing payment URL. Legacy invoices that only
+                have an old Stripe payment link fall back to it. */}
+            {quoteToken ? (
+              <CopyButton text={`https://www.drsqueegeeclt.com/q/${quoteToken}`} />
+            ) : invoice.stripe_payment_link ? (
               <CopyButton text={invoice.stripe_payment_link} />
             ) : null}
 

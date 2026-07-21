@@ -51,7 +51,6 @@ const ACTION_LABEL: Record<QuoteAction, string> = {
 
 async function createInvoiceForQuote(quote: SqueegeeQuote) {
   const supabase = getAdmin()
-  const stripe = getStripe()
 
   // Generate invoice number
   const { count } = await supabase
@@ -60,22 +59,11 @@ async function createInvoiceForQuote(quote: SqueegeeQuote) {
   const sequence = (count ?? 0) + 1001
   const invoiceNumber = `INV-${new Date().getFullYear()}-${String(sequence).padStart(4, '0')}`
 
-  // Create Stripe Payment Link
-  const amountInCents = Math.round(Number(quote.total_price) * 100)
+  // No Stripe payment link anymore: the customer pays on OUR branded /q page
+  // (embedded pay card, Apple Pay active on drsqueegeeclt.com). The webhook's
+  // payment_intent.succeeded path marks the invoice paid. Legacy invoices with
+  // old payment links keep working via the checkout.session.completed path.
   const serviceNames = quote.services.map((s) => s.name).join(', ')
-  const stripePrice = await stripe.prices.create({
-    currency: 'usd',
-    unit_amount: amountInCents,
-    product_data: { name: `Dr. Squeegee - ${serviceNames}` },
-  })
-  const paymentLink = await stripe.paymentLinks.create({
-    line_items: [{ price: stripePrice.id, quantity: 1 }],
-    metadata: {
-      quote_id: quote.id,
-      job_id: quote.job_id ?? '',
-      client_name: quote.client_name,
-    },
-  })
 
   // Due in 7 days
   const dueDate = new Date()
@@ -92,7 +80,7 @@ async function createInvoiceForQuote(quote: SqueegeeQuote) {
       due_date: dueDate.toISOString().split('T')[0],
       notes: `Auto-generated from accepted quote. Services: ${serviceNames}`,
       status: 'sent',
-      stripe_payment_link: paymentLink.url,
+      stripe_payment_link: null,
     })
     .select()
     .single()
@@ -115,7 +103,8 @@ async function createInvoiceForQuote(quote: SqueegeeQuote) {
     invoiceId: invoice.id,
     invoiceNumber,
     amount: Number(quote.total_price),
-    paymentUrl: paymentLink.url,
+    // Customer pays on the branded quote page (embedded pay card).
+    paymentUrl: `https://www.drsqueegeeclt.com/q/${quote.token}`,
   }
 }
 
