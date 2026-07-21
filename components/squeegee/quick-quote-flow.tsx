@@ -22,6 +22,7 @@ import {
   CalendarCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatDate, formatTime } from "@/lib/squeegee/utils"
 import { SmartQuoteLines, QuoteLine, linesToServices } from "@/components/squeegee/smart-quote-lines"
 
 interface ClientOption {
@@ -34,6 +35,12 @@ interface ClientOption {
 
 interface Props {
   clients: ClientOption[]
+  /**
+   * Prefill from a "New Quote" link elsewhere in the CRM (job detail, client
+   * detail). A real `id` selects the existing client outright; an empty `id`
+   * (job predates client_id linking) just pre-fills the new-client fields.
+   */
+  initialClient?: ClientOption | null
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -55,23 +62,38 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-export function QuickQuoteFlow({ clients }: Props) {
-  const [selectedClient, setSelectedClient] = useState<ClientOption | null>(null)
-  const [search, setSearch] = useState("")
+export function QuickQuoteFlow({ clients, initialClient }: Props) {
+  const [selectedClient, setSelectedClient] = useState<ClientOption | null>(
+    initialClient?.id ? initialClient : null
+  )
+  const [search, setSearch] = useState(initialClient?.id ? initialClient.name : "")
   const [showResults, setShowResults] = useState(false)
 
-  const [newClientName, setNewClientName] = useState("")
-  const [newClientPhone, setNewClientPhone] = useState("")
-  const [newClientEmail, setNewClientEmail] = useState("")
-  const [newClientAddress, setNewClientAddress] = useState("")
+  const [newClientName, setNewClientName] = useState(!initialClient?.id ? initialClient?.name ?? "" : "")
+  const [newClientPhone, setNewClientPhone] = useState(!initialClient?.id ? initialClient?.phone ?? "" : "")
+  const [newClientEmail, setNewClientEmail] = useState(!initialClient?.id ? initialClient?.email ?? "" : "")
+  const [newClientAddress, setNewClientAddress] = useState(!initialClient?.id ? initialClient?.address ?? "" : "")
 
   const [lines, setLines] = useState<QuoteLine[]>([])
   const [discountType, setDiscountType] = useState<"percent" | "dollar">("dollar")
   const [discountValue, setDiscountValue] = useState("")
 
+  // Optional scheduling — set a slot right here instead of a second trip to
+  // the job page. Wired through to the same Cal.com schedule endpoint the
+  // job detail Schedule card uses.
+  const [apptDate, setApptDate] = useState("")
+  const [apptTime, setApptTime] = useState("")
+  const [scheduling, setScheduling] = useState(false)
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<{ token: string; job_id: string; quote_url: string } | null>(null)
+  const [result, setResult] = useState<{
+    token: string
+    job_id: string
+    quote_url: string
+    scheduled: boolean
+    scheduleError: string | null
+  } | null>(null)
 
   const matches = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -98,7 +120,10 @@ export function QuickQuoteFlow({ clients }: Props) {
     discountType === "percent" ? Math.round(subtotal * (discountNum / 100) * 100) / 100 : discountNum
   const total = Math.max(0, subtotal - discountAmount)
 
-  const canSubmit = clientName.trim().length > 0 && address.trim().length > 0 && services.length > 0
+  // Date + time must both be set or both blank — a lone date/time can't book a Cal.com slot.
+  const scheduleIncomplete = Boolean(apptDate) !== Boolean(apptTime)
+  const canSubmit =
+    clientName.trim().length > 0 && address.trim().length > 0 && services.length > 0 && !scheduleIncomplete
 
   function pickClient(c: ClientOption) {
     setSelectedClient(c)
@@ -137,7 +162,31 @@ export function QuickQuoteFlow({ clients }: Props) {
       }
 
       const data = (await res.json()) as { token: string; job_id: string; quote_url: string }
-      setResult(data)
+
+      let scheduled = false
+      let scheduleError: string | null = null
+      if (apptDate && apptTime) {
+        setScheduling(true)
+        try {
+          const schedRes = await fetch(`/api/squeegee/jobs/${data.job_id}/schedule`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date: apptDate, time: apptTime }),
+          })
+          if (schedRes.ok) {
+            scheduled = true
+          } else {
+            const schedData = (await schedRes.json()) as { error?: string }
+            scheduleError = schedData.error ?? "Failed to schedule"
+          }
+        } catch {
+          scheduleError = "Network error — job was not scheduled."
+        } finally {
+          setScheduling(false)
+        }
+      }
+
+      setResult({ ...data, scheduled, scheduleError })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error")
     } finally {
@@ -146,7 +195,14 @@ export function QuickQuoteFlow({ clients }: Props) {
   }
 
   if (result) {
-    const smsBody = `Hi ${clientName.split(" ")[0]}, here's your Dr. Squeegee quote: ${result.quote_url}`
+    const smsParts = [
+      `Hey ${clientName.split(" ")[0]}! This is Anthony from Dr. Squeegee. Here's your quote: ${result.quote_url}`,
+      address ? `Service address: ${address}` : null,
+      result.scheduled && apptDate && apptTime
+        ? `We've got you scheduled for ${formatDate(apptDate)} at ${formatTime(apptTime)}.`
+        : null,
+    ].filter(Boolean)
+    const smsBody = smsParts.join(" ")
     return (
       <Card className="border-[#3A6B4C]/30">
         <CardContent className="p-6 space-y-4 text-center">
@@ -158,6 +214,19 @@ export function QuickQuoteFlow({ clients }: Props) {
             <p className="text-sm text-muted-foreground">
               {clientName} · ${total.toFixed(2)}
             </p>
+            {apptDate && apptTime && (
+              <p className="text-xs mt-1">
+                {result.scheduled ? (
+                  <span className="text-[#3A6B4C]">
+                    Scheduled {formatDate(apptDate)} at {formatTime(apptTime)}
+                  </span>
+                ) : (
+                  <span className="text-destructive">
+                    {result.scheduleError ?? "Scheduling failed"} — schedule it from the job page.
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           <div className="bg-muted rounded-lg p-3 text-left space-y-2">
@@ -201,6 +270,8 @@ export function QuickQuoteFlow({ clients }: Props) {
               setNewClientAddress("")
               setLines([])
               setDiscountValue("")
+              setApptDate("")
+              setApptTime("")
             }}
             className="text-sm text-[#3A6B4C] hover:underline"
           >
@@ -334,6 +405,44 @@ export function QuickQuoteFlow({ clients }: Props) {
         </CardContent>
       </Card>
 
+      {/* Schedule (optional) — books the Cal.com slot right after the quote/job are created */}
+      {services.length > 0 && (
+        <Card>
+          <CardContent className="p-5 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Schedule now (optional)
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <div className="space-y-1 flex-1 min-w-[140px]">
+                <Label htmlFor="appt_date" className="text-xs">Date</Label>
+                <Input
+                  id="appt_date"
+                  type="date"
+                  value={apptDate}
+                  onChange={(e) => setApptDate(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1 flex-1 min-w-[120px]">
+                <Label htmlFor="appt_time" className="text-xs">Time</Label>
+                <Input
+                  id="appt_time"
+                  type="time"
+                  value={apptTime}
+                  onChange={(e) => setApptTime(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+            </div>
+            {(apptDate || apptTime) && (
+              <p className="text-xs text-muted-foreground">
+                Leave both blank to skip — you can always schedule later from the job page.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Discount + total */}
       {services.length > 0 && (
         <Card>
@@ -394,6 +503,12 @@ export function QuickQuoteFlow({ clients }: Props) {
         </Card>
       )}
 
+      {scheduleIncomplete && (
+        <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+          Set both a date and a time to schedule, or clear both to skip.
+        </p>
+      )}
+
       {error && (
         <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">{error}</p>
       )}
@@ -406,7 +521,7 @@ export function QuickQuoteFlow({ clients }: Props) {
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Creating…
+            {scheduling ? "Scheduling…" : "Creating…"}
           </>
         ) : (
           "Create & Send Quote"

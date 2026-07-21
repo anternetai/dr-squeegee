@@ -26,6 +26,13 @@ interface FromFieldBody {
 
 export async function POST(request: NextRequest) {
   try {
+    // Cross-app bridge auth (closes the long-open unauth hole): shared secret
+    // header, no fail-open. Caller: doors repo app/api/quote/route.ts.
+    const secret = process.env.BRIDGE_SECRET
+    if (!secret || request.headers.get('x-bridge-secret') !== secret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = (await request.json()) as FromFieldBody
     const { client_name, client_phone, client_email, address, services, discount_type, discount_value } = body
 

@@ -63,9 +63,9 @@ export default async function JobsPage({ searchParams }: PageProps) {
           </p>
         </div>
         <Button asChild className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white">
-          <Link href="/crm/jobs/new">
+          <Link href="/crm/quotes/new">
             <Plus className="h-4 w-4 mr-2" />
-            New Job
+            New Quote
           </Link>
         </Button>
       </div>
@@ -80,9 +80,9 @@ export default async function JobsPage({ searchParams }: PageProps) {
             <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm">No jobs found{status ? ` with status "${STATUS_LABELS[status as JobStatus]}"` : ""}.</p>
             <Button asChild className="mt-4 bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white">
-              <Link href="/crm/jobs/new">
+              <Link href="/crm/quotes/new">
                 <Plus className="h-4 w-4 mr-2" />
-                New Job
+                New Quote
               </Link>
             </Button>
           </CardContent>

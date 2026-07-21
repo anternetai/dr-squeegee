@@ -1,17 +1,19 @@
 "use client"
 
-// Shared "smart" quote line builder — used by both the one-screen New Quote flow
-// (components/squeegee/quick-quote-flow.tsx) and the existing per-job quote builder
-// (components/squeegee/quote-builder.tsx). Kills manual typing for window counts /
-// driveway sqft — auto-computes a price from lib/squeegee/pricing.ts, always editable.
+// Shared "smart" quote line builder — used by the one single New Quote flow
+// (components/squeegee/quick-quote-flow.tsx, at /crm/quotes/new). Kills manual
+// typing for window counts / driveway sqft — auto-computes a price from
+// lib/squeegee/pricing.ts, always editable. Windows are one combined block
+// with counts per story (1st/2nd/3rd), not separate per-story line items.
 import { Input } from "@/components/ui/input"
 import { Plus, X } from "lucide-react"
 import {
   Story,
   Coverage,
-  STORY_LABEL,
-  computeWindowPrice,
-  windowDetail,
+  STORY_SHORT_LABEL,
+  WindowCounts,
+  computeWindowPriceMulti,
+  windowDetailMulti,
   SQFT_SERVICE_DEFAULTS,
   SqftServiceName,
   computeSqftPrice,
@@ -31,9 +33,8 @@ export interface QuoteLine {
   detail?: string
   /** true once the owner has typed directly into the price field — stops auto-recompute until an underlying input changes again. */
   manualPrice?: boolean
-  // window
-  windowCount?: number
-  story?: Story
+  // window — one combined block, counts per story
+  windowCounts?: WindowCounts
   coverage?: Coverage
   // sqft
   sqftServiceName?: SqftServiceName
@@ -51,13 +52,13 @@ export function newLineKey(): string {
 function recompute(line: QuoteLine): QuoteLine {
   if (line.manualPrice) return line
   if (line.kind === "window") {
-    const count = line.windowCount ?? 0
-    const story = line.story ?? 1
+    const counts = line.windowCounts ?? {}
     const coverage = line.coverage ?? "exterior"
+    const total = ([1, 2, 3] as Story[]).reduce((sum, s) => sum + (counts[s] ?? 0), 0)
     return {
       ...line,
-      price: computeWindowPrice(count, story, coverage),
-      detail: count > 0 ? windowDetail(count, story, coverage) : undefined,
+      price: computeWindowPriceMulti(counts, coverage),
+      detail: total > 0 ? windowDetailMulti(counts, coverage) : undefined,
     }
   }
   if (line.kind === "sqft") {
@@ -79,7 +80,7 @@ function recompute(line: QuoteLine): QuoteLine {
 export function makeLine(kind: LineKind, sqftName?: SqftServiceName): QuoteLine {
   const key = newLineKey()
   if (kind === "window") {
-    return recompute({ key, kind, name: "Window Cleaning", price: 0, windowCount: 0, story: 1, coverage: "exterior" })
+    return recompute({ key, kind, name: "Window Cleaning", price: 0, windowCounts: {}, coverage: "exterior" })
   }
   if (kind === "sqft") {
     const name = sqftName ?? "Driveway"
@@ -192,34 +193,30 @@ export function SmartQuoteLines({ lines, onChange }: Props) {
             </div>
 
             {line.kind === "window" && (
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground"># windows</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={line.windowCount ?? 0}
-                    onChange={(e) =>
-                      updateLine(line.key, { windowCount: parseInt(e.target.value, 10) || 0, manualPrice: false })
-                    }
-                    className="h-8 w-20 text-sm"
-                  />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground">Story</span>
-                  <select
-                    value={line.story ?? 1}
-                    onChange={(e) =>
-                      updateLine(line.key, { story: Number(e.target.value) as Story, manualPrice: false })
-                    }
-                    className="h-8 rounded border border-input bg-background px-2 text-sm"
-                  >
-                    {([1, 2, 3] as Story[]).map((s) => (
-                      <option key={s} value={s}>
-                        {STORY_LABEL[s]}
-                      </option>
-                    ))}
-                  </select>
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  {([1, 2, 3] as Story[]).map((s) => (
+                    <div key={s} className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">{STORY_SHORT_LABEL[s]} floor</span>
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        value={line.windowCounts?.[s] || ""}
+                        placeholder="0"
+                        onChange={(e) =>
+                          updateLine(line.key, {
+                            windowCounts: {
+                              ...line.windowCounts,
+                              [s]: parseInt(e.target.value, 10) || 0,
+                            },
+                            manualPrice: false,
+                          })
+                        }
+                        className="h-8 w-16 text-sm"
+                      />
+                    </div>
+                  ))}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-muted-foreground">Coverage</span>
@@ -243,8 +240,10 @@ export function SmartQuoteLines({ lines, onChange }: Props) {
                   <span className="text-xs text-muted-foreground">Sqft</span>
                   <Input
                     type="number"
+                    inputMode="numeric"
                     min="0"
-                    value={line.sqft ?? 0}
+                    value={line.sqft || ""}
+                    placeholder="0"
                     onChange={(e) =>
                       updateLine(line.key, { sqft: parseFloat(e.target.value) || 0, manualPrice: false })
                     }
@@ -255,9 +254,11 @@ export function SmartQuoteLines({ lines, onChange }: Props) {
                   <span className="text-xs text-muted-foreground">$ / sqft</span>
                   <Input
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     step="0.01"
-                    value={line.rate ?? 0}
+                    value={line.rate || ""}
+                    placeholder="0"
                     onChange={(e) =>
                       updateLine(line.key, { rate: parseFloat(e.target.value) || 0, manualPrice: false })
                     }
@@ -293,9 +294,11 @@ export function SmartQuoteLines({ lines, onChange }: Props) {
                 <span className="text-sm text-muted-foreground">$</span>
                 <Input
                   type="number"
+                  inputMode="decimal"
                   min="0"
                   step="0.01"
-                  value={line.price}
+                  value={line.price || ""}
+                  placeholder="0"
                   onChange={(e) => setManualPrice(line.key, e.target.value)}
                   className="h-8 w-24 text-sm font-semibold text-right"
                 />

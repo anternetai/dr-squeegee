@@ -17,7 +17,11 @@ export const WINDOW_PRICING = {
 }
 
 export const STORY_LABEL: Record<Story, string> = { 1: "1-story", 2: "2-story", 3: "3-story" }
+export const STORY_SHORT_LABEL: Record<Story, string> = { 1: "1st", 2: "2nd", 3: "3rd" }
 export const COVERAGE_LABEL: Record<Coverage, string> = { exterior: "exterior only", both: "in & out" }
+
+/** Per-story window counts for the single combined "Window Cleaning" line — one job, one price, split by story. */
+export type WindowCounts = Partial<Record<Story, number>>
 
 export function computeWindowPrice(count: number, story: Story, coverage: Coverage): number {
   if (!count || count <= 0) return 0
@@ -29,6 +33,37 @@ export function computeWindowPrice(count: number, story: Story, coverage: Covera
 
 export function windowDetail(count: number, story: Story, coverage: Coverage): string {
   return `${count} window${count === 1 ? "" : "s"} · ${STORY_LABEL[story]} · ${COVERAGE_LABEL[coverage]}`
+}
+
+/** Total window count across all stories. */
+export function windowCountsTotal(counts: WindowCounts): number {
+  return ([1, 2, 3] as Story[]).reduce((sum, s) => sum + (counts[s] ?? 0), 0)
+}
+
+/**
+ * One combined price for a single "Window Cleaning" line covering multiple
+ * stories at once (e.g. 8 windows on the 1st floor + 4 on the 2nd). Sums the
+ * per-story subtotal first, then applies the job minimum / rounding ONCE to
+ * the combined total — matches how a real quote reads (one line, one price).
+ */
+export function computeWindowPriceMulti(counts: WindowCounts, coverage: Coverage): number {
+  const total = windowCountsTotal(counts)
+  if (total <= 0) return 0
+  const raw = ([1, 2, 3] as Story[]).reduce((sum, s) => {
+    const c = counts[s] ?? 0
+    if (c <= 0) return sum
+    return sum + c * WINDOW_PRICING.base * WINDOW_PRICING.storyMult[s]
+  }, 0) * WINDOW_PRICING.coverageMult[coverage]
+  const rounded = Math.round(raw / WINDOW_PRICING.roundTo) * WINDOW_PRICING.roundTo
+  return Math.max(WINDOW_PRICING.minJob, rounded)
+}
+
+export function windowDetailMulti(counts: WindowCounts, coverage: Coverage): string {
+  const total = windowCountsTotal(counts)
+  const parts = ([1, 2, 3] as Story[])
+    .filter((s) => (counts[s] ?? 0) > 0)
+    .map((s) => `${counts[s]} ${STORY_SHORT_LABEL[s]}`)
+  return `${total} window${total === 1 ? "" : "s"} (${parts.join(" + ")}) · ${COVERAGE_LABEL[coverage]}`
 }
 
 // ─────────────────────────── SQFT SERVICES ───────────────────────────

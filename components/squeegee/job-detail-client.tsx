@@ -459,6 +459,34 @@ export function JobDetailClient({ job: initialJob }: Props) {
         </div>
       )}
 
+      {/* Add another quote — one flow, prefilled with this client so it's never re-typed */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <FileText className="h-4 w-4 text-[#3A6B4C] shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Send another quote</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  Opens the quote builder with {job.client_name.split(" ")[0]} already picked.
+                </p>
+              </div>
+            </div>
+            <Button asChild size="sm" variant="outline" className="shrink-0">
+              <Link
+                href={
+                  job.client_id
+                    ? `/crm/quotes/new?client_id=${job.client_id}`
+                    : `/crm/quotes/new?client_name=${encodeURIComponent(job.client_name)}&client_phone=${encodeURIComponent(job.client_phone || "")}&client_email=${encodeURIComponent(job.client_email || "")}&address=${encodeURIComponent(job.address)}`
+                }
+              >
+                New Quote
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Generate Quote Text */}
       <Card>
         <CardHeader className="pb-3">

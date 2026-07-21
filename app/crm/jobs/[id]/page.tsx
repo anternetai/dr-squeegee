@@ -4,7 +4,6 @@ import { SqueegeeJob } from "@/lib/squeegee/types"
 import { JobDetailClient } from "@/components/squeegee/job-detail-client"
 import { JobInvoices } from "@/components/squeegee/job-invoices"
 import { JobActivity } from "@/components/squeegee/job-activity"
-import { QuoteBuilder } from "@/components/squeegee/quote-builder"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
@@ -47,7 +46,6 @@ export default async function JobDetailPage({ params }: PageProps) {
       </div>
 
       <JobDetailClient job={job} />
-      <QuoteBuilder job={job} />
       <JobInvoices job={job} />
       <JobActivity jobId={job.id} />
     </div>

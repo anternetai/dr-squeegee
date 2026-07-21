@@ -63,9 +63,9 @@ export default async function ClientDetailPage({ params }: PageProps) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold">{(client as SqueegeeClient).name}</h1>
         <Button asChild className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white">
-          <Link href={`/crm/jobs/new?client_id=${id}`}>
+          <Link href={`/crm/quotes/new?client_id=${id}`}>
             <Plus className="h-4 w-4 mr-2" />
-            New Job
+            New Quote
           </Link>
         </Button>
       </div>
@@ -84,9 +84,9 @@ export default async function ClientDetailPage({ params }: PageProps) {
               </span>
             </CardTitle>
             <Button asChild size="sm" variant="outline">
-              <Link href={`/crm/jobs/new?client_id=${id}`}>
+              <Link href={`/crm/quotes/new?client_id=${id}`}>
                 <Plus className="h-3.5 w-3.5 mr-1.5" />
-                New Job
+                New Quote
               </Link>
             </Button>
           </div>
@@ -97,9 +97,9 @@ export default async function ClientDetailPage({ params }: PageProps) {
               <Briefcase className="h-9 w-9 mx-auto mb-3 opacity-25" />
               <p className="text-sm">No jobs for this client yet.</p>
               <Button asChild className="mt-4 bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white" size="sm">
-                <Link href={`/crm/jobs/new?client_id=${id}`}>
+                <Link href={`/crm/quotes/new?client_id=${id}`}>
                   <Plus className="h-3.5 w-3.5 mr-1.5" />
-                  New Job
+                  New Quote
                 </Link>
               </Button>
             </div>

@@ -140,19 +140,23 @@ export default async function SqueegeePortalPage() {
 
   return (
     <div className="space-y-6">
+      {/* Primary action — big, thumb-reachable, first thing on the screen the
+          home-screen shortcut opens. This is the one flow: client + quote + job. */}
+      <Button
+        asChild
+        className="w-full h-14 text-base font-semibold bg-[#2D8C6F] hover:bg-[#1F6B54] text-white shadow-sm"
+      >
+        <Link href="/crm/quotes/new">
+          <Plus className="h-5 w-5 mr-2" />
+          New Client
+        </Link>
+      </Button>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-sm text-muted-foreground">{allJobs.length} total job{allJobs.length !== 1 ? "s" : ""}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline">
-            <Link href="/crm/jobs/new"><Plus className="h-4 w-4 mr-2" />New Job</Link>
-          </Button>
-          <Button asChild className="bg-[#2D8C6F] hover:bg-[#1F6B54] text-white">
-            <Link href="/crm/quotes/new"><FileText className="h-4 w-4 mr-2" />New Quote</Link>
-          </Button>
         </div>
       </div>
 

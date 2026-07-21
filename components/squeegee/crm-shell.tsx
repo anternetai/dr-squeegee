@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import {
   LayoutDashboard, Briefcase, Users, CalendarDays, CalendarRange, MapPin,
-  MessageSquareHeart, Sparkles, Sun, Moon, LogOut, Menu, X, FileText,
+  MessageSquareHeart, Sparkles, Sun, Moon, LogOut, Menu, X, FileText, DoorOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -20,6 +20,7 @@ const NAV = [
   { label: "Follow-Ups", href: "/crm/followups",    icon: MessageSquareHeart },
   { label: "Calendar",   href: "/crm/calendar",     icon: CalendarDays },
   { label: "Territories",href: "/crm/territories",  icon: MapPin },
+  { label: "Knocks",     href: "/crm/knocks",       icon: DoorOpen },
 ]
 
 export function CrmShell({ children }: { children: React.ReactNode }) {
