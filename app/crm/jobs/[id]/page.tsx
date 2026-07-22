@@ -1,9 +1,11 @@
 import { createClient } from "@/lib/supabase/server"
+import { createClient as createServiceClient } from "@supabase/supabase-js"
 import { notFound } from "next/navigation"
 import { SqueegeeJob } from "@/lib/squeegee/types"
 import { JobDetailClient } from "@/components/squeegee/job-detail-client"
 import { JobInvoices } from "@/components/squeegee/job-invoices"
 import { JobActivity } from "@/components/squeegee/job-activity"
+import { JobAssign } from "@/components/squeegee/job-assign"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
@@ -35,6 +37,20 @@ export default async function JobDetailPage({ params }: PageProps) {
     .limit(1)
     .maybeSingle()
 
+  // squeegee_employees is service-role only (RLS on, no policies) — the SSR
+  // client above would read zero rows, so use a service-role client here.
+  const admin = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+  const { data: crew } = await admin
+    .from("squeegee_employees")
+    .select("id, name")
+    .eq("status", "active")
+    .order("name")
+
+  const assignedEmployeeId = (job as { assigned_employee_id?: string | null }).assigned_employee_id ?? null
+
   return (
     <div className="space-y-5">
       <div>
@@ -56,6 +72,7 @@ export default async function JobDetailPage({ params }: PageProps) {
       </div>
 
       <JobDetailClient job={job} />
+      <JobAssign jobId={job.id} employees={crew ?? []} current={assignedEmployeeId} />
       <JobInvoices job={job} quoteToken={latestQuote?.token ?? null} />
       <JobActivity jobId={job.id} />
     </div>
