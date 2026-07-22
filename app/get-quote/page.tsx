@@ -34,17 +34,33 @@ function CrawlerFallback() {
         >
           Call (980) 242-8048
         </a>
-        {/* SMS opt-in disclosure — server-rendered so carrier/A2P vetting crawlers
-            can verify the consent language that appears in the quote form. */}
-        <div className="text-left max-w-md mx-auto mt-10 text-xs text-[#9CA3AF]/60 space-y-2">
-          <p>
-            SMS consent: when requesting a quote you may optionally check a box that reads: &quot;I agree to
-            receive SMS text messages from Dr. Squeegee at the number provided (quote follow-ups, reminders,
-            service updates). Msg frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out.&quot;
+        {/* SMS opt-in form — server-rendered as real markup so carrier/A2P vetting
+            crawlers (which fetch raw HTML, no JS) can verify the CTA: phone field +
+            optional unchecked consent checkbox. The interactive quote wizard replaces
+            this on hydration; the same step is live at /get-quote?step=contact.
+            Campaign QE2c6890 was rejected 30909 when this existed only client-side. */}
+        <div className="text-left max-w-md mx-auto mt-10 bg-[#111111] border border-[#242424] rounded-2xl p-6">
+          <h2 className="text-lg font-bold text-white mb-1">Almost done — where do we send it?</h2>
+          <p className="text-sm text-[#9CA3AF]/60 mb-4">We&apos;ll text your quote. No spam, ever.</p>
+          <div className="space-y-3">
+            <input type="text" name="first_name" placeholder="First name" className="w-full px-4 py-3 bg-[#1A1A1A] border border-[#242424] rounded-lg text-sm text-white placeholder:text-[#9CA3AF]/40" />
+            <input type="tel" name="phone" placeholder="Phone number" className="w-full px-4 py-3 bg-[#1A1A1A] border border-[#242424] rounded-lg text-sm text-white placeholder:text-[#9CA3AF]/40" />
+            <div className="flex items-start gap-3 pt-1">
+              <input type="checkbox" id="sms-consent-ssr" name="sms_consent" className="mt-1 h-4 w-4 shrink-0 rounded border-[#242424] accent-[#2D8C6F]" />
+              <label htmlFor="sms-consent-ssr" className="text-[11px] text-[#9CA3AF]/60 leading-relaxed">
+                I agree to receive SMS text messages from Dr. Squeegee at the number provided (quote follow-ups,
+                reminders, service updates). Msg frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out.
+                See our <a href="/privacy" className="underline text-[#2D8C6F]">Privacy Policy</a> &amp;{" "}
+                <a href="/terms" className="underline text-[#2D8C6F]">Terms</a>.
+              </label>
+            </div>
+            <span className="block w-full text-center font-semibold py-3.5 rounded-lg text-white bg-[#2D8C6F]">Get My Free Quote</span>
+          </div>
+          <p className="text-[11px] text-[#9CA3AF]/60 mt-4">
             Reply HELP for help. Consent is not a condition of purchase. No mobile information will be shared
             with third parties or affiliates for marketing or promotional purposes.
           </p>
-          <p>
+          <p className="text-[11px] mt-2 text-[#9CA3AF]/60">
             <a href="/sms" className="underline">SMS Program</a> ·{" "}
             <a href="/privacy" className="underline">Privacy Policy</a> ·{" "}
             <a href="/terms" className="underline">Terms of Service</a>

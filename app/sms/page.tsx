@@ -65,6 +65,22 @@ export default function SmsProgram() {
           <p>Consent to receive text messages is optional and is not a condition of purchasing any service.</p>
 
           <h2 style={{ fontFamily: "var(--font-brand-display), serif" }} className="text-2xl font-bold text-[#2B2B2B] pt-4">
+            The Opt-In Form
+          </h2>
+          <p>
+            This is the exact contact step of our quote form where SMS consent is collected. View it live:{" "}
+            <a href="/get-quote?step=contact" className="underline text-[#3A6B4C]">
+              drsqueegeeclt.com/get-quote?step=contact
+            </a>
+            . The checkbox is unchecked by default and optional.
+          </p>
+          <img
+            src="/images/sms/optin-step.png"
+            alt="Dr. Squeegee quote form contact step showing the optional, unchecked SMS consent checkbox and its full consent language"
+            className="w-full max-w-xl rounded-lg border border-[#3A6B4C]/20 shadow-sm"
+          />
+
+          <h2 style={{ fontFamily: "var(--font-brand-display), serif" }} className="text-2xl font-bold text-[#2B2B2B] pt-4">
             Message Frequency &amp; Rates
           </h2>
           <p>

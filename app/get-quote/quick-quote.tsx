@@ -107,7 +107,11 @@ function AddressAutocomplete({
 
 export function QuickQuote({ id }: { id?: string }) {
   const searchParams = useSearchParams()
-  const [step, setStep] = useState(1)
+  // ?step=contact opens the form on the contact/consent step — the A2P campaign's
+  // MessageFlow cites this URL so carrier reviewers land on the SMS opt-in checkbox
+  // without tapping through the wizard (campaign QE2c6890 was rejected 30909 because
+  // the checkbox only exists on step 4).
+  const [step, setStep] = useState(() => (searchParams.get("step") === "contact" ? 4 : 1))
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -136,7 +140,7 @@ export function QuickQuote({ id }: { id?: string }) {
           phone: phone.trim(),
           email: email.trim() || undefined,
           address: address.trim() || undefined,
-          services: [service],
+          services: [service || "Multiple Services"],
           property_type: propertyType,
           timeline: frequency,
           sms_consent: smsConsent,
