@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js"
 import { redirect } from "next/navigation"
 import { getSessionEmployee } from "@/lib/squeegee/employee-auth"
-import { TeamView, type CrewJob } from "./team-view"
+import { ONBOARDING_TASKS } from "@/lib/squeegee/company"
+import { TeamView, type CrewJob, type ChecklistItem } from "./team-view"
 
 export const dynamic = "force-dynamic"
 
@@ -19,12 +20,35 @@ export default async function TeamHome() {
   }
 
   const supabase = getAdmin()
-  const { data: jobs } = await supabase
-    .from("squeegee_jobs")
-    .select("id, client_name, client_phone, address, service_type, notes, status, price, appointment_date, appointment_time, completed_at")
-    .eq("assigned_employee_id", employee.id)
-    .order("appointment_date", { ascending: true, nullsFirst: false })
-    .limit(100)
+  const [{ data: jobs }, { data: me }] = await Promise.all([
+    supabase
+      .from("squeegee_jobs")
+      .select("id, client_name, client_phone, address, service_type, notes, status, price, appointment_date, appointment_time, completed_at")
+      .eq("assigned_employee_id", employee.id)
+      .order("appointment_date", { ascending: true, nullsFirst: false })
+      .limit(100),
+    supabase
+      .from("squeegee_employees")
+      .select("onboarding_checklist, agreement_signed_at, onboarded_at")
+      .eq("id", employee.id)
+      .single(),
+  ])
 
-  return <TeamView employee={{ id: employee.id, name: employee.name }} jobs={(jobs ?? []) as CrewJob[]} />
+  const checklistState = (me?.onboarding_checklist as Record<string, boolean>) ?? {}
+  const checklist: ChecklistItem[] = ONBOARDING_TASKS.map((t) => {
+    let done = !!checklistState[t.key]
+    if (t.auto) {
+      if (t.key === "account") done = !!me?.onboarded_at
+      else if (t.key === "agreement") done = !!me?.agreement_signed_at
+    }
+    return { key: t.key, label: t.label, detail: t.detail ?? null, auto: !!t.auto, done }
+  })
+
+  return (
+    <TeamView
+      employee={{ id: employee.id, name: employee.name }}
+      jobs={(jobs ?? []) as CrewJob[]}
+      checklist={checklist}
+    />
+  )
 }

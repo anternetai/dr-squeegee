@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Copy, Check, RefreshCw, Save, UserX, UserCheck, Briefcase } from "lucide-react"
 import { ROLES, PAY_TYPES, DAYS, STATUSES } from "@/lib/squeegee/employees"
+import { ONBOARDING_TASKS } from "@/lib/squeegee/company"
 
 export interface EmployeeDetail {
   id: string
   created_at: string
   name: string
+  legal_name: string | null
   phone: string | null
   email: string | null
   role: string
@@ -26,6 +28,7 @@ export interface EmployeeDetail {
   onboarded_at: string | null
   last_login_at: string | null
   notes: string | null
+  onboarding_checklist: Record<string, boolean> | null
 }
 
 export interface AssignedJob {
@@ -62,11 +65,31 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
     notes: employee.notes ?? "",
     availability: employee.availability ?? {},
   })
+  const [legalName, setLegalName] = useState(employee.legal_name ?? "")
+  const [checklist, setChecklist] = useState<Record<string, boolean>>(employee.onboarding_checklist ?? {})
   const [token, setToken] = useState(employee.invite_token)
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  function taskDone(key: string, auto?: boolean): boolean {
+    if (auto) {
+      if (key === "account") return !!employee.onboarded_at
+      if (key === "agreement") return !!employee.agreement_signed_at
+    }
+    return !!checklist[key]
+  }
+
+  async function toggleTask(key: string) {
+    const nextChecklist = { ...checklist, [key]: !checklist[key] }
+    setChecklist(nextChecklist)
+    await fetch(`/api/crm/employees/${employee.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ onboarding_checklist: nextChecklist }),
+    })
+  }
 
   function toggleDay(key: string) {
     setForm((f) => ({ ...f, availability: { ...f.availability, [key]: !f.availability[key as keyof typeof f.availability] } }))
@@ -80,6 +103,7 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: form.name,
+        legal_name: legalName,
         phone: form.phone,
         email: form.email,
         role: form.role,
@@ -163,10 +187,43 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
         </div>
       )}
 
+      {/* Onboarding checklist */}
+      <Card title="Onboarding checklist">
+        <div className="space-y-1">
+          {ONBOARDING_TASKS.map((t) => {
+            const done = taskDone(t.key, t.auto)
+            return (
+              <button
+                key={t.key}
+                type="button"
+                disabled={t.auto}
+                onClick={() => !t.auto && toggleTask(t.key)}
+                className={`w-full flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-left ${t.auto ? "cursor-default" : "hover:bg-muted"}`}
+              >
+                <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border flex items-center justify-center ${done ? "bg-[#2D8C6F] border-[#2D8C6F]" : "border-border"}`}>
+                  {done && <Check className="h-3 w-3 text-white" />}
+                </span>
+                <span className="min-w-0">
+                  <span className={`text-sm ${done ? "text-muted-foreground line-through" : "font-medium"}`}>{t.label}</span>
+                  {t.detail && <span className="block text-xs text-muted-foreground">{t.detail}</span>}
+                  {t.auto && <span className="text-[10px] text-muted-foreground"> (auto)</span>}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground pt-1">
+          SSN, W-4, I-9 and direct deposit are collected in <span className="font-medium">Gusto</span> — invite them there separately; check &quot;Complete your Gusto onboarding&quot; once they finish.
+        </p>
+      </Card>
+
       {/* Core fields */}
       <Card title="Details">
-        <Field label="Name">
+        <Field label="Name (display)">
           <input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </Field>
+        <Field label="Legal full name (for payroll / Gusto)">
+          <input className={inputCls} value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder="As on their ID" />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Phone">

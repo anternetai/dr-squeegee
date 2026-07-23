@@ -94,6 +94,7 @@ export async function POST(
     const update: Record<string, unknown> = {
       email,
       password_hash: await hashPassword(password),
+      legal_name: body.legal_name ? String(body.legal_name) : null,
       phone: body.phone ? String(body.phone) : null,
       address: body.address ? String(body.address) : null,
       emergency_contact_name: body.emergency_contact_name ? String(body.emergency_contact_name) : null,

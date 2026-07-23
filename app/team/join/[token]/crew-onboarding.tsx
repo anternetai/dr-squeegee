@@ -2,8 +2,9 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Check, ShieldCheck } from "lucide-react"
+import { ArrowRight, Check, ShieldCheck, Heart } from "lucide-react"
 import { DAYS } from "@/lib/squeegee/employees"
+import { MISSION, VALUES, EXPECTATIONS } from "@/lib/squeegee/company"
 
 interface Prefill {
   name: string
@@ -18,13 +19,15 @@ interface Prefill {
 const inputCls =
   "w-full rounded-xl bg-[#111111] border border-[#242424] px-4 py-3 text-white outline-none focus:border-[#2D8C6F] placeholder:text-gray-600"
 
-// Light 1099 acknowledgment. Anthony: have this wording reviewed before real use.
-const AGREEMENT = `As a Dr. Squeegee crew member, I understand I am being engaged as an independent contractor. I agree to show up to assigned jobs on time, treat every customer's property with care, follow Dr. Squeegee's service standards, and represent the company professionally. I understand I am responsible for my own taxes on any pay I receive, and that this arrangement can be ended by either party at any time.`
+// W-2 acknowledgment — values + at-will employment. The legal W-4/I-9/tax forms
+// are handled in Gusto, not here. Anthony: have this wording reviewed before real use.
+const AGREEMENT = `As a Dr. Squeegee crew member, I agree to live out our values on the job: to leave every property better than I found it, to work whole-souled, to be honest in all things, to treat people and their property with respect, and to be skilled and dependable. I understand I'll complete my tax and payroll paperwork (W-4, I-9, direct deposit) through Gusto, that my employment is at-will — meaning either I or the company may end it at any time — and that I'll follow Dr. Squeegee's standards and safety practices.`
 
 export function CrewOnboarding({ token, prefill }: { token: string; prefill: Prefill }) {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
+    legal_name: prefill.name,
     phone: prefill.phone,
     email: prefill.email,
     address: prefill.address,
@@ -39,7 +42,7 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const first = prefill.name.trim().split(/\s+/)[0]
-  const TOTAL = 5
+  const TOTAL = 7 // steps 0..6, success = 7
 
   function toggleDay(key: string) {
     setForm((f) => ({ ...f, availability: { ...f.availability, [key]: !f.availability[key] } }))
@@ -47,11 +50,11 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
 
   function next() {
     setError(null)
-    if (step === 1 && !form.email.trim()) {
+    if (step === 3 && !form.email.trim()) {
       setError("We need an email so you can log in.")
       return
     }
-    if (step === 3) {
+    if (step === 5) {
       if (!form.agreed) {
         setError("Please check the box to agree.")
         return
@@ -81,6 +84,7 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
       body: JSON.stringify({
         email: form.email,
         password: form.password,
+        legal_name: form.legal_name,
         phone: form.phone,
         address: form.address,
         emergency_contact_name: form.emergency_contact_name,
@@ -96,16 +100,15 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
       setError(data.error ?? "Something went wrong.")
       return
     }
-    setStep(TOTAL) // success screen
+    setStep(TOTAL)
     setTimeout(() => {
       router.push("/team")
       router.refresh()
-    }, 2200)
+    }, 2400)
   }
 
   return (
     <div className="min-h-screen flex flex-col max-w-md mx-auto px-6">
-      {/* Progress */}
       {step < TOTAL && (
         <div className="flex gap-1.5 pt-6">
           {Array.from({ length: TOTAL }).map((_, i) => (
@@ -120,15 +123,57 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
           <div className="text-center space-y-4">
             <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-20 w-auto mx-auto" />
             <h1 className="text-3xl font-bold">Welcome to the crew, {first}! 🎉</h1>
-            <p className="text-gray-400">Quick setup — about 2 minutes. Then you&apos;ll see your jobs right here on your phone.</p>
+            <p className="text-gray-400">Quick setup — about 3 minutes. First, a little about who we are and what we&apos;re about.</p>
           </div>
         )}
 
-        {/* 1 — Contact */}
+        {/* 1 — Who we are (mission + values) */}
         {step === 1 && (
           <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Heart className="h-6 w-6 text-[#2D8C6F]" />
+              <h2 className="text-2xl font-bold">Who we are</h2>
+            </div>
+            <p className="text-sm text-gray-300 bg-[#111111] border border-[#242424] rounded-xl p-4 leading-relaxed">{MISSION}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 pt-1">Our values</p>
+            <div className="space-y-2.5">
+              {VALUES.map((v, i) => (
+                <div key={v.title} className="flex gap-3">
+                  <span className="text-[#2D8C6F] font-bold shrink-0">{i + 1}.</span>
+                  <div>
+                    <p className="font-semibold leading-tight">{v.title}</p>
+                    <p className="text-sm text-gray-400">{v.body}{v.scripture && <span className="text-[#2D8C6F]"> — {v.scripture}</span>}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 2 — What's expected */}
+        {step === 2 && (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">What&apos;s expected</h2>
+            <p className="text-sm text-gray-400 -mt-2">The everyday standards behind the values.</p>
+            <ul className="space-y-2.5">
+              {EXPECTATIONS.map((e) => (
+                <li key={e} className="flex gap-3 text-sm text-gray-300">
+                  <Check className="h-4 w-4 text-[#2D8C6F] shrink-0 mt-0.5" />
+                  <span>{e}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* 3 — Contact */}
+        {step === 3 && (
+          <div className="space-y-4">
             <h2 className="text-2xl font-bold">Your info</h2>
-            <p className="text-sm text-gray-400 -mt-2">Make sure this is right — it&apos;s how we reach you.</p>
+            <p className="text-sm text-gray-400 -mt-2">Make sure this is right — it&apos;s how we reach you and set up your pay.</p>
+            <Labeled label="Legal full name (for payroll)">
+              <input className={inputCls} value={form.legal_name} onChange={(e) => setForm({ ...form, legal_name: e.target.value })} placeholder="As it appears on your ID" />
+            </Labeled>
             <Labeled label="Email (your login)">
               <input className={inputCls} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@email.com" inputMode="email" />
             </Labeled>
@@ -149,8 +194,8 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
           </div>
         )}
 
-        {/* 2 — Availability */}
-        {step === 2 && (
+        {/* 4 — Availability */}
+        {step === 4 && (
           <div className="space-y-4">
             <h2 className="text-2xl font-bold">When can you work?</h2>
             <p className="text-sm text-gray-400 -mt-2">Tap the days you&apos;re usually available. You can change this later.</p>
@@ -168,8 +213,8 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
           </div>
         )}
 
-        {/* 3 — Agreement */}
-        {step === 3 && (
+        {/* 5 — Agreement */}
+        {step === 5 && (
           <div className="space-y-4">
             <h2 className="text-2xl font-bold flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-[#2D8C6F]" /> The agreement</h2>
             <div className="rounded-xl bg-[#111111] border border-[#242424] p-4 text-sm text-gray-300 leading-relaxed max-h-52 overflow-y-auto">
@@ -186,8 +231,8 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
           </div>
         )}
 
-        {/* 4 — Password */}
-        {step === 4 && (
+        {/* 6 — Password */}
+        {step === 6 && (
           <div className="space-y-4">
             <h2 className="text-2xl font-bold">Set your password</h2>
             <p className="text-sm text-gray-400 -mt-2">You&apos;ll log in with your email and this password.</p>
@@ -196,25 +241,24 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
           </div>
         )}
 
-        {/* 5 — Done */}
+        {/* 7 — Done */}
         {step === TOTAL && (
           <div className="text-center space-y-4">
             <div className="mx-auto h-16 w-16 rounded-full bg-[#2D8C6F]/15 flex items-center justify-center">
               <Check className="h-9 w-9 text-[#2D8C6F]" />
             </div>
             <h1 className="text-3xl font-bold">You&apos;re in! 🧭</h1>
-            <p className="text-gray-400">Taking you to your jobs…</p>
-            <p className="text-xs text-gray-600">Tip: add this to your home screen for one-tap access.</p>
+            <p className="text-gray-400">A couple setup steps are waiting for you inside — including your Gusto onboarding so you get paid.</p>
+            <p className="text-xs text-gray-600">Taking you to your portal…</p>
           </div>
         )}
 
         {error && step < TOTAL && <p className="text-sm text-red-400 mt-4">{error}</p>}
       </div>
 
-      {/* Footer button */}
       {step < TOTAL && (
         <div className="pb-8">
-          {step < 4 ? (
+          {step < 6 ? (
             <button onClick={next} className="w-full rounded-xl bg-[#2D8C6F] py-4 font-semibold text-white hover:bg-[#1F6B54] flex items-center justify-center gap-2">
               {step === 0 ? "Let's go" : "Continue"} <ArrowRight className="h-4 w-4" />
             </button>

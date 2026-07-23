@@ -1,8 +1,9 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { MapPin, Phone, MessageSquare, CheckCircle2, LogOut, CalendarDays, Clock } from "lucide-react"
+import { MapPin, Phone, MessageSquare, CheckCircle2, LogOut, CalendarDays, Clock, BookOpen, Circle } from "lucide-react"
 
 export interface CrewJob {
   id: string
@@ -16,6 +17,14 @@ export interface CrewJob {
   appointment_date: string | null
   appointment_time: string | null
   completed_at: string | null
+}
+
+export interface ChecklistItem {
+  key: string
+  label: string
+  detail: string | null
+  auto: boolean
+  done: boolean
 }
 
 function todayKey(): string {
@@ -36,9 +45,18 @@ function prettyTime(t: string | null): string | null {
   return `${hr}:${String(m).padStart(2, "0")} ${ampm}`
 }
 
-export function TeamView({ employee, jobs: initial }: { employee: { id: string; name: string }; jobs: CrewJob[] }) {
+export function TeamView({
+  employee,
+  jobs: initial,
+  checklist: initialChecklist,
+}: {
+  employee: { id: string; name: string }
+  jobs: CrewJob[]
+  checklist: ChecklistItem[]
+}) {
   const router = useRouter()
   const [jobs, setJobs] = useState(initial)
+  const [checklist, setChecklist] = useState(initialChecklist)
   const first = employee.name.trim().split(/\s+/)[0]
 
   const { today, upcoming, done } = useMemo(() => {
@@ -64,6 +82,21 @@ export function TeamView({ employee, jobs: initial }: { employee: { id: string; 
     setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, status: "complete", completed_at: new Date().toISOString() } : j)))
   }
 
+  async function toggleTask(key: string, done: boolean) {
+    setChecklist((prev) => prev.map((t) => (t.key === key ? { ...t, done } : t)))
+    const res = await fetch("/api/team/checklist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, done }),
+    })
+    if (!res.ok) {
+      // revert on failure
+      setChecklist((prev) => prev.map((t) => (t.key === key ? { ...t, done: !done } : t)))
+    }
+  }
+
+  const setupRemaining = checklist.filter((t) => !t.done).length
+
   return (
     <div className="mx-auto max-w-lg px-4 pb-16">
       {/* Header */}
@@ -72,10 +105,17 @@ export function TeamView({ employee, jobs: initial }: { employee: { id: string; 
           <p className="text-xs uppercase tracking-widest text-[#2D8C6F] font-semibold">Dr. Squeegee Crew</p>
           <h1 className="text-2xl font-bold">Hey, {first}</h1>
         </div>
-        <button onClick={logout} className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5">
-          <LogOut className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <Link href="/team/standards" className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5" aria-label="Standards">
+            <BookOpen className="h-5 w-5" />
+          </Link>
+          <button onClick={logout} className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5" aria-label="Log out">
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
       </header>
+
+      {setupRemaining > 0 && <SetupChecklist checklist={checklist} onToggle={toggleTask} />}
 
       {jobs.length === 0 && (
         <div className="text-center py-20 text-gray-500">
@@ -110,6 +150,42 @@ function Section({ label, children }: { label: string; children: React.ReactNode
       <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">{label}</h2>
       <div className="space-y-3">{children}</div>
     </section>
+  )
+}
+
+function SetupChecklist({ checklist, onToggle }: { checklist: ChecklistItem[]; onToggle: (key: string, done: boolean) => void }) {
+  const done = checklist.filter((t) => t.done).length
+  return (
+    <div className="mb-6 rounded-2xl border border-[#2D8C6F]/40 bg-[#2D8C6F]/[0.06] p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold">Finish getting set up</h2>
+        <span className="text-xs text-gray-400">{done}/{checklist.length}</span>
+      </div>
+      <div className="space-y-1.5">
+        {checklist.map((t) => {
+          const clickable = !t.auto
+          return (
+            <button
+              key={t.key}
+              type="button"
+              disabled={!clickable}
+              onClick={() => clickable && onToggle(t.key, !t.done)}
+              className={`w-full flex items-start gap-3 rounded-lg px-2 py-2 text-left ${clickable ? "hover:bg-white/5" : "cursor-default"}`}
+            >
+              {t.done ? (
+                <CheckCircle2 className="h-5 w-5 text-[#2D8C6F] shrink-0 mt-0.5" />
+              ) : (
+                <Circle className="h-5 w-5 text-gray-600 shrink-0 mt-0.5" />
+              )}
+              <span className="min-w-0">
+                <span className={`text-sm font-medium ${t.done ? "text-gray-500 line-through" : "text-white"}`}>{t.label}</span>
+                {t.detail && !t.done && <span className="block text-xs text-gray-400 mt-0.5">{t.detail}</span>}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 

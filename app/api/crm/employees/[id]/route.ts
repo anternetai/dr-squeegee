@@ -62,6 +62,8 @@ export async function PATCH(
     if ("address" in body) update.address = body.address ? String(body.address) : null
     if ("emergency_contact_name" in body) update.emergency_contact_name = body.emergency_contact_name ? String(body.emergency_contact_name) : null
     if ("emergency_contact_phone" in body) update.emergency_contact_phone = body.emergency_contact_phone ? String(body.emergency_contact_phone) : null
+    if ("legal_name" in body) update.legal_name = body.legal_name ? String(body.legal_name) : null
+    if ("onboarding_checklist" in body && body.onboarding_checklist && typeof body.onboarding_checklist === "object") update.onboarding_checklist = body.onboarding_checklist
     if ("notes" in body) update.notes = body.notes ? String(body.notes) : null
   }
 

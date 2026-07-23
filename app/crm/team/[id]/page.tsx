@@ -24,7 +24,7 @@ export default async function EmployeeDetailPage({
     supabase
       .from("squeegee_employees")
       .select(
-        "id, created_at, name, phone, email, role, status, pay_type, pay_rate, availability, address, emergency_contact_name, emergency_contact_phone, invite_token, agreement_signed_at, onboarded_at, last_login_at, notes"
+        "id, created_at, name, legal_name, phone, email, role, status, pay_type, pay_rate, availability, address, emergency_contact_name, emergency_contact_phone, invite_token, agreement_signed_at, onboarded_at, last_login_at, notes, onboarding_checklist"
       )
       .eq("id", id)
       .single(),
