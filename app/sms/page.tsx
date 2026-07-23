@@ -10,7 +10,12 @@ export const metadata: Metadata = {
   },
 }
 
-export default function SmsProgram() {
+export default async function SmsProgram({
+  searchParams,
+}: {
+  searchParams: Promise<{ subscribed?: string; error?: string }>
+}) {
+  const sp = await searchParams
   return (
     <div className="min-h-screen bg-[#FEFCF7] text-[#2B2B2B]" style={{ fontFamily: "var(--font-brand-body), sans-serif" }}>
       <header className="border-b border-[#3A6B4C]/10 bg-[#FEFCF7]/90">
@@ -29,7 +34,55 @@ export default function SmsProgram() {
         <h1 style={{ fontFamily: "var(--font-brand-display), serif" }} className="text-3xl md:text-4xl font-bold mb-2 text-[#2B2B2B]">
           Dr. Squeegee SMS Program
         </h1>
-        <p className="text-[#2B2B2B]/50 mb-10">Program disclosures — last updated July 16, 2026</p>
+        <p className="text-[#2B2B2B]/50 mb-10">Program disclosures — last updated July 22, 2026</p>
+
+        {/* Standalone opt-in form — a plain no-JavaScript HTML form so the full
+            consent CTA is visible and submittable at this exact URL for both
+            customers and A2P carrier reviewers (the URL cited as the primary
+            opt-in in the campaign MessageFlow). */}
+        <section id="signup" className="mb-14 rounded-2xl border border-[#3A6B4C]/20 bg-white p-6 md:p-8 shadow-sm">
+          <h2 style={{ fontFamily: "var(--font-brand-display), serif" }} className="text-2xl font-bold text-[#2B2B2B] mb-1">
+            Sign Up for Text Updates
+          </h2>
+          <p className="text-[#2B2B2B]/60 mb-5 text-sm">
+            Get quote follow-ups, appointment reminders, and service updates by text. Optional — never required to buy.
+          </p>
+          {sp?.subscribed === "1" && (
+            <div className="mb-5 rounded-lg bg-[#3A6B4C]/10 border border-[#3A6B4C]/30 px-4 py-3 text-[#3A6B4C] text-sm">
+              You&apos;re signed up. We&apos;ll text you from (980) 242-8048. Reply STOP any time to opt out.
+            </div>
+          )}
+          {sp?.error === "1" && (
+            <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-red-700 text-sm">
+              Please enter a valid phone number and check the consent box to sign up.
+            </div>
+          )}
+          <form action="/api/squeegee/sms-optin" method="POST" className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="optin-name" className="block text-sm font-medium text-[#2B2B2B] mb-1">Name</label>
+                <input id="optin-name" name="name" type="text" placeholder="Your name" className="w-full rounded-lg border border-[#3A6B4C]/25 bg-[#FEFCF7] px-3.5 py-2.5 text-[#2B2B2B] placeholder:text-[#2B2B2B]/35 focus:outline-none focus:border-[#3A6B4C]" />
+              </div>
+              <div>
+                <label htmlFor="optin-phone" className="block text-sm font-medium text-[#2B2B2B] mb-1">Mobile phone <span className="text-red-500">*</span></label>
+                <input id="optin-phone" name="phone" type="tel" required placeholder="(704) 555-1234" className="w-full rounded-lg border border-[#3A6B4C]/25 bg-[#FEFCF7] px-3.5 py-2.5 text-[#2B2B2B] placeholder:text-[#2B2B2B]/35 focus:outline-none focus:border-[#3A6B4C]" />
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <input id="optin-consent" name="sms_consent" type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-[#3A6B4C]" />
+              <label htmlFor="optin-consent" className="text-xs text-[#2B2B2B]/70 leading-relaxed">
+                I agree to receive recurring SMS text messages from Dr. Squeegee at the number provided (quote
+                follow-ups, appointment reminders, service updates, invoices). Msg frequency varies. Msg &amp; data
+                rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of purchase. See our{" "}
+                <a href="/privacy" className="underline text-[#3A6B4C]">Privacy Policy</a> and{" "}
+                <a href="/terms" className="underline text-[#3A6B4C]">Terms of Service</a>.
+              </label>
+            </div>
+            <button type="submit" className="w-full sm:w-auto rounded-lg bg-[#3A6B4C] px-6 py-3 font-semibold text-white hover:bg-[#2F5A3F] transition-colors">
+              Sign Me Up for Texts
+            </button>
+          </form>
+        </section>
 
         <div className="prose prose-lg max-w-none space-y-6 text-[#2B2B2B]/80">
           <h2 style={{ fontFamily: "var(--font-brand-display), serif" }} className="text-2xl font-bold text-[#2B2B2B] pt-4">
@@ -65,14 +118,16 @@ export default function SmsProgram() {
           <p>Consent to receive text messages is optional and is not a condition of purchasing any service.</p>
 
           <h2 style={{ fontFamily: "var(--font-brand-display), serif" }} className="text-2xl font-bold text-[#2B2B2B] pt-4">
-            The Opt-In Form
+            The Opt-In Forms
           </h2>
           <p>
-            This is the exact contact step of our quote form where SMS consent is collected. View it live:{" "}
+            The consent form at the top of this page (<a href="#signup" className="underline text-[#3A6B4C]">Sign Up for Text Updates</a>)
+            is our primary opt-in. The same unchecked, optional consent checkbox also appears on the contact step of
+            our quote form — view it live at{" "}
             <a href="/get-quote?step=contact" className="underline text-[#3A6B4C]">
               drsqueegeeclt.com/get-quote?step=contact
             </a>
-            . The checkbox is unchecked by default and optional.
+            :
           </p>
           <img
             src="/images/sms/optin-step.png"
