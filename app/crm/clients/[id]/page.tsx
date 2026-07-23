@@ -14,6 +14,7 @@ import {
   Briefcase,
 } from "lucide-react"
 import { ClientDetailClient } from "@/components/squeegee/client-detail-client"
+import { ClientSms } from "@/components/squeegee/client-sms"
 
 const STATUS_COLORS: Record<JobStatus, string> = {
   new: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -72,6 +73,14 @@ export default async function ClientDetailPage({ params }: PageProps) {
 
       {/* Client info card — editable */}
       <ClientDetailClient client={client as SqueegeeClient} />
+
+      {/* Quick text + consent */}
+      <ClientSms
+        clientId={id}
+        name={(client as SqueegeeClient).name}
+        phone={(client as { phone: string | null }).phone}
+        initialConsent={!!(client as { sms_consent?: boolean }).sms_consent}
+      />
 
       {/* Jobs list */}
       <Card>

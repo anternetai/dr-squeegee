@@ -3,6 +3,7 @@
 //  - app/api/squeegee/quotes/full/route.ts (new one-screen quick-quote flow)
 // so the insert shape and job-flip-to-"quoted" side effect can never drift apart.
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { smsQuoteReady } from "./sms-events"
 
 export interface QuoteServiceInput {
   name: string
@@ -81,6 +82,12 @@ export async function createQuote(
         service_type: serviceNames,
       })
       .eq("id", job_id)
+  }
+
+  // Text the customer their quote link (consent-gated + test-mode inside sendSms;
+  // a no-consent number is silently skipped, never blocks quote creation).
+  if (data && client_phone) {
+    await smsQuoteReady({ name: client_name, phone: client_phone, token: data.token, quoteId: data.id }).catch(() => {})
   }
 
   return { quote: data, total_price, error: null }

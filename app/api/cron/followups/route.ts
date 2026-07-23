@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
+import { sendSms } from "@/lib/squeegee/sms"
 
 // Daily follow-up digest — surfaces quotes/plans waiting on a customer answer.
 //
@@ -146,6 +147,17 @@ export async function GET(request: NextRequest) {
       // Don't stamp last_followup_at if the digest never reached him.
       console.error("followups digest Slack post failed:", slackJson.error)
       return NextResponse.json({ error: `Slack: ${slackJson.error}` }, { status: 502 })
+    }
+
+    // Auto-SMS the follow-ups when enabled — consent + opt-out + test-mode all
+    // enforced inside sendSms, so a no-consent number is simply skipped. The
+    // digest above still goes to Anthony either way, so he sees what went out.
+    if (process.env.FOLLOWUPS_SMS_ENABLED === "true") {
+      for (const i of items) {
+        if (!i.phone) continue
+        const body = `Dr. Squeegee: Hi ${firstName(i.clientName)}, just following up — still happy to get you taken care of: ${i.url}. Reply STOP to opt out.`
+        await sendSms({ phone: i.phone, body, kind: "quote_followup", relatedType: i.kind, relatedId: i.id }).catch(() => {})
+      }
     }
 
     const stamp = new Date().toISOString()

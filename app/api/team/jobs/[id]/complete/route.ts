@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
 import { getSessionEmployee } from "@/lib/squeegee/employee-auth"
+import { smsReviewOnce } from "@/lib/squeegee/sms-events"
 
 function getAdmin() {
   return createClient(
@@ -27,7 +28,7 @@ export async function POST(
   const supabase = getAdmin()
   const { data: job } = await supabase
     .from("squeegee_jobs")
-    .select("id, assigned_employee_id, status")
+    .select("id, assigned_employee_id, status, client_name, client_phone")
     .eq("id", id)
     .single()
 
@@ -48,6 +49,13 @@ export async function POST(
     console.error("Job complete error:", error)
     return NextResponse.json({ error: "Could not mark done. Try again." }, { status: 500 })
   }
+
+  // Ask for a Google review (consent-gated, deduped, test-mode inside sendSms).
+  await smsReviewOnce({
+    jobId: id,
+    name: (job.client_name as string) ?? "",
+    phone: (job.client_phone as string | null) ?? null,
+  }).catch(() => {})
 
   return NextResponse.json({ ok: true })
 }

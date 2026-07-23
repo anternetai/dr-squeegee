@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { smsInvoice } from '@/lib/squeegee/sms-events'
 
 function getAdmin() {
   return createClient(
@@ -223,6 +224,13 @@ export async function POST(
       | null = null
     if (action === 'accepted') {
       invoiceInfo = await createInvoiceForQuote(typedQuote)
+      // Text the customer their invoice + secure pay link (consent-gated).
+      await smsInvoice({
+        name: typedQuote.client_name,
+        phone: typedQuote.client_phone,
+        token: typedQuote.token,
+        quoteId: typedQuote.id,
+      }).catch(() => {})
     }
 
     // Send Slack notification (includes payment link if accepted)
