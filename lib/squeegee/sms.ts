@@ -46,6 +46,25 @@ export async function hasConsent(phone10: string): Promise<boolean> {
   return matches(leads) || matches(clients)
 }
 
+// Record consent for a phone by flagging any matching client rows. Formatting-
+// robust (last-4 + JS-normalize like hasConsent). Used by accept-as-opt-in and
+// the text-to-CRM intake (method = 'accept' | 'verbal' | 'optin').
+export async function recordConsentByPhone(phone: string | null | undefined, method: string): Promise<void> {
+  const norm = normalizePhone(phone)
+  if (!norm) return
+  const supabase = getAdmin()
+  const { data: clients } = await supabase
+    .from("squeegee_clients")
+    .select("id, phone")
+    .ilike("phone", `%${norm.phone10.slice(-4)}`)
+  const ids = (clients ?? []).filter((c) => normalizePhone(c.phone)?.phone10 === norm.phone10).map((c) => c.id)
+  if (ids.length === 0) return
+  await supabase
+    .from("squeegee_clients")
+    .update({ sms_consent: true, sms_consent_at: new Date().toISOString(), sms_consent_method: method })
+    .in("id", ids)
+}
+
 export async function recordOptOut(phone10: string, source = "stop_keyword"): Promise<void> {
   await getAdmin().from("sms_opt_outs").upsert({ phone10, opted_out_at: new Date().toISOString(), source }, { onConflict: "phone10" })
 }

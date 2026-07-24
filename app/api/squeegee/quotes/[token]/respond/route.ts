@@ -1,7 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { smsInvoice } from '@/lib/squeegee/sms-events'
+import { smsInvoice, smsQuoteAccepted } from '@/lib/squeegee/sms-events'
+import { formatApptLabel } from '@/lib/squeegee/sms-templates'
+import { recordConsentByPhone } from '@/lib/squeegee/sms'
 
 function getAdmin() {
   return createClient(
@@ -112,7 +114,9 @@ async function createInvoiceForQuote(quote: SqueegeeQuote) {
 async function sendSlackNotification(
   quote: SqueegeeQuote,
   action: QuoteAction,
-  invoiceInfo?: { invoiceNumber: string; paymentUrl: string; amount?: number; invoiceId?: string } | null
+  invoiceInfo?: { invoiceNumber: string; paymentUrl: string; amount?: number; invoiceId?: string } | null,
+  appointment?: { date: string; time: string | null } | null,
+  textSent?: boolean
 ) {
   const services = Array.isArray(quote.services) ? quote.services : []
   const serviceNames = services.map((s: QuoteService) => s.name).join(', ')
@@ -122,7 +126,16 @@ async function sendSlackNotification(
   let text = `${emoji} *${label}*\n*Client:* ${quote.client_name}\n*Address:* ${quote.address}\n*Services:* ${serviceNames}\n*Total:* $${Number(quote.total_price).toFixed(2)}`
 
   if (action === 'accepted') {
-    text += `\n\nText them to confirm: ${quote.client_phone ?? 'N/A'}`
+    const scheduleLine = `Schedule this job${quote.job_id ? `: https://www.drsqueegeeclt.com/crm/jobs/${quote.job_id}` : ' in /crm/jobs'}.`
+    if (!textSent) {
+      // No consent on file / opted out / send failed — nobody has told the
+      // customer anything. Don't claim otherwise.
+      text += `\n\n⚠️ Auto-text did NOT go out (no consent on file, opted out, or send failed) — text them yourself: ${quote.client_phone ?? 'N/A'}. ${scheduleLine}`
+    } else {
+      text += appointment
+        ? `\n\n📅 Already on the schedule for ${formatApptLabel(appointment.date, appointment.time)} — customer auto-texted their confirmed time.`
+        : `\n\n📅 Customer auto-texted (accepted + "we'll confirm your time shortly"). ${scheduleLine}`
+    }
     if (invoiceInfo) {
       text += `\n\n💰 *Invoice ${invoiceInfo.invoiceNumber} auto-created*\nPayment link: ${invoiceInfo.paymentUrl}`
     }
@@ -222,8 +235,29 @@ export async function POST(
     let invoiceInfo:
       | { invoiceId: string; invoiceNumber: string; amount: number; paymentUrl: string }
       | null = null
+    let appointment: { date: string; time: string | null } | null = null
+    let textSent = false
     if (action === 'accepted') {
+      // Tapping Accept is an opt-in (disclosure sits next to the button) — record
+      // consent so confirmations/reminders flow without a "reply YES" step.
+      await recordConsentByPhone(typedQuote.client_phone, 'accept').catch(() => {})
+
       invoiceInfo = await createInvoiceForQuote(typedQuote)
+
+      // Rare, but honor it: if the linked job already has an appointment set
+      // (scheduled before the quote was accepted), tell the customer the time
+      // instead of the generic "we'll confirm shortly" line.
+      if (typedQuote.job_id) {
+        const { data: job } = await supabase
+          .from('squeegee_jobs')
+          .select('appointment_date, appointment_time, service_type')
+          .eq('id', typedQuote.job_id)
+          .single()
+        if (job?.appointment_date) {
+          appointment = { date: job.appointment_date as string, time: job.appointment_time as string | null }
+        }
+      }
+
       // Text the customer their invoice + secure pay link (consent-gated).
       await smsInvoice({
         name: typedQuote.client_name,
@@ -231,10 +265,20 @@ export async function POST(
         token: typedQuote.token,
         quoteId: typedQuote.id,
       }).catch(() => {})
+
+      // Text the customer an acceptance confirmation — appointment time if
+      // already scheduled, otherwise a "we'll confirm shortly" holding line.
+      textSent = await smsQuoteAccepted({
+        name: typedQuote.client_name,
+        phone: typedQuote.client_phone,
+        whenLabel: appointment ? formatApptLabel(appointment.date, appointment.time) : null,
+        quoteId: typedQuote.id,
+        jobId: typedQuote.job_id,
+      }).then((r) => r.sent).catch(() => false)
     }
 
     // Send Slack notification (includes payment link if accepted)
-    await sendSlackNotification(typedQuote, action, invoiceInfo)
+    await sendSlackNotification(typedQuote, action, invoiceInfo, appointment, textSent)
 
     // Return invoice info so the quote page can show the pay card immediately
     // after accept, with no second round-trip.

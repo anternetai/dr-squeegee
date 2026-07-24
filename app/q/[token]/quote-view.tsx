@@ -277,6 +277,11 @@ export function QuoteView({ quote: initialQuote, invoice: initialInvoice }: Prop
                 our control (deteriorated surfaces, improper installation, etc.). Service is
                 weather-dependent and may be rescheduled.
               </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed mt-2">
+                You also agree to receive text messages from Dr. Squeegee about this job
+                (confirmation, appointment reminders, invoice). Msg &amp; data rates may apply. Reply
+                STOP to opt out at any time.
+              </p>
             </div>
 
             {quote.status === "help" && (

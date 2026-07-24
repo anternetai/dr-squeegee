@@ -10,6 +10,22 @@ function first(name: string | null | undefined): string {
   return (name || "there").trim().split(/\s+/)[0]
 }
 
+// "Mon 7/28 at 8:30 AM" — date is YYYY-MM-DD, time is HH:MM[:SS] or null for date-only.
+export function formatApptLabel(date: string, time: string | null): string {
+  const [y, m, d] = date.split("-").map(Number)
+  const dayLabel = new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "numeric",
+    day: "numeric",
+  })
+  if (!time) return dayLabel
+  const [h, min] = time.split(":").map(Number)
+  const ampm = h >= 12 ? "PM" : "AM"
+  const hr = h % 12 || 12
+  const minLabel = min ? `:${String(min).padStart(2, "0")}` : ""
+  return `${dayLabel} at ${hr}${minLabel} ${ampm}`
+}
+
 export const smsTemplates = {
   quoteReady(name: string | null, token: string): string {
     return `Dr. Squeegee: Hi ${first(name)}, your quote is ready: ${SITE}/q/${token} — reply with any questions. Reply STOP to opt out.`
@@ -26,6 +42,24 @@ export const smsTemplates = {
 
   invoice(name: string | null, token: string): string {
     return `Dr. Squeegee: Thanks for having us out, ${first(name)}! Your invoice with a secure payment link: ${SITE}/q/${token}. Reply STOP to opt out.`
+  },
+
+  // Sent the moment a quote is accepted. whenLabel set = appointment already on
+  // the job (formatApptLabel output); null = not scheduled yet. calUrl adds the
+  // one-tap add-to-calendar link when it's a booked appointment.
+  quoteAccepted(name: string | null, whenLabel: string | null, calUrl?: string): string {
+    if (whenLabel) {
+      const cal = calUrl ? ` Add it to your calendar: ${calUrl}.` : ""
+      return `Dr. Squeegee: Thanks for accepting, ${first(name)}! You're on the schedule for ${whenLabel}.${cal} Reply STOP to opt out.`
+    }
+    return `Dr. Squeegee: Thanks for accepting, ${first(name)}! We'll text you shortly to confirm your appointment time. Reply STOP to opt out.`
+  },
+
+  // Sent the moment a job is scheduled/rescheduled — distinct from the
+  // day-before appointmentReminder above. calUrl = one-tap add-to-calendar link.
+  appointmentConfirmed(name: string | null, service: string, whenLabel: string, calUrl?: string): string {
+    const cal = calUrl ? ` Add it to your calendar: ${calUrl}.` : ""
+    return `Dr. Squeegee: You're confirmed for your ${service.toLowerCase()} ${whenLabel}.${cal} Need to reschedule? Call ${CALL}. Reply STOP to opt out.`
   },
 
   reviewRequest(name: string | null, reviewUrl: string): string {

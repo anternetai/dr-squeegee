@@ -6,6 +6,9 @@
 import { createClient } from "@supabase/supabase-js"
 import { sendSms, type SendResult } from "./sms"
 import { smsTemplates } from "./sms-templates"
+import { signApptToken } from "./appt-token"
+
+const SITE = "https://www.drsqueegeeclt.com"
 
 function getAdmin() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -28,6 +31,45 @@ export async function smsInvoice(args: { name: string; phone: string | null; tok
     kind: "invoice",
     relatedType: "quote",
     relatedId: args.quoteId,
+  })
+}
+
+// Fired the moment a quote is accepted. whenLabel non-null when the job already
+// has an appointment on it (rare — usually scheduling happens after accept).
+export async function smsQuoteAccepted(args: {
+  name: string
+  phone: string | null
+  whenLabel: string | null
+  quoteId: string
+  jobId?: string | null
+}): Promise<SendResult> {
+  const calUrl =
+    args.whenLabel && args.jobId ? `${SITE}/appt/${await signApptToken(args.jobId)}` : undefined
+  return sendSms({
+    phone: args.phone,
+    body: smsTemplates.quoteAccepted(args.name, args.whenLabel, calUrl),
+    kind: "quote_accepted",
+    relatedType: "quote",
+    relatedId: args.quoteId,
+  })
+}
+
+// Fired the moment a job is scheduled/rescheduled — immediate confirmation,
+// separate from the day-before appointmentReminder cron.
+export async function smsAppointmentConfirmed(args: {
+  name: string
+  phone: string | null
+  service: string
+  whenLabel: string
+  jobId: string
+}): Promise<SendResult> {
+  const calUrl = `${SITE}/appt/${await signApptToken(args.jobId)}`
+  return sendSms({
+    phone: args.phone,
+    body: smsTemplates.appointmentConfirmed(args.name, args.service, args.whenLabel, calUrl),
+    kind: "appointment_confirmed",
+    relatedType: "job",
+    relatedId: args.jobId,
   })
 }
 

@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
 import { verifyCrmAuth } from "@/lib/crm-auth-check"
 import { createJobBooking, cancelJobBooking, buildEasternISOString } from "@/lib/squeegee/calcom"
+import { smsAppointmentConfirmed } from "@/lib/squeegee/sms-events"
+import { formatApptLabel } from "@/lib/squeegee/sms-templates"
 
 function getAdmin() {
   return createClient(
@@ -101,6 +103,15 @@ export async function POST(
       type: "scheduled",
       note: `Scheduled for ${date} at ${normalizedTime.slice(0, 5)}${bookingUid ? "" : " (Cal.com sync failed — CRM-only)"}`,
     })
+
+    // Immediate confirmation text — separate from the day-before reminder cron.
+    await smsAppointmentConfirmed({
+      name: job.client_name as string,
+      phone: job.client_phone as string | null,
+      service: (job.service_type as string) || "service",
+      whenLabel: formatApptLabel(date, normalizedTime),
+      jobId: id,
+    }).catch(() => {})
 
     return NextResponse.json(updated)
   } catch (err) {
