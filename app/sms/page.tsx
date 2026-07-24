@@ -23,9 +23,9 @@ export default async function SmsProgram({
           <a href="/get-quote">
             <img src="/images/squeegee/wordmark.png" alt="Dr. Squeegee" className="h-8" />
           </a>
-          <a href="tel:+19802428048" className="flex items-center gap-1.5 text-sm font-medium text-[#3A6B4C]">
+          <a href="tel:+17042869696" className="flex items-center gap-1.5 text-sm font-medium text-[#3A6B4C]">
             <Phone className="h-4 w-4" />
-            (980) 242-8048
+            (704) 286-9696
           </a>
         </div>
       </header>
@@ -49,7 +49,7 @@ export default async function SmsProgram({
           </p>
           {sp?.subscribed === "1" && (
             <div className="mb-5 rounded-lg bg-[#3A6B4C]/10 border border-[#3A6B4C]/30 px-4 py-3 text-[#3A6B4C] text-sm">
-              You&apos;re signed up. We&apos;ll text you from (980) 242-8048. Reply STOP any time to opt out.
+              You&apos;re signed up. We&apos;ll text you from (704) 286-9696. Reply STOP any time to opt out.
             </div>
           )}
           {sp?.error === "1" && (
@@ -149,7 +149,7 @@ export default async function SmsProgram({
           <ul className="list-disc pl-6 space-y-2">
             <li>Reply <strong>STOP</strong> to any message to unsubscribe from all messages.</li>
             <li>
-              Reply <strong>HELP</strong> for assistance, or contact customer care at (980) 242-8048 or
+              Reply <strong>HELP</strong> for assistance, or contact customer care at (704) 286-9696 or
               anthony@drsqueegeeclt.com.
             </li>
           </ul>

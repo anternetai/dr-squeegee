@@ -129,14 +129,17 @@ export async function sendSms(args: SendArgs): Promise<SendResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID
   const keySid = process.env.TWILIO_API_KEY_SID
   const keySecret = process.env.TWILIO_API_KEY_SECRET
-  const mgSid = process.env.TWILIO_MESSAGING_SERVICE_SID
-  if (!accountSid || !keySid || !keySecret || !mgSid) {
+  // Dr. Squeegee sends from its own number (704-286-9696). The number stays in
+  // the A2P messaging-service pool for campaign registration; we address it
+  // explicitly so this product's texts always come from the Dr. Squeegee line.
+  const fromNumber = process.env.SMS_FROM_NUMBER
+  if (!accountSid || !keySid || !keySecret || !fromNumber) {
     await log("failed", { error: "twilio env missing", was_test: !live, to_phone: to })
     return { sent: false, test: !live, reason: "twilio not configured" }
   }
 
   try {
-    const params = new URLSearchParams({ MessagingServiceSid: mgSid, To: to, Body: finalBody })
+    const params = new URLSearchParams({ From: fromNumber, To: to, Body: finalBody })
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
       method: "POST",
       headers: {

@@ -50,7 +50,7 @@ export default function GetQuoteLayout({
             "name": "Dr. Squeegee",
             "description": "Professional window cleaning in Charlotte, NC — streak-free interior & exterior glass on recurring monthly, quarterly, and weekly plans. Plus house washing and pressure washing.",
             "url": "https://www.drsqueegeeclt.com/get-quote",
-            "telephone": "+19802428048",
+            "telephone": "+17042869696",
             "address": {
               "@type": "PostalAddress",
               "addressLocality": "Charlotte",

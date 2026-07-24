@@ -29,10 +29,10 @@ function CrawlerFallback() {
           <li>Recurring Plans — Monthly, quarterly, or weekly. Cancel anytime.</li>
         </ul>
         <a
-          href="tel:+19802428048"
+          href="tel:+17042869696"
           className="inline-flex items-center gap-2 text-[#0A0A0A] font-semibold py-3.5 px-8 rounded-lg text-lg bg-[#2D8C6F]"
         >
-          Call (980) 242-8048
+          Call (704) 286-9696
         </a>
         {/* SMS opt-in form — server-rendered as real markup so carrier/A2P vetting
             crawlers (which fetch raw HTML, no JS) can verify the CTA: phone field +

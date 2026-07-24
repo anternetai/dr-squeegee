@@ -18,9 +18,9 @@ export default function PrivacyPolicy() {
           <a href="/get-quote">
             <img src="/images/squeegee/wordmark.png" alt="Dr. Squeegee" className="h-8" />
           </a>
-          <a href="tel:+19802428048" className="flex items-center gap-1.5 text-sm font-medium text-[#3A6B4C]">
+          <a href="tel:+17042869696" className="flex items-center gap-1.5 text-sm font-medium text-[#3A6B4C]">
             <Phone className="h-4 w-4" />
-            (980) 242-8048
+            (704) 286-9696
           </a>
         </div>
       </header>
@@ -95,7 +95,7 @@ export default function PrivacyPolicy() {
           <p>
             <strong>Message frequency varies</strong> based on your service interactions. Message and data
             rates may apply. You can opt out at any time by replying <strong>STOP</strong> to any text
-            message. Reply <strong>HELP</strong> for assistance, or contact us at (980) 242-8048 or
+            message. Reply <strong>HELP</strong> for assistance, or contact us at (704) 286-9696 or
             anthony@drsqueegeeclt.com.
           </p>
           <p>
@@ -180,7 +180,7 @@ export default function PrivacyPolicy() {
             with text message communications, contact us at:
           </p>
           <ul className="list-none pl-0 space-y-1">
-            <li><strong>Phone:</strong> (980) 242-8048</li>
+            <li><strong>Phone:</strong> (704) 286-9696</li>
             <li><strong>Email:</strong> anthony@drsqueegeeclt.com</li>
             <li><strong>Website:</strong> drsqueegeeclt.com</li>
             <li><strong>Address:</strong> 8623 Longnor St, Charlotte, NC 28214</li>
@@ -192,7 +192,7 @@ export default function PrivacyPolicy() {
       <footer className="border-t border-[#3A6B4C]/10 py-6 px-4 bg-[#F5F0E1]/30">
         <div className="max-w-4xl mx-auto text-center text-[#2B2B2B]/40 text-sm space-y-1">
           <p>Charlotte, NC</p>
-          <p><a href="tel:+19802428048" className="hover:text-[#3A6B4C]">(980) 242-8048</a></p>
+          <p><a href="tel:+17042869696" className="hover:text-[#3A6B4C]">(704) 286-9696</a></p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <a href="/privacy" className="hover:text-[#3A6B4C] underline">Privacy Policy</a>
             <span>&middot;</span>

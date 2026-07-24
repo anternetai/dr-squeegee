@@ -23,9 +23,9 @@ export default function AboutPage() {
       <header className="border-b border-[#242424] bg-[#0A0A0A]/90 backdrop-blur sticky top-0 z-50">
         <div className="max-w-4xl mx-auto flex items-center justify-between px-5 py-3">
           <a href="/get-quote"><Logo /></a>
-          <a href="tel:+19802428048" className="flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-white transition-colors">
+          <a href="tel:+17042869696" className="flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-white transition-colors">
             <Phone className="h-4 w-4" />
-            (980) 242-8048
+            (704) 286-9696
           </a>
         </div>
       </header>
@@ -99,7 +99,7 @@ export default function AboutPage() {
       <footer className="border-t border-[#242424] py-6 px-5">
         <div className="max-w-4xl mx-auto text-center text-[#9CA3AF]/50 text-sm space-y-1">
           <p>Charlotte, NC</p>
-          <p><a href="tel:+19802428048" className="hover:text-[#2D8C6F]">(980) 242-8048</a></p>
+          <p><a href="tel:+17042869696" className="hover:text-[#2D8C6F]">(704) 286-9696</a></p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <a href="/privacy" className="hover:text-[#2D8C6F] underline">Privacy Policy</a>
             <span>&middot;</span>

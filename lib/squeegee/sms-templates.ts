@@ -4,7 +4,7 @@
 // guarantees the STOP line, but we include it here too to mirror the samples.
 
 const SITE = "https://www.drsqueegeeclt.com"
-const CALL = "(980) 242-8048"
+const CALL = "(704) 286-9696"
 
 function first(name: string | null | undefined): string {
   return (name || "there").trim().split(/\s+/)[0]

@@ -18,9 +18,9 @@ export default function TermsOfService() {
           <a href="/get-quote">
             <img src="/images/squeegee/wordmark.png" alt="Dr. Squeegee" className="h-8" />
           </a>
-          <a href="tel:+19802428048" className="flex items-center gap-1.5 text-sm font-medium text-[#3A6B4C]">
+          <a href="tel:+17042869696" className="flex items-center gap-1.5 text-sm font-medium text-[#3A6B4C]">
             <Phone className="h-4 w-4" />
-            (980) 242-8048
+            (704) 286-9696
           </a>
         </div>
       </header>
@@ -66,7 +66,7 @@ export default function TermsOfService() {
             <li>Message and data rates may apply, depending on your mobile carrier plan.</li>
             <li>
               Reply <strong>STOP</strong> at any time to opt out of all messages. Reply <strong>HELP</strong> for
-              assistance, or contact us at (980) 242-8048 or anthony@drsqueegeeclt.com.
+              assistance, or contact us at (704) 286-9696 or anthony@drsqueegeeclt.com.
             </li>
             <li>Consent to receive text messages is not a condition of purchasing any service.</li>
             <li>
@@ -95,7 +95,7 @@ export default function TermsOfService() {
             <br />
             8623 Longnor St, Charlotte, NC 28214
             <br />
-            (980) 242-8048 · anthony@drsqueegeeclt.com
+            (704) 286-9696 · anthony@drsqueegeeclt.com
           </p>
         </div>
       </main>
