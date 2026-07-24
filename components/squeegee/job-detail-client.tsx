@@ -34,6 +34,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { SendTextButton } from "@/components/squeegee/send-text-button"
 
 const STATUS_COLORS: Record<JobStatus, string> = {
   new: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800",
@@ -502,17 +503,15 @@ export function JobDetailClient({ job: initialJob }: Props) {
           <div className="flex gap-2">
             <CopyButton text={quoteText} />
             {job.client_phone && (
-              <Button
-                asChild
+              <SendTextButton
+                phone={job.client_phone}
+                body={quoteText}
+                kind="quote_ready"
+                label="Text Quote"
+                sentLabel="Texted ✓"
                 variant="default"
-                size="sm"
                 className="gap-1.5 bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
-              >
-                <a href={`sms:${job.client_phone.replace(/[^\d+]/g, "")}&body=${encodeURIComponent(quoteText)}`}>
-                  <Send className="h-3.5 w-3.5" />
-                  Text Quote
-                </a>
-              </Button>
+              />
             )}
           </div>
         </CardContent>
@@ -535,17 +534,15 @@ export function JobDetailClient({ job: initialJob }: Props) {
               <div className="flex gap-2">
                 <CopyButton text={confirmText} />
                 {job.client_phone && (
-                  <Button
-                    asChild
+                  <SendTextButton
+                    phone={job.client_phone}
+                    body={confirmText}
+                    kind="appointment_confirmed"
+                    label="Text Confirm"
+                    sentLabel="Texted ✓"
                     variant="default"
-                    size="sm"
                     className="gap-1.5 bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
-                  >
-                    <a href={`sms:${job.client_phone.replace(/[^\d+]/g, "")}&body=${encodeURIComponent(confirmText)}`}>
-                      <Send className="h-3.5 w-3.5" />
-                      Text Confirm
-                    </a>
-                  </Button>
+                  />
                 )}
               </div>
             </>

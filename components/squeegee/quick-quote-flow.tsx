@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDate, formatTime } from "@/lib/squeegee/utils"
+import { SendTextButton } from "@/components/squeegee/send-text-button"
 import { SmartQuoteLines, QuoteLine, linesToServices } from "@/components/squeegee/smart-quote-lines"
 
 interface ClientOption {
@@ -237,12 +238,15 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
           <div className="flex flex-wrap items-center justify-center gap-2">
             <CopyButton text={result.quote_url} />
             {clientPhone && (
-              <Button asChild size="sm" className="gap-1.5 bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white">
-                <a href={`sms:${clientPhone.replace(/[^\d+]/g, "")}&body=${encodeURIComponent(smsBody)}`}>
-                  <Send className="h-3.5 w-3.5" />
-                  Text it
-                </a>
-              </Button>
+              <SendTextButton
+                phone={clientPhone}
+                body={smsBody}
+                kind="quote_ready"
+                label="Text it"
+                sentLabel="Texted ✓"
+                variant="default"
+                className="gap-1.5 bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
+              />
             )}
             <Button asChild size="sm" variant="outline" className="gap-1.5">
               <a href={result.quote_url} target="_blank" rel="noopener noreferrer">

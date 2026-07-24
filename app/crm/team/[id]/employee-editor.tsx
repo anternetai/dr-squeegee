@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Copy, Check, RefreshCw, Save, UserX, UserCheck, Briefcase } from "lucide-react"
 import { ROLES, PAY_TYPES, DAYS, STATUSES } from "@/lib/squeegee/employees"
 import { ONBOARDING_TASKS } from "@/lib/squeegee/company"
+import { SendTextButton } from "@/components/squeegee/send-text-button"
 
 export interface EmployeeDetail {
   id: string
@@ -176,7 +177,18 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
           <p className="text-sm font-medium">Setup pending — send them their invite link:</p>
           <div className="rounded-lg bg-background border border-border px-3 py-2 text-xs break-all">{joinLink(token)}</div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {form.phone && (
+              <SendTextButton
+                phone={form.phone}
+                body={`Hey ${(form.name || "there").trim().split(/\s+/)[0]}, welcome to the Dr. Squeegee crew! Set up your crew account here (takes 2 min): ${joinLink(token)}`}
+                kind="crew_invite"
+                label="Send invite"
+                sentLabel="Invite sent"
+                variant="default"
+                className="bg-[#2D8C6F] hover:bg-[#1F6B54]"
+              />
+            )}
             <Button size="sm" variant="outline" onClick={copyLink}>
               {copied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />} Copy link
             </Button>

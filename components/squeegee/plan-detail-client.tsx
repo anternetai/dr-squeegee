@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Check, Copy, ExternalLink, MessageSquare, CalendarDays, X } from "lucide-react"
+import { SendTextButton } from "@/components/squeegee/send-text-button"
 import {
   formatMoney,
   PLAN_STATUS_LABELS,
@@ -180,11 +181,7 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
             <Button variant="outline" size="icon" onClick={() => copy(agreementUrl, "agreement")} title="Copy">
               {copied === "agreement" ? <Check className="h-4 w-4 text-[#2D8C6F]" /> : <Copy className="h-4 w-4" />}
             </Button>
-            <Button variant="outline" size="icon" asChild title="Text to customer">
-              <a href={smsHref(plan.client_phone, agreementSms)}>
-                <MessageSquare className="h-4 w-4" />
-              </a>
-            </Button>
+            <SendTextButton phone={plan.client_phone} body={agreementSms} kind="plan_agreement" size="icon" iconOnly sentLabel="Sent" />
             <Button variant="outline" size="icon" asChild title="Open">
               <a href={agreementUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="h-4 w-4" />
@@ -199,11 +196,7 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
             <Button variant="outline" size="icon" onClick={() => copy(portalUrl, "portal")} title="Copy">
               {copied === "portal" ? <Check className="h-4 w-4 text-[#2D8C6F]" /> : <Copy className="h-4 w-4" />}
             </Button>
-            <Button variant="outline" size="icon" asChild title="Text to customer">
-              <a href={smsHref(plan.client_phone, portalSms)}>
-                <MessageSquare className="h-4 w-4" />
-              </a>
-            </Button>
+            <SendTextButton phone={plan.client_phone} body={portalSms} kind="plan_portal" size="icon" iconOnly sentLabel="Sent" />
             <Button variant="outline" size="icon" asChild title="Open">
               <a href={portalUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="h-4 w-4" />

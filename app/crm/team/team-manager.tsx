@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { UserPlus, Copy, Check, Users, Clock } from "lucide-react"
 import { ROLES, PAY_TYPES, payLabel, roleLabel } from "@/lib/squeegee/employees"
+import { SendTextButton } from "@/components/squeegee/send-text-button"
 
 export interface CrewRow {
   id: string
@@ -162,6 +163,15 @@ function CrewCard({
             {copied === `sms-${r.id}` ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
             Copy invite text
           </Button>
+          {r.phone && (
+            <SendTextButton
+              phone={r.phone}
+              body={inviteSms(r.name, r.invite_token!)}
+              kind="crew_invite"
+              label="Send invite"
+              sentLabel="Invite sent"
+            />
+          )}
           <Button
             size="sm"
             variant="ghost"
@@ -186,7 +196,7 @@ function InviteModal({
   const [form, setForm] = useState({ name: "", phone: "", email: "", role: "tech", pay_type: "per_job", pay_rate: "" })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [created, setCreated] = useState<{ name: string; token: string } | null>(null)
+  const [created, setCreated] = useState<{ name: string; token: string; phone: string } | null>(null)
   const [copied, setCopied] = useState(false)
 
   async function submit() {
@@ -207,7 +217,7 @@ function InviteModal({
       setError(data.error ?? "Could not create.")
       return
     }
-    setCreated({ name: form.name, token: data.invite_token })
+    setCreated({ name: form.name, token: data.invite_token, phone: form.phone })
     onCreated({
       id: data.id,
       created_at: new Date().toISOString(),
@@ -292,12 +302,32 @@ function InviteModal({
                 <Check className="h-6 w-6 text-[#2D8C6F]" />
               </div>
               <h2 className="text-lg font-bold">{created.name} added</h2>
-              <p className="text-sm text-muted-foreground">Send them this text to set up their crew account.</p>
+              <p className="text-sm text-muted-foreground">
+                {created.phone ? "Text them their setup link — one tap." : "Copy this text to send them their setup link."}
+              </p>
             </div>
             <div className="rounded-lg bg-muted p-3 text-sm">{inviteSms(created.name, created.token)}</div>
-            <Button className="w-full bg-[#2D8C6F] hover:bg-[#1F6B54]" onClick={copySms}>
-              {copied ? <><Check className="h-4 w-4 mr-1.5" /> Copied</> : <><Copy className="h-4 w-4 mr-1.5" /> Copy invite text</>}
-            </Button>
+            {created.phone ? (
+              <SendTextButton
+                phone={created.phone}
+                body={inviteSms(created.name, created.token)}
+                kind="crew_invite"
+                label="Send invite text"
+                sentLabel="Invite sent ✓"
+                variant="default"
+                size="default"
+                className="w-full bg-[#2D8C6F] hover:bg-[#1F6B54]"
+              />
+            ) : (
+              <Button className="w-full bg-[#2D8C6F] hover:bg-[#1F6B54]" onClick={copySms}>
+                {copied ? <><Check className="h-4 w-4 mr-1.5" /> Copied</> : <><Copy className="h-4 w-4 mr-1.5" /> Copy invite text</>}
+              </Button>
+            )}
+            {created.phone && (
+              <button onClick={copySms} className="w-full text-xs text-muted-foreground hover:text-foreground">
+                {copied ? "Copied" : "or copy the text"}
+              </button>
+            )}
             <Button variant="ghost" className="w-full" onClick={onClose}>Done</Button>
           </>
         )}
