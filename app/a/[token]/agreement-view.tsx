@@ -136,7 +136,7 @@ export function AgreementView({ plan }: Props) {
           <img
             src="/images/squeegee/logo-badge.png"
             alt="Dr. Squeegee"
-            className="h-16 w-auto mx-auto mb-3"
+            className="h-28 w-auto mx-auto mb-3"
           />
           <h1
             className="text-2xl font-bold text-white tracking-wide"

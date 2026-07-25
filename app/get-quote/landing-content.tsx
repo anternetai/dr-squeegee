@@ -505,7 +505,7 @@ export function LandingContent() {
       {/* ── Footer ── */}
       <footer className="py-10 px-5 bg-[#0A0A0A]">
         <div className="max-w-4xl mx-auto text-center text-[#9CA3AF]/60 text-sm space-y-2">
-          <Logo className="h-20 w-auto mx-auto mb-2" />
+          <Logo className="h-40 w-auto mx-auto mb-2" />
           <p>{BRAND.address}</p>
           <p><a href={`tel:${BRAND.phoneTel}`} className="hover:text-[#2D8C6F] transition-colors">{BRAND.phone}</a></p>
           <div className="flex items-center justify-center gap-3 pt-2">

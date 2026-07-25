@@ -45,7 +45,7 @@ export default async function ApptPage({ params }: { params: Promise<{ token: st
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center justify-center px-6" style={{ colorScheme: "dark" }}>
       <div className="w-full max-w-sm text-center space-y-6">
-        <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-16 w-auto mx-auto" />
+        <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-28 w-auto mx-auto" />
         <div>
           <p className="text-xs uppercase tracking-widest text-[#2D8C6F] font-semibold">You&apos;re booked, {first}</p>
           <h1 className="text-2xl font-bold mt-1">{service}</h1>

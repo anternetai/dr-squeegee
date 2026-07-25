@@ -122,7 +122,7 @@ export function QuoteView({ quote: initialQuote, invoice: initialInvoice }: Prop
               {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
           )}
-          <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-14 w-auto mx-auto mb-2" />
+          <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-28 w-auto mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">House Calls for a Cleaner Home</p>
         </div>
 

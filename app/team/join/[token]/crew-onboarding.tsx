@@ -121,7 +121,7 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
         {/* 0 — Welcome */}
         {step === 0 && (
           <div className="text-center space-y-4">
-            <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-20 w-auto mx-auto" />
+            <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-40 w-auto mx-auto" />
             <h1 className="text-3xl font-bold">Welcome to the crew, {first}! 🎉</h1>
             <p className="text-gray-400">Quick setup — about 3 minutes. First, a little about who we are and what we&apos;re about.</p>
           </div>

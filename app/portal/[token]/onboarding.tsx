@@ -201,7 +201,7 @@ export function PortalOnboarding({ plan, hasVisits, onComplete }: Props) {
       <div className="fixed inset-0 z-50 bg-[#0A0A0A] overflow-y-auto" style={{ fontFamily: FONTS.body }}>
         <Confetti />
         <div className="max-w-lg mx-auto px-4 py-8 min-h-full flex flex-col justify-center text-center">
-          <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-20 w-auto mx-auto mb-6" />
+          <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-40 w-auto mx-auto mb-6" />
           <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#2D8C6F]">
             {CLUB_NAME}
           </p>
@@ -371,7 +371,7 @@ export function PortalOnboarding({ plan, hasVisits, onComplete }: Props) {
         {/* WELCOME */}
         {step.kind === "welcome" && (
           <div className="flex-1 flex flex-col justify-center text-center">
-            <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-20 w-auto mx-auto mb-6" />
+            <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-40 w-auto mx-auto mb-6" />
             <h1 className="text-3xl font-bold text-white" style={{ fontFamily: FONTS.display }}>
               Welcome to the family, {firstName}!
             </h1>

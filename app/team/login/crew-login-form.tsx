@@ -33,7 +33,7 @@ export function CrewLoginForm() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-16 w-auto mx-auto mb-4" />
+          <img src="/images/squeegee/logo-badge.png" alt="Dr. Squeegee" className="h-28 w-auto mx-auto mb-4" />
           <p className="text-xs uppercase tracking-widest text-[#2D8C6F] font-semibold">Crew Portal</p>
           <h1 className="text-2xl font-bold mt-1">Log in</h1>
         </div>

@@ -75,7 +75,7 @@ export function LoginForm({ next }: Props) {
           <img
             src="/images/squeegee/logo-badge.png"
             alt="Dr. Squeegee"
-            className="h-16 w-auto mx-auto mb-4"
+            className="h-28 w-auto mx-auto mb-4"
           />
           <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#2D8C6F]">
             {CLUB_NAME}
