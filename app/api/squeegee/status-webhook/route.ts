@@ -10,6 +10,14 @@ function getAdmin() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Same shared-secret bridge as from-field: this runs service-role, so an
+    // anonymous caller could otherwise write arbitrary notes into any job's
+    // activity feed. No fail-open.
+    const secret = process.env.BRIDGE_SECRET
+    if (!secret || request.headers.get('x-bridge-secret') !== secret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { job_id, old_status, new_status, client_name } = body
 

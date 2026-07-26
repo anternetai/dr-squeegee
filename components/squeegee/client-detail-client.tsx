@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
 import { SqueegeeClient } from "@/lib/squeegee/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -113,20 +112,19 @@ export function ClientDetailClient({ client: initialClient }: Props) {
     }
 
     setTogglingBlacklist(true)
-    const supabase = createClient()
 
-    const { data, error } = await supabase
-      .from("squeegee_clients")
-      .update({
+    const res = await fetch(`/api/squeegee/clients/${client.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         blacklisted: !client.blacklisted,
-        blacklist_reason: !client.blacklisted ? (reason?.trim() || null) : null,
-      })
-      .eq("id", client.id)
-      .select("*")
-      .single()
+        blacklist_reason: !client.blacklisted ? reason?.trim() || null : null,
+      }),
+    })
+    const data = await res.json()
 
-    if (error) {
-      alert(`Failed to ${action}: ${error.message}`)
+    if (!res.ok) {
+      alert(`Failed to ${action}: ${data.error || "unknown error"}`)
     } else if (data) {
       setClient(data as SqueegeeClient)
       router.refresh()
@@ -154,23 +152,22 @@ export function ClientDetailClient({ client: initialClient }: Props) {
 
     setSaving(true)
     setEditError(null)
-    const supabase = createClient()
 
-    const { data, error } = await supabase
-      .from("squeegee_clients")
-      .update({
+    const res = await fetch(`/api/squeegee/clients/${client.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         name: editForm.name.trim(),
         phone: editForm.phone.trim() || null,
         email: editForm.email.trim() || null,
         address: editForm.address.trim() || null,
         notes: editForm.notes.trim() || null,
-      })
-      .eq("id", client.id)
-      .select("*")
-      .single()
+      }),
+    })
+    const data = await res.json()
 
-    if (error) {
-      setEditError(error.message)
+    if (!res.ok) {
+      setEditError(data.error || "Failed to save.")
     } else if (data) {
       setClient(data as SqueegeeClient)
       setEditing(false)

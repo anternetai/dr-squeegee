@@ -1,6 +1,16 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { FollowupsBoard } from "@/components/squeegee/followups-board"
 import { FollowupCustomer, PLACEHOLDER_PHONES } from "@/lib/squeegee/followups"
+
+// Service-role: the CRM is gated by the signed crm_auth cookie in middleware,
+// not by a Supabase session, so these queries have no authenticated identity.
+// Reading them through the anon key is what forced RLS open to anon.
+function getAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export const dynamic = "force-dynamic"
 
@@ -41,7 +51,7 @@ interface Acc {
 }
 
 export default async function FollowupsPage() {
-  const supabase = await createClient()
+  const supabase = getAdmin()
 
   const [clientsRes, jobsRes, quotesRes, leadsRes, outreachRes] = await Promise.all([
     supabase.from("squeegee_clients").select("name, phone, email, address, created_at, blacklisted"),

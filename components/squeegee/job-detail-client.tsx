@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
 import { SqueegeeJob, STATUS_ORDER, STATUS_LABELS, JobStatus } from "@/lib/squeegee/types"
 import { formatDate, formatTime } from "@/lib/squeegee/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -120,6 +119,19 @@ export function JobDetailClient({ job: initialJob }: Props) {
   const currentStatusIdx = STATUS_ORDER.indexOf(job.status)
   const nextStatus = STATUS_ORDER[currentStatusIdx + 1] as JobStatus | undefined
 
+  // Job writes go through the CRM-authed API route rather than the browser's
+  // anon Supabase client — the anon key is public, so a direct .update() here
+  // meant squeegee_jobs had to stay writable by anon in RLS.
+  async function patchJob(payload: Record<string, unknown>) {
+    const res = await fetch(`/api/squeegee/jobs/${job.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json()
+    return { ok: res.ok, data }
+  }
+
   // Leaving 'scheduled' for anything other than 'complete' is treated as an
   // unschedule: cancels the Cal.com booking + clears appointment fields via
   // the schedule route, then (if the target isn't 'approved', which is what
@@ -136,14 +148,8 @@ export function JobDetailClient({ job: initialJob }: Props) {
       }
       setCalSynced(false)
       if (newStatus !== "approved") {
-        const supabase = createClient()
-        const { data: final, error } = await supabase
-          .from("squeegee_jobs")
-          .update({ status: newStatus })
-          .eq("id", job.id)
-          .select("*")
-          .single()
-        if (!error && final) setJob(final as SqueegeeJob)
+        const { ok, data: final } = await patchJob({ status: newStatus })
+        if (ok && final) setJob(final as SqueegeeJob)
       }
       return true
     } catch {
@@ -160,14 +166,8 @@ export function JobDetailClient({ job: initialJob }: Props) {
       setUpdatingStatus(false)
       return
     }
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from("squeegee_jobs")
-      .update({ status: nextStatus })
-      .eq("id", job.id)
-      .select("*")
-      .single()
-    if (!error && data) setJob(data as SqueegeeJob)
+    const { ok, data } = await patchJob({ status: nextStatus })
+    if (ok && data) setJob(data as SqueegeeJob)
     setUpdatingStatus(false)
   }
 
@@ -182,21 +182,14 @@ export function JobDetailClient({ job: initialJob }: Props) {
       setUpdatingStatus(false)
       return
     }
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from("squeegee_jobs")
-      .update({ status })
-      .eq("id", job.id)
-      .select("*")
-      .single()
-    if (!error && data) setJob(data as SqueegeeJob)
+    const { ok, data } = await patchJob({ status })
+    if (ok && data) setJob(data as SqueegeeJob)
     setUpdatingStatus(false)
   }
 
   async function saveEdit() {
     setSavingEdit(true)
     setEditError(null)
-    const supabase = createClient()
 
     const payload: Partial<SqueegeeJob> = {
       client_name: editForm.client_name.trim(),
@@ -210,15 +203,10 @@ export function JobDetailClient({ job: initialJob }: Props) {
       appointment_time: editForm.appointment_time || null,
     }
 
-    const { data, error } = await supabase
-      .from("squeegee_jobs")
-      .update(payload)
-      .eq("id", job.id)
-      .select("*")
-      .single()
+    const { ok, data } = await patchJob(payload)
 
-    if (error) {
-      setEditError(error.message)
+    if (!ok) {
+      setEditError(data.error || "Failed to save.")
     } else if (data) {
       setJob(data as SqueegeeJob)
       setEditing(false)

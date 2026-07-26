@@ -1,8 +1,20 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { SqueegeeClient } from "@/lib/squeegee/types"
 import { QuickQuoteFlow } from "@/components/squeegee/quick-quote-flow"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+
+export const dynamic = "force-dynamic"
+
+// Service-role: the CRM is gated by the signed crm_auth cookie in middleware,
+// not by a Supabase session, so these queries have no authenticated identity.
+// Reading them through the anon key is what forced RLS open to anon.
+function getAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 interface PageProps {
   searchParams: Promise<{
@@ -16,7 +28,7 @@ interface PageProps {
 
 export default async function NewQuotePage({ searchParams }: PageProps) {
   const params = await searchParams
-  const supabase = await createClient()
+  const supabase = getAdmin()
 
   // A few hundred rows max — cheap to preload for client-side type-ahead search.
   const { data: clients } = await supabase

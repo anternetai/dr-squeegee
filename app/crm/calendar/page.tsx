@@ -1,9 +1,21 @@
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { SqueegeeJob, JobStatus } from "@/lib/squeegee/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
 import { NeedsScheduling, type NeedsSchedulingItem } from "@/components/squeegee/needs-scheduling"
+
+export const dynamic = "force-dynamic"
+
+// Service-role: the CRM is gated by the signed crm_auth cookie in middleware,
+// not by a Supabase session, so these queries have no authenticated identity.
+// Reading them through the anon key is what forced RLS open to anon.
+function getAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 const CHIP_COLORS: Record<JobStatus, string> = {
   new: "bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/20",
@@ -109,7 +121,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
   const weekStart = addDays(today, -dayOfWeek(today))
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
-  const supabase = await createClient()
+  const supabase = getAdmin()
 
   const [{ data: rangeJobs }, { data: weekJobsRaw }, { data: needsSchedJobs }] = await Promise.all([
     supabase

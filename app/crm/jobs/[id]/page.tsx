@@ -1,5 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
-import { createClient as createServiceClient } from "@supabase/supabase-js"
+import { createClient } from "@supabase/supabase-js"
 import { notFound } from "next/navigation"
 import { SqueegeeJob } from "@/lib/squeegee/types"
 import { JobDetailClient } from "@/components/squeegee/job-detail-client"
@@ -13,9 +12,21 @@ interface PageProps {
   params: Promise<{ id: string }>
 }
 
+export const dynamic = "force-dynamic"
+
+// Service-role: the CRM is gated by the signed crm_auth cookie in middleware,
+// not by a Supabase session, so these queries have no authenticated identity.
+// Reading them through the anon key is what forced RLS open to anon.
+function getAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
+
 export default async function JobDetailPage({ params }: PageProps) {
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = getAdmin()
 
   const { data, error } = await supabase
     .from("squeegee_jobs")
@@ -37,13 +48,7 @@ export default async function JobDetailPage({ params }: PageProps) {
     .limit(1)
     .maybeSingle()
 
-  // squeegee_employees is service-role only (RLS on, no policies) — the SSR
-  // client above would read zero rows, so use a service-role client here.
-  const admin = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-  const { data: crew } = await admin
+  const { data: crew } = await supabase
     .from("squeegee_employees")
     .select("id, name")
     .eq("status", "active")

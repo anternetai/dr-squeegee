@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { SqueegeeClient, SqueegeeJob, STATUS_LABELS, JobStatus } from "@/lib/squeegee/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,18 @@ import {
 import { ClientDetailClient } from "@/components/squeegee/client-detail-client"
 import { ClientSms } from "@/components/squeegee/client-sms"
 
+export const dynamic = "force-dynamic"
+
+// Service-role: the CRM is gated by the signed crm_auth cookie in middleware,
+// not by a Supabase session, so these queries have no authenticated identity.
+// Reading them through the anon key is what forced RLS open to anon.
+function getAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
+
 const STATUS_COLORS: Record<JobStatus, string> = {
   new: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   quoted: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
@@ -30,7 +42,7 @@ interface PageProps {
 
 export default async function ClientDetailPage({ params }: PageProps) {
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = getAdmin()
 
   const { data: client, error } = await supabase
     .from("squeegee_clients")

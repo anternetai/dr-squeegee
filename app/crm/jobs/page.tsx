@@ -1,10 +1,22 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { SqueegeeJob, STATUS_LABELS, STATUS_ORDER, JobStatus } from "@/lib/squeegee/types"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Plus, Briefcase } from "lucide-react"
 import { JobsFilterBar } from "@/components/squeegee/jobs-filter-bar"
+
+export const dynamic = "force-dynamic"
+
+// Service-role: the CRM is gated by the signed crm_auth cookie in middleware,
+// not by a Supabase session, so these queries have no authenticated identity.
+// Reading them through the anon key is what forced RLS open to anon.
+function getAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 const STATUS_COLORS: Record<JobStatus, string> = {
   new: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -25,7 +37,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
   let fetchError: string | null = null
 
   try {
-    const supabase = await createClient()
+    const supabase = getAdmin()
 
     let query = supabase
       .from("squeegee_jobs")

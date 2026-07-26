@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,22 +37,22 @@ export default function NewClientPage() {
     }
 
     setLoading(true)
-    const supabase = createClient()
 
-    const { data, error: dbError } = await supabase
-      .from("squeegee_clients")
-      .insert({
+    const res = await fetch("/api/squeegee/clients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         name: form.name.trim(),
         phone: form.phone.trim() || null,
         email: form.email.trim() || null,
         address: form.address.trim() || null,
         notes: form.notes.trim() || null,
-      })
-      .select("id")
-      .single()
+      }),
+    })
+    const data = await res.json()
 
-    if (dbError) {
-      setError(dbError.message)
+    if (!res.ok) {
+      setError(data.error || "Failed to create client.")
       setLoading(false)
       return
     }

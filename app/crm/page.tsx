@@ -1,5 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { createClient } from "@supabase/supabase-js"
 import { SqueegeeJob, STATUS_LABELS, STATUS_ORDER, JobStatus } from "@/lib/squeegee/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -21,13 +20,20 @@ const STATUS_COLORS: Record<JobStatus, string> = {
   complete: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
 }
 
-export default async function SqueegeePortalPage() {
-  const supabase = await createClient()
-  // squeegee_plans is service-role-only (zero RLS policies) — anon client returns nothing.
-  const admin = createAdminClient(
+export const dynamic = "force-dynamic"
+
+// Service-role: the CRM is gated by the signed crm_auth cookie in middleware,
+// not by a Supabase session, so these queries have no authenticated identity.
+// Reading them through the anon key is what forced RLS open to anon.
+function getAdmin() {
+  return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
+}
+
+export default async function SqueegeePortalPage() {
+  const supabase = getAdmin()
 
   const now = new Date()
   const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -56,7 +62,7 @@ export default async function SqueegeePortalPage() {
       .select("id, token, job_id, client_name, total_price, status, created_at")
       .in("status", ["pending", "help"])
       .order("created_at", { ascending: true }),
-    admin
+    supabase
       .from("squeegee_plans")
       .select("id, token, client_name, plan_name, total_price, created_at")
       .eq("status", "sent")

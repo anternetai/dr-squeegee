@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { SqueegeeInvoice } from "@/lib/squeegee/types"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -6,8 +6,20 @@ import Link from "next/link"
 import { FileText, DollarSign, CheckCircle2, AlertCircle } from "lucide-react"
 import { InvoicesTable, type InvoiceRow } from "@/components/squeegee/invoices-table"
 
+export const dynamic = "force-dynamic"
+
+// Service-role: the CRM is gated by the signed crm_auth cookie in middleware,
+// not by a Supabase session, so these queries have no authenticated identity.
+// Reading them through the anon key is what forced RLS open to anon.
+function getAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
+
 export default async function InvoicesPage() {
-  const supabase = await createClient()
+  const supabase = getAdmin()
 
   // Fetch invoices — also grab job client_name via job_id
   const { data: invoices } = await supabase
