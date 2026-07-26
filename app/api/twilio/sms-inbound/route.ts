@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
 import { normalizePhone, recordOptOut, recordOptIn } from "@/lib/squeegee/sms"
+import { handleParserMessage, ANTHONY_CELL10 } from "@/lib/squeegee/parser-handler"
 
 // Inbound SMS webhook for the Dr. Squeegee business line (980) 252-8701.
 // Handles opt-out/opt-in/help keywords and logs every inbound message, then
@@ -50,6 +51,14 @@ export async function POST(request: NextRequest) {
     } catch {
       /* logging must never break inbound handling */
     }
+  }
+
+  // Anthony's own texts are text-to-CRM commands, not customer replies. The
+  // parser number lives in the Messaging Service (for A2P registration), so its
+  // inbound lands here — route his messages to the parser before anything else.
+  if (norm && norm.phone10 === ANTHONY_CELL10) {
+    const handled = await handleParserMessage(norm.phone10, body).catch(() => false)
+    if (handled) return twiml()
   }
 
   // Keyword handling. If Twilio Advanced Opt-Out is on it intercepts these
