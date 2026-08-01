@@ -23,8 +23,8 @@ function daysOut(createdAt: string): number {
 }
 
 function ageClasses(days: number): string {
-  if (days >= 7) return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-  if (days >= 3) return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+  if (days >= 7) return "bg-[var(--crm-dead-bg)] text-[var(--crm-dead)]"
+  if (days >= 3) return "bg-[var(--crm-attention-bg)] text-[var(--crm-attention)]"
   return "bg-muted text-muted-foreground"
 }
 
@@ -47,7 +47,7 @@ function CopyLinkButton({ path }: { path: string }) {
         }
       }}
     >
-      {copied ? <Check className="h-4 w-4 text-[#2D8C6F]" /> : <Copy className="h-4 w-4" />}
+      {copied ? <Check className="h-4 w-4 text-[var(--crm-accent)]" /> : <Copy className="h-4 w-4" />}
     </Button>
   )
 }
@@ -65,17 +65,17 @@ export function AgingQuotes({
   const shown = items.slice(0, 8)
 
   return (
-    <Card className="border-yellow-500/20">
+    <Card className="border-[var(--crm-attention-bg)]">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-yellow-50 dark:bg-yellow-900/20">
-              <Hourglass className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            <div className="p-1.5 rounded-md bg-[var(--crm-attention-bg)]">
+              <Hourglass className="h-4 w-4 text-[var(--crm-attention)]" />
             </div>
             <CardTitle className="text-base">Waiting on a yes</CardTitle>
           </div>
           {items.length > 0 && (
-            <span className="text-sm font-semibold text-yellow-700 dark:text-yellow-400">
+            <span className="text-sm font-semibold text-[var(--crm-attention)]">
               ${total.toLocaleString("en-US", { maximumFractionDigits: 0 })} outstanding
             </span>
           )}
@@ -98,7 +98,7 @@ export function AgingQuotes({
                     <p className="text-xs text-muted-foreground truncate">
                       {item.label}
                       {item.needsReply && (
-                        <span className="inline-flex items-center gap-1 ml-2 text-blue-600 dark:text-blue-400 font-medium">
+                        <span className="inline-flex items-center gap-1 ml-2 text-[var(--crm-accent)] font-medium">
                           <MessageCircleQuestion className="h-3 w-3" /> asked a question
                         </span>
                       )}

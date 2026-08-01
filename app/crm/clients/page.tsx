@@ -1,10 +1,9 @@
 import { createClient } from "@supabase/supabase-js"
 import { SqueegeeClient } from "@/lib/squeegee/types"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Plus, Users } from "lucide-react"
 import { ClientsTable, type EnrichedClient } from "@/components/squeegee/clients-table"
+import { money } from "@/lib/crm/status"
 
 export const dynamic = "force-dynamic"
 
@@ -57,38 +56,43 @@ export default async function ClientsPage() {
     last_job: agg[c.id]?.last || null,
   }))
 
+  const lifetime = enriched.reduce((sum, c) => sum + c.total_value, 0)
+  const repeat = enriched.filter((c) => c.job_count > 1).length
+
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Clients</h1>
-          <p className="text-sm text-muted-foreground">
-            {enriched.length} client{enriched.length !== 1 ? "s" : ""}
+          <h2 className="text-xl font-semibold tracking-tight">Clients</h2>
+          <p className="mt-0.5 text-sm text-[var(--crm-text-dim)]">
+            {enriched.length} {enriched.length === 1 ? "client" : "clients"}
+            {lifetime > 0 && <> · <span className="text-[var(--crm-accent)]">{money(lifetime)}</span> lifetime</>}
+            {repeat > 0 && <> · {repeat} repeat</>}
           </p>
         </div>
-        <Button asChild className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white">
-          <Link href="/crm/clients/new">
-            <Plus className="h-4 w-4 mr-2" />
-            New Client
-          </Link>
-        </Button>
+        <Link
+          href="/crm/clients/new"
+          className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--crm-accent)] px-3.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--crm-accent-hover)]"
+        >
+          <Plus className="h-4 w-4" />
+          New client
+        </Link>
       </div>
 
       {enriched.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center text-muted-foreground">
-            <Users className="h-12 w-12 mx-auto mb-4 opacity-25" />
-            <p className="font-medium mb-1">No clients yet</p>
-            <p className="text-sm mb-5">Add your first client to start tracking jobs and invoices.</p>
-            <Button asChild className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white">
-              <Link href="/crm/clients/new">
-                <Plus className="h-4 w-4 mr-2" />
-                New Client
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border border-dashed border-[var(--crm-line)] px-4 py-14 text-center">
+          <Users className="mx-auto h-6 w-6 text-[var(--crm-text-faint)]" />
+          <p className="mt-2 text-sm font-medium">No clients yet</p>
+          <p className="mt-1 text-sm text-[var(--crm-text-dim)]">
+            Add your first client to start tracking jobs and invoices.
+          </p>
+          <Link
+            href="/crm/clients/new"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[var(--crm-accent)] px-4 py-2 text-sm font-medium text-white"
+          >
+            <Plus className="h-4 w-4" /> New client
+          </Link>
+        </div>
       ) : (
         <ClientsTable clients={enriched} />
       )}

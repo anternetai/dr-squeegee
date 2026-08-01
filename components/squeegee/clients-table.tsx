@@ -104,7 +104,7 @@ export function ClientsTable({ clients }: { clients: EnrichedClient[] }) {
             onClick={() => setFilter(f.key)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               filter === f.key
-                ? "bg-[#3A6B4C] text-white"
+                ? "bg-[var(--crm-accent)] text-white"
                 : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -152,9 +152,9 @@ export function ClientsTable({ clients }: { clients: EnrichedClient[] }) {
                     {rows.map((c) => (
                       <tr key={c.id} className="hover:bg-muted/40 transition-colors">
                         <td className="px-4 py-3">
-                          <Link href={`/crm/clients/${c.id}`} className="flex items-center gap-2 font-medium hover:text-[#3A6B4C]">
-                            {c.blacklisted && <ShieldBan className="h-3.5 w-3.5 text-red-500 shrink-0" />}
-                            <span className={c.blacklisted ? "text-red-600 dark:text-red-400" : ""}>{c.name}</span>
+                          <Link href={`/crm/clients/${c.id}`} className="flex items-center gap-2 font-medium hover:text-[var(--crm-accent)]">
+                            {c.blacklisted && <ShieldBan className="h-3.5 w-3.5 text-[var(--crm-dead)] shrink-0" />}
+                            <span className={c.blacklisted ? "text-[var(--crm-dead)]" : ""}>{c.name}</span>
                           </Link>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground"><Link href={`/crm/clients/${c.id}`} className="block">{c.phone || "—"}</Link></td>
@@ -181,8 +181,8 @@ export function ClientsTable({ clients }: { clients: EnrichedClient[] }) {
                   <CardContent className="p-4 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        {c.blacklisted && <ShieldBan className="h-3.5 w-3.5 text-red-500 shrink-0" />}
-                        <p className={`font-semibold ${c.blacklisted ? "text-red-600 dark:text-red-400" : ""}`}>{c.name}</p>
+                        {c.blacklisted && <ShieldBan className="h-3.5 w-3.5 text-[var(--crm-dead)] shrink-0" />}
+                        <p className={`font-semibold ${c.blacklisted ? "text-[var(--crm-dead)]" : ""}`}>{c.name}</p>
                       </div>
                       <span className="shrink-0 text-xs px-2 py-0.5 rounded-full font-semibold bg-[#E8F0EA] text-[#1E3E2B] dark:bg-[#1A2E21] dark:text-[#A8C4B0]">
                         {c.job_count} job{c.job_count !== 1 ? "s" : ""}

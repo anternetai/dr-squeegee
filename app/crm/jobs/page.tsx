@@ -1,16 +1,14 @@
 import { createClient } from "@supabase/supabase-js"
 import { SqueegeeJob, STATUS_LABELS, STATUS_ORDER, JobStatus } from "@/lib/squeegee/types"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Plus, Briefcase } from "lucide-react"
-import { JobsFilterBar } from "@/components/squeegee/jobs-filter-bar"
+import { CountTabs } from "@/components/squeegee/crm/stat-tile"
+import { statusClass, money } from "@/lib/crm/status"
 
 export const dynamic = "force-dynamic"
 
 // Service-role: the CRM is gated by the signed crm_auth cookie in middleware,
 // not by a Supabase session, so these queries have no authenticated identity.
-// Reading them through the anon key is what forced RLS open to anon.
 function getAdmin() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,12 +16,12 @@ function getAdmin() {
   )
 }
 
-const STATUS_COLORS: Record<JobStatus, string> = {
-  new: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  quoted: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-  approved: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
-  scheduled: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-  complete: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+function shortDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
 }
 
 interface PageProps {
@@ -32,183 +30,191 @@ interface PageProps {
 
 export default async function JobsPage({ searchParams }: PageProps) {
   const { status } = await searchParams
+  const active = STATUS_ORDER.includes(status as JobStatus) ? (status as JobStatus) : null
 
   let allJobs: SqueegeeJob[] = []
   let fetchError: string | null = null
 
   try {
-    const supabase = getAdmin()
-
-    let query = supabase
+    // Fetch every job and filter in memory: it is ~50 rows, and it means the
+    // status tabs can carry live counts instead of being blind links.
+    const { data, error } = await getAdmin()
       .from("squeegee_jobs")
       .select("*")
       .order("created_at", { ascending: false })
-
-    if (status && STATUS_ORDER.includes(status as JobStatus)) {
-      query = query.eq("status", status)
-    }
-
-    const { data: jobs, error } = await query
-    if (error) {
-      fetchError = error.message
-    } else {
-      allJobs = (jobs || []) as SqueegeeJob[]
-    }
+    if (error) fetchError = error.message
+    else allJobs = (data || []) as SqueegeeJob[]
   } catch (e) {
     fetchError = e instanceof Error ? e.message : "Unknown error"
   }
 
+  const counts = STATUS_ORDER.reduce((acc, s) => {
+    acc[s] = allJobs.filter((j) => j.status === s).length
+    return acc
+  }, {} as Record<JobStatus, number>)
+
+  const jobs = active ? allJobs.filter((j) => j.status === active) : allJobs
+  const shown = jobs.reduce((sum, j) => sum + (Number(j.price) || 0), 0)
+
   return (
     <div className="space-y-5">
       {fetchError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 p-4 text-sm text-red-700 dark:text-red-300">
+        <div className="rounded-xl border border-[var(--crm-dead-bg)] bg-[var(--crm-dead-bg)] px-4 py-3 text-sm text-[var(--crm-dead)]">
           Error loading jobs: {fetchError}
         </div>
       )}
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+      <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Jobs</h1>
-          <p className="text-sm text-muted-foreground">
-            {allJobs.length} job{allJobs.length !== 1 ? "s" : ""}
-            {status ? ` · ${STATUS_LABELS[status as JobStatus]}` : ""}
+          <h2 className="text-xl font-semibold tracking-tight">Jobs</h2>
+          <p className="mt-0.5 text-sm text-[var(--crm-text-dim)]">
+            {jobs.length} {jobs.length === 1 ? "job" : "jobs"}
+            {active ? ` · ${STATUS_LABELS[active]}` : ""}
+            {shown > 0 && <> · <span className="text-[var(--crm-accent)]">{money(shown)}</span></>}
           </p>
         </div>
-        <Button asChild className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white">
-          <Link href="/crm/quotes/new">
-            <Plus className="h-4 w-4 mr-2" />
-            New Quote
-          </Link>
-        </Button>
+        <Link
+          href="/crm/quotes/new"
+          className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--crm-accent)] px-3.5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--crm-accent-hover)]"
+        >
+          <Plus className="h-4 w-4" />
+          New quote
+        </Link>
       </div>
 
-      {/* Filter bar */}
-      <JobsFilterBar activeStatus={status} />
+      <CountTabs
+        items={[
+          { label: "All", count: allJobs.length, href: "/crm/jobs", active: !active },
+          ...STATUS_ORDER.map((s) => ({
+            label: STATUS_LABELS[s],
+            count: counts[s],
+            href: `/crm/jobs?status=${s}`,
+            active: active === s,
+          })),
+        ]}
+      />
 
-      {/* Jobs list */}
-      {allJobs.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No jobs found{status ? ` with status "${STATUS_LABELS[status as JobStatus]}"` : ""}.</p>
-            <Button asChild className="mt-4 bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white">
-              <Link href="/crm/quotes/new">
-                <Plus className="h-4 w-4 mr-2" />
-                New Quote
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+      {jobs.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[var(--crm-line)] px-4 py-12 text-center">
+          <Briefcase className="mx-auto h-6 w-6 text-[var(--crm-text-faint)]" />
+          <p className="mt-2 text-sm text-[var(--crm-text-dim)]">
+            No jobs{active ? ` marked ${STATUS_LABELS[active].toLowerCase()}` : ""} yet.
+          </p>
+          <Link
+            href="/crm/quotes/new"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[var(--crm-accent)] px-4 py-2 text-sm font-medium text-white"
+          >
+            <Plus className="h-4 w-4" /> New quote
+          </Link>
+        </div>
       ) : (
         <>
-          {/* Table — desktop */}
-          <div className="hidden md:block">
-            <Card>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/40">
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Client</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Address</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Service</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
-                      <th className="text-right px-4 py-3 font-medium text-muted-foreground">Price</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {allJobs.map((job) => (
-                      <tr
-                        key={job.id}
-                        className="hover:bg-muted/40 transition-colors cursor-pointer"
+          {/* Desktop table */}
+          <div className="hidden overflow-hidden rounded-xl border border-[var(--crm-line)] bg-[var(--crm-surface)] md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--crm-line)]">
+                    {["Client", "Address", "Service", "Status", "Date"].map((h) => (
+                      <th
+                        key={h}
+                        className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-[var(--crm-text-faint)]"
                       >
-                        <td className="px-4 py-3">
-                          <Link href={`/crm/jobs/${job.id}`} className="block">
-                            <span className="font-medium">{job.client_name}</span>
-                          </Link>
-                          {job.client_phone && (
-                            <a
-                              href={`sms:${job.client_phone.replace(/[^\d+]/g, "")}`}
-                              className="block text-xs text-[#3A6B4C] hover:underline"
-                            >
-                              {job.client_phone}
-                            </a>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground max-w-[180px] truncate">
-                          <Link href={`/crm/jobs/${job.id}`} className="block">
-                            {job.address}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Link href={`/crm/jobs/${job.id}`} className="block">
-                            {job.service_type === "Pending Quote" ? <span className="text-muted-foreground italic">Pending Quote</span> : job.service_type}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Link href={`/crm/jobs/${job.id}`} className="block">
-                            <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[job.status]}`}>
-                              {STATUS_LABELS[job.status]}
-                            </span>
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">
-                          <Link href={`/crm/jobs/${job.id}`} className="block">
-                            {job.appointment_date
-                              ? new Date(job.appointment_date + "T00:00:00").toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })
-                              : new Date(job.created_at).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 text-right font-medium">
-                          <Link href={`/crm/jobs/${job.id}`} className="block">
-                            {job.price != null ? `$${Number(job.price).toFixed(2)}` : "—"}
-                          </Link>
-                        </td>
-                      </tr>
+                        {h}
+                      </th>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wide text-[var(--crm-text-faint)]">
+                      Price
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--crm-line)]">
+                  {jobs.map((job) => (
+                    <tr key={job.id} className="transition-colors hover:bg-[var(--crm-surface-high)]">
+                      <td className="px-4 py-3">
+                        <Link href={`/crm/jobs/${job.id}`} className="font-medium">
+                          {job.client_name}
+                        </Link>
+                        {job.client_phone && (
+                          <a
+                            href={`sms:${job.client_phone.replace(/[^\d+]/g, "")}`}
+                            className="block text-xs text-[var(--crm-accent)] hover:underline"
+                          >
+                            {job.client_phone}
+                          </a>
+                        )}
+                      </td>
+                      <td className="max-w-[180px] truncate px-4 py-3 text-[var(--crm-text-dim)]">
+                        <Link href={`/crm/jobs/${job.id}`} className="block truncate">
+                          {job.address}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link href={`/crm/jobs/${job.id}`} className="block">
+                          {job.service_type === "Pending Quote" ? (
+                            <span className="text-[var(--crm-text-faint)]">Pending quote</span>
+                          ) : (
+                            job.service_type
+                          )}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link href={`/crm/jobs/${job.id}`} className="block">
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClass(job.status)}`}
+                          >
+                            {STATUS_LABELS[job.status]}
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-[var(--crm-text-faint)]">
+                        <Link href={`/crm/jobs/${job.id}`} className="block">
+                          {job.appointment_date
+                            ? shortDate(job.appointment_date + "T00:00:00")
+                            : shortDate(job.created_at)}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link href={`/crm/jobs/${job.id}`} className="crm-numeral block">
+                          {job.price != null ? money(Number(job.price)) : "—"}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          {/* Cards — mobile */}
-          <div className="md:hidden space-y-3">
-            {allJobs.map((job) => (
-              <Link key={job.id} href={`/crm/jobs/${job.id}`}>
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium">{job.client_name}</p>
-                        <p className="text-xs text-muted-foreground">{job.service_type === "Pending Quote" ? "Pending Quote" : job.service_type}</p>
-                      </div>
-                      <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[job.status]}`}>
-                        {STATUS_LABELS[job.status]}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate">{job.address}</p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(job.created_at).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                      {job.price != null && (
-                        <span className="font-semibold text-sm">${Number(job.price).toFixed(2)}</span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+          {/* Mobile list */}
+          <div className="divide-y divide-[var(--crm-line)] overflow-hidden rounded-xl border border-[var(--crm-line)] bg-[var(--crm-surface)] md:hidden">
+            {jobs.map((job) => (
+              <Link
+                key={job.id}
+                href={`/crm/jobs/${job.id}`}
+                className="block px-4 py-3 transition-colors active:bg-[var(--crm-surface-high)]"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{job.client_name}</span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClass(job.status)}`}
+                  >
+                    {STATUS_LABELS[job.status]}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate text-xs text-[var(--crm-text-faint)]">
+                  {job.service_type === "Pending Quote" ? "Pending quote" : job.service_type} · {job.address}
+                </p>
+                <div className="mt-1.5 flex items-center justify-between">
+                  <span className="text-xs text-[var(--crm-text-faint)]">
+                    {job.appointment_date
+                      ? shortDate(job.appointment_date + "T00:00:00")
+                      : shortDate(job.created_at)}
+                  </span>
+                  {job.price != null && (
+                    <span className="crm-numeral text-sm">{money(Number(job.price))}</span>
+                  )}
+                </div>
               </Link>
             ))}
           </div>

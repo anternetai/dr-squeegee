@@ -15,8 +15,8 @@ function daysOut(createdAt: string): number {
 }
 
 function ageClasses(days: number): string {
-  if (days >= 7) return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-  if (days >= 3) return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+  if (days >= 7) return "bg-[var(--crm-dead-bg)] text-[var(--crm-dead)]"
+  if (days >= 3) return "bg-[var(--crm-attention-bg)] text-[var(--crm-attention)]"
   return "bg-muted text-muted-foreground"
 }
 
@@ -27,17 +27,17 @@ export function NeedsScheduling({ items }: { items: NeedsSchedulingItem[] }) {
   const shown = items.slice(0, 8)
 
   return (
-    <Card className="border-[#2D8C6F]/20">
+    <Card className="border-[var(--crm-accent-line)]">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-[#2D8C6F]/10">
-              <CalendarClock className="h-4 w-4 text-[#2D8C6F]" />
+            <div className="p-1.5 rounded-md bg-[var(--crm-accent-weak)]">
+              <CalendarClock className="h-4 w-4 text-[var(--crm-accent)]" />
             </div>
             <CardTitle className="text-base">Needs scheduling</CardTitle>
           </div>
           {items.length > 0 && (
-            <span className="text-sm font-semibold text-[#2D8C6F]">
+            <span className="text-sm font-semibold text-[var(--crm-accent)]">
               {items.length} approved job{items.length !== 1 ? "s" : ""}
             </span>
           )}

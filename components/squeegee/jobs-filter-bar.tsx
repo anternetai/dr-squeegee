@@ -17,7 +17,7 @@ export function JobsFilterBar({ activeStatus }: JobsFilterBarProps) {
         className={cn(
           "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
           !activeStatus
-            ? "bg-[#3A6B4C] text-white"
+            ? "bg-[var(--crm-accent)] text-white"
             : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
         )}
       >
@@ -30,7 +30,7 @@ export function JobsFilterBar({ activeStatus }: JobsFilterBarProps) {
           className={cn(
             "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
             activeStatus === status
-              ? "bg-[#3A6B4C] text-white"
+              ? "bg-[var(--crm-accent)] text-white"
               : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
           )}
         >
