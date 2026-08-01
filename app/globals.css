@@ -197,3 +197,120 @@
   margin-left: 0.25rem;
   border-color: #6b7280;
 }
+
+/* ---------------------------------------------------------------------------
+   CRM token scope — [data-crm]
+   ---------------------------------------------------------------------------
+   globals.css is imported by the ROOT layout, so :root and .dark are shared
+   with drsqueegeeclt.com, /q customer quotes, /a e-sign and the member portal.
+   Nothing here may touch those. Every CRM token lives under [data-crm], which
+   the CRM shell puts on its own root node — the blast radius is /crm only.
+
+   Values come from lib/squeegee/brand.ts (the one source of truth). The base
+   .dark theme ships --primary as BLUE (oklch .65 .19 260); inside the CRM it
+   is brand teal, which is what it should have been all along.
+--------------------------------------------------------------------------- */
+[data-crm] {
+  /* Grounds — near-black, three elevations only */
+  --crm-ground: #0a0a0a;
+  --crm-surface: #111111;
+  --crm-surface-high: #1a1a1a;
+  --crm-line: #242424;
+
+  /* The one accent */
+  --crm-accent: #2d8c6f;
+  --crm-accent-hover: #1f6b54;
+  --crm-accent-weak: color-mix(in srgb, #2d8c6f 14%, transparent);
+  --crm-accent-line: color-mix(in srgb, #2d8c6f 32%, transparent);
+
+  /* Text ramp */
+  --crm-text: #ffffff;
+  --crm-text-dim: #9ca3af;
+  --crm-text-faint: #5f6672;
+
+  /* Status — deliberately NOT five hues. Neutral is the default state;
+     teal carries "progressing / money in"; amber is reserved for "this is
+     waiting on you"; brick only ever means dead or destructive. */
+  --crm-idle: #9ca3af;
+  --crm-idle-bg: color-mix(in srgb, #9ca3af 12%, transparent);
+  --crm-active: #2d8c6f;
+  --crm-active-bg: color-mix(in srgb, #2d8c6f 14%, transparent);
+  --crm-attention: #c8922f;
+  --crm-attention-bg: color-mix(in srgb, #c8922f 14%, transparent);
+  --crm-dead: #b8453a;
+  --crm-dead-bg: color-mix(in srgb, #b8453a 14%, transparent);
+
+  /* Remap the shadcn contract so every existing Card/Button/Badge/Input
+     inside /crm inherits the above without being rewritten one by one. */
+  --background: var(--crm-ground);
+  --foreground: var(--crm-text);
+  --card: var(--crm-surface);
+  --card-foreground: var(--crm-text);
+  --popover: var(--crm-surface-high);
+  --popover-foreground: var(--crm-text);
+  --primary: var(--crm-accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--crm-surface-high);
+  --secondary-foreground: var(--crm-text);
+  --muted: var(--crm-surface-high);
+  --muted-foreground: var(--crm-text-dim);
+  --accent: var(--crm-accent-weak);
+  --accent-foreground: var(--crm-accent);
+  --destructive: var(--crm-dead);
+  --border: var(--crm-line);
+  --input: var(--crm-line);
+  --ring: var(--crm-accent);
+
+  /* Charts: one hue, stepped by lightness — a teal ramp, not a rainbow. */
+  --chart-1: #2d8c6f;
+  --chart-2: #3fa885;
+  --chart-3: #56c3a0;
+  --chart-4: #1f6b54;
+  --chart-5: #14503f;
+
+  --sidebar: #070707;
+  --sidebar-foreground: var(--crm-text);
+  --sidebar-primary: var(--crm-accent);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--crm-accent-weak);
+  --sidebar-accent-foreground: var(--crm-accent);
+  --sidebar-border: var(--crm-line);
+  --sidebar-ring: var(--crm-accent);
+
+  /* Tabular figures everywhere money and counts appear — columns of numbers
+     that don't shimmy as they update. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Leaflet ships light chrome; drag it into the dark scope. Scoped to [data-crm]
+   so the member portal's own map is untouched. */
+[data-crm] .leaflet-container {
+  background: var(--crm-ground);
+  font-family: inherit;
+}
+[data-crm] .leaflet-control-attribution {
+  background: color-mix(in srgb, var(--crm-ground) 82%, transparent);
+  color: var(--crm-text-faint);
+  font-size: 10px;
+}
+[data-crm] .leaflet-control-attribution a {
+  color: var(--crm-text-dim);
+}
+[data-crm] .leaflet-tooltip {
+  background: var(--crm-surface-high);
+  border: 1px solid var(--crm-line);
+  color: var(--crm-text);
+  box-shadow: none;
+  font-size: 12px;
+}
+[data-crm] .leaflet-tooltip-top::before {
+  border-top-color: var(--crm-line);
+}
+
+/* Big numbers wear the condensed display face, matching the badge lettering. */
+[data-crm] .crm-numeral {
+  font-family: var(--font-brand-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}

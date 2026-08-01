@@ -37,7 +37,9 @@ export const viewport: Viewport = {
 
 export default function SqueegeeLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    // The CRM is dark, always — it is read on a phone in daylight and on a
+    // laptop at night, and a light flash on load is worse than either.
+    <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark">
       <CrmShell>{children}</CrmShell>
     </ThemeProvider>
   )

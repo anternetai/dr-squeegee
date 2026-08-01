@@ -58,7 +58,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // next-themes writes className/color-scheme onto <html> on the client, which
+    // the server cannot know about. suppressHydrationWarning covers that one
+    // attribute diff on this element only — it is not a blanket silencer.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="msvalidate.01" content="F77839BA725F86AAFF9906E2805D09C1" />
       </head>
