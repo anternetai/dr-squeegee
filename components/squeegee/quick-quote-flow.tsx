@@ -55,7 +55,7 @@ function CopyButton({ text }: { text: string }) {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       }}
-      className={cn("gap-1.5 h-9", copied && "border-green-500 text-green-600")}
+      className={cn("gap-1.5 h-9", copied && "border-[var(--crm-accent-line)] text-[var(--crm-accent)]")}
     >
       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       {copied ? "Copied!" : "Copy"}
@@ -205,10 +205,10 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
     ].filter(Boolean)
     const smsBody = smsParts.join(" ")
     return (
-      <Card className="border-[#3A6B4C]/30">
+      <Card className="border-[var(--crm-accent-line)]">
         <CardContent className="p-6 space-y-4 text-center">
-          <div className="w-12 h-12 rounded-full bg-[#3A6B4C]/10 flex items-center justify-center mx-auto">
-            <Check className="h-6 w-6 text-[#3A6B4C]" />
+          <div className="w-12 h-12 rounded-full bg-[var(--crm-accent-weak)] flex items-center justify-center mx-auto">
+            <Check className="h-6 w-6 text-[var(--crm-accent)]" />
           </div>
           <div>
             <h2 className="text-lg font-semibold">Quote sent</h2>
@@ -218,7 +218,7 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
             {apptDate && apptTime && (
               <p className="text-xs mt-1">
                 {result.scheduled ? (
-                  <span className="text-[#3A6B4C]">
+                  <span className="text-[var(--crm-accent)]">
                     Scheduled {formatDate(apptDate)} at {formatTime(apptTime)}
                   </span>
                 ) : (
@@ -245,7 +245,7 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
                 label="Text it"
                 sentLabel="Texted ✓"
                 variant="default"
-                className="gap-1.5 bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
+                className="gap-1.5 bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white"
               />
             )}
             <Button asChild size="sm" variant="outline" className="gap-1.5">
@@ -254,7 +254,7 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
                 Open
               </a>
             </Button>
-            <Button asChild size="sm" variant="outline" className="gap-1.5 border-[#2D8C6F]/40 text-[#2D8C6F] hover:bg-[#2D8C6F]/5">
+            <Button asChild size="sm" variant="outline" className="gap-1.5 border-[var(--crm-accent-line)] text-[var(--crm-accent)] hover:bg-[var(--crm-accent)]/5">
               <Link href={`/crm/jobs/${result.job_id}`}>
                 <CalendarCheck className="h-3.5 w-3.5" />
                 Open job to schedule →
@@ -277,7 +277,7 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
               setApptDate("")
               setApptTime("")
             }}
-            className="text-sm text-[#3A6B4C] hover:underline"
+            className="text-sm text-[var(--crm-accent)] hover:underline"
           >
             Create another quote
           </button>
@@ -294,7 +294,7 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Client</p>
 
           {selectedClient ? (
-            <div className="flex items-start justify-between gap-3 rounded-lg border border-[#3A6B4C]/30 bg-[#3A6B4C]/5 p-3">
+            <div className="flex items-start justify-between gap-3 rounded-lg border border-[var(--crm-accent-line)] bg-[var(--crm-accent)]/5 p-3">
               <div className="min-w-0">
                 <p className="font-medium text-sm">{selectedClient.name}</p>
                 <p className="text-xs text-muted-foreground truncate">
@@ -461,7 +461,7 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
                   onClick={() => setDiscountType("dollar")}
                   className={cn(
                     "px-2.5 text-xs font-medium transition-colors",
-                    discountType === "dollar" ? "bg-[#3A6B4C] text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    discountType === "dollar" ? "bg-[var(--crm-accent)] text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"
                   )}
                 >
                   $
@@ -471,7 +471,7 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
                   onClick={() => setDiscountType("percent")}
                   className={cn(
                     "px-2.5 text-xs font-medium transition-colors",
-                    discountType === "percent" ? "bg-[#3A6B4C] text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    discountType === "percent" ? "bg-[var(--crm-accent)] text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"
                   )}
                 >
                   %
@@ -520,7 +520,7 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
       <Button
         onClick={handleSubmit}
         disabled={!canSubmit || loading}
-        className="w-full h-12 bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white text-sm font-medium"
+        className="w-full h-12 bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white text-sm font-medium"
       >
         {loading ? (
           <>

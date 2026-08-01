@@ -230,7 +230,7 @@ export function FollowupsBoard({ customers }: { customers: FollowupCustomer[] })
             onClick={() => setFilter(f.key)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               filter === f.key
-                ? "bg-[#3A6B4C] text-white"
+                ? "bg-[var(--crm-accent)] text-white"
                 : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -263,7 +263,7 @@ export function FollowupsBoard({ customers }: { customers: FollowupCustomer[] })
                       <p className="font-semibold leading-tight truncate">{c.name}</p>
                       <button
                         onClick={() => callCustomer(c)}
-                        className="text-sm text-[#3A6B4C] dark:text-[#7FB08F] hover:underline font-medium"
+                        className="text-sm text-[var(--crm-accent)] dark:text-[#7FB08F] hover:underline font-medium"
                       >
                         {formatPhone(c.phone10)}
                       </button>
@@ -292,7 +292,7 @@ export function FollowupsBoard({ customers }: { customers: FollowupCustomer[] })
                       </span>
                     )}
                     {flag === "offered" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--crm-attention-bg)] text-[var(--crm-attention)] dark:bg-[var(--crm-attention-bg)] dark:text-[var(--crm-attention)]">
                         <Check className="h-3 w-3" /> Offered {service}
                       </span>
                     )}
@@ -329,7 +329,7 @@ export function FollowupsBoard({ customers }: { customers: FollowupCustomer[] })
                           {c.lastContactChannel ? ` (${c.lastContactChannel})` : ""}
                         </span>
                       ) : (
-                        <span className="text-amber-600 dark:text-amber-400">never</span>
+                        <span className="text-[var(--crm-attention)] dark:text-[var(--crm-attention)]">never</span>
                       )}
                     </span>
                   </div>
@@ -339,7 +339,7 @@ export function FollowupsBoard({ customers }: { customers: FollowupCustomer[] })
                     <Button
                       onClick={() => textOffer(c)}
                       size="sm"
-                      className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
+                      className="bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white"
                     >
                       <MessageSquare className="h-4 w-4 mr-1.5" />
                       Text {service.toLowerCase()} offer
@@ -348,7 +348,7 @@ export function FollowupsBoard({ customers }: { customers: FollowupCustomer[] })
                       <Phone className="h-4 w-4 mr-1.5" />
                       Call
                     </Button>
-                    <Button asChild size="sm" variant="outline" className="border-[#2D8C6F]/50 text-[#2D8C6F] hover:bg-[#2D8C6F]/10">
+                    <Button asChild size="sm" variant="outline" className="border-[var(--crm-accent-line)] text-[var(--crm-accent)] hover:bg-[var(--crm-accent-weak)]">
                       <Link href={`/crm/pitch?phone=${c.phone10}`}>
                         <Sparkles className="h-4 w-4 mr-1.5" />
                         Pitch Club
@@ -397,7 +397,7 @@ export function FollowupsBoard({ customers }: { customers: FollowupCustomer[] })
             <Button variant="outline" onClick={() => setNoteFor(null)}>
               Cancel
             </Button>
-            <Button onClick={saveNote} className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white">
+            <Button onClick={saveNote} className="bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white">
               Save
             </Button>
           </DialogFooter>

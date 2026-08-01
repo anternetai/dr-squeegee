@@ -18,11 +18,11 @@ function getAdmin() {
 }
 
 const CHIP_COLORS: Record<JobStatus, string> = {
-  new: "bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/20",
-  quoted: "bg-yellow-500/15 text-yellow-800 dark:text-yellow-300 border-yellow-500/20",
-  approved: "bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/20",
-  scheduled: "bg-[#2D8C6F]/15 text-[#1F6B54] dark:text-[#5FBFA0] border-[#2D8C6F]/25",
-  complete: "bg-green-500/15 text-green-800 dark:text-green-300 border-green-500/20",
+  new: "bg-[var(--crm-idle-bg)] text-[var(--crm-idle)] dark:text-[var(--crm-idle)] border-[var(--crm-idle-bg)]",
+  quoted: "bg-[var(--crm-attention-bg)] text-[var(--crm-attention)] dark:text-[var(--crm-attention)] border-[var(--crm-attention-bg)]",
+  approved: "bg-[var(--crm-idle-bg)] text-[var(--crm-idle)] dark:text-[var(--crm-idle)] border-[var(--crm-idle-bg)]",
+  scheduled: "bg-[var(--crm-accent-weak)] text-[#1F6B54] dark:text-[#5FBFA0] border-[var(--crm-accent)]/25",
+  complete: "bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:text-[var(--crm-accent)] border-[var(--crm-accent-weak)]",
 }
 
 const MONTH_NAMES = [
@@ -186,7 +186,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-[#3A6B4C]" />
+            <CalendarDays className="h-4 w-4 text-[var(--crm-accent)]" />
             This Week
           </CardTitle>
         </CardHeader>
@@ -200,14 +200,14 @@ export default async function CalendarPage({ searchParams }: PageProps) {
                   key={dateStr}
                   className={`rounded-lg border ${
                     isToday
-                      ? "border-[#3A6B4C] bg-[#F2F7F3] dark:bg-[#121E16]"
+                      ? "border-[var(--crm-accent)] bg-[#F2F7F3] dark:bg-[#121E16]"
                       : "border-border bg-card"
                   } flex flex-col min-h-[70px] overflow-hidden`}
                 >
                   <div
                     className={`px-2 py-1.5 text-xs font-semibold ${
                       isToday
-                        ? "text-[#3A6B4C] bg-[#E8F0EA] dark:bg-[#182A1E]"
+                        ? "text-[var(--crm-accent)] bg-[#E8F0EA] dark:bg-[#182A1E]"
                         : "text-muted-foreground bg-muted/40"
                     }`}
                   >
@@ -295,7 +295,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
                       key={dateStr}
                       className={`rounded-lg border min-h-[84px] p-1 flex flex-col gap-1 ${
                         isToday
-                          ? "border-[#3A6B4C] bg-[#F2F7F3] dark:bg-[#121E16]"
+                          ? "border-[var(--crm-accent)] bg-[#F2F7F3] dark:bg-[#121E16]"
                           : inMonth
                           ? "border-border bg-card"
                           : "border-border/40 bg-muted/20"
@@ -304,7 +304,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
                       <span
                         className={`text-[11px] font-semibold px-0.5 ${
                           isToday
-                            ? "text-[#3A6B4C]"
+                            ? "text-[var(--crm-accent)]"
                             : inMonth
                             ? "text-foreground"
                             : "text-muted-foreground/40"

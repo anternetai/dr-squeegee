@@ -36,11 +36,11 @@ import { cn } from "@/lib/utils"
 import { SendTextButton } from "@/components/squeegee/send-text-button"
 
 const STATUS_COLORS: Record<JobStatus, string> = {
-  new: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800",
-  quoted: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800",
-  approved: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800",
-  scheduled: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
-  complete: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800",
+  new: "bg-[var(--crm-idle-bg)] text-[var(--crm-idle)] dark:bg-[var(--crm-idle-bg)] dark:text-[var(--crm-idle)] border-[var(--crm-idle-bg)] dark:border-[var(--crm-idle-bg)]",
+  quoted: "bg-[var(--crm-attention-bg)] text-[var(--crm-attention)] dark:bg-[var(--crm-attention-bg)] dark:text-[var(--crm-attention)] border-[var(--crm-attention-bg)] dark:border-[var(--crm-attention-bg)]",
+  approved: "bg-[var(--crm-idle-bg)] text-[var(--crm-idle)] dark:bg-[var(--crm-idle-bg)] dark:text-[var(--crm-idle)] border-[var(--crm-idle-bg)] dark:border-[var(--crm-idle-bg)]",
+  scheduled: "bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)] border-[var(--crm-accent-line)] dark:border-[var(--crm-accent-line)]",
+  complete: "bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)] border-[var(--crm-accent-line)] dark:border-[var(--crm-accent-line)]",
 }
 
 interface Props {
@@ -63,7 +63,7 @@ function CopyButton({ text }: { text: string }) {
       onClick={handleCopy}
       className={cn(
         "gap-1.5 transition-colors",
-        copied && "border-green-500 text-green-600"
+        copied && "border-[var(--crm-accent-line)] text-[var(--crm-accent)]"
       )}
     >
       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -291,7 +291,7 @@ export function JobDetailClient({ job: initialJob }: Props) {
                 size="sm"
                 onClick={advanceStatus}
                 disabled={updatingStatus}
-                className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
+                className="bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white"
               >
                 {updatingStatus && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
                 Mark as {STATUS_LABELS[nextStatus]}
@@ -317,7 +317,7 @@ export function JobDetailClient({ job: initialJob }: Props) {
                   size="sm"
                   onClick={saveEdit}
                   disabled={savingEdit}
-                  className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
+                  className="bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white"
                 >
                   {savingEdit ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
                   Save
@@ -432,15 +432,15 @@ export function JobDetailClient({ job: initialJob }: Props) {
 
       {/* Care Club upsell — the moment the job's done is the moment to pitch */}
       {job.client_phone && (
-        <div className="flex items-center gap-3 rounded-xl border border-[#2D8C6F]/40 bg-[#2D8C6F]/5 px-4 py-3">
-          <Sparkles className="h-5 w-5 text-[#2D8C6F] shrink-0" />
+        <div className="flex items-center gap-3 rounded-xl border border-[var(--crm-accent-line)] bg-[var(--crm-accent)]/5 px-4 py-3">
+          <Sparkles className="h-5 w-5 text-[var(--crm-accent)] shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">Job done? Pitch the Care Club.</p>
             <p className="text-xs text-muted-foreground">
               Their pricing history loads automatically — member rates in one tap.
             </p>
           </div>
-          <Button asChild size="sm" className="bg-[#2D8C6F] hover:bg-[#1F6B54] text-white shrink-0">
+          <Button asChild size="sm" className="bg-[var(--crm-accent)] hover:bg-[#1F6B54] text-white shrink-0">
             <Link href={`/crm/pitch?phone=${job.client_phone.replace(/[^0-9]/g, "").slice(-10)}`}>
               Pitch
             </Link>
@@ -453,7 +453,7 @@ export function JobDetailClient({ job: initialJob }: Props) {
         <CardContent className="p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
-              <FileText className="h-4 w-4 text-[#3A6B4C] shrink-0" />
+              <FileText className="h-4 w-4 text-[var(--crm-accent)] shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm font-medium">Send another quote</p>
                 <p className="text-xs text-muted-foreground truncate">
@@ -480,7 +480,7 @@ export function JobDetailClient({ job: initialJob }: Props) {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-[#3A6B4C]" />
+            <MessageSquare className="h-4 w-4 text-[var(--crm-accent)]" />
             <CardTitle className="text-base">Quote Message</CardTitle>
           </div>
         </CardHeader>
@@ -498,7 +498,7 @@ export function JobDetailClient({ job: initialJob }: Props) {
                 label="Text Quote"
                 sentLabel="Texted ✓"
                 variant="default"
-                className="gap-1.5 bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
+                className="gap-1.5 bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white"
               />
             )}
           </div>
@@ -509,7 +509,7 @@ export function JobDetailClient({ job: initialJob }: Props) {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <CalendarCheck className="h-4 w-4 text-[#3A6B4C]" />
+            <CalendarCheck className="h-4 w-4 text-[var(--crm-accent)]" />
             <CardTitle className="text-base">Appointment Confirmation</CardTitle>
           </div>
         </CardHeader>
@@ -529,7 +529,7 @@ export function JobDetailClient({ job: initialJob }: Props) {
                     label="Text Confirm"
                     sentLabel="Texted ✓"
                     variant="default"
-                    className="gap-1.5 bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
+                    className="gap-1.5 bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white"
                   />
                 )}
               </div>
@@ -543,8 +543,8 @@ export function JobDetailClient({ job: initialJob }: Props) {
       </Card>
 
       {/* Danger Zone */}
-      <div className="rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 p-4">
-        <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide mb-3">
+      <div className="rounded-lg border border-[var(--crm-dead-bg)] dark:border-[var(--crm-dead-bg)] bg-[var(--crm-dead-bg)] dark:bg-[var(--crm-dead-bg)] p-4">
+        <p className="text-xs font-semibold text-[var(--crm-dead)] dark:text-[var(--crm-dead)] uppercase tracking-wide mb-3">
           Danger Zone
         </p>
         <div className="flex items-center justify-between gap-4">
@@ -598,14 +598,14 @@ function InfoRow({
             href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(value)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-[#3A6B4C] hover:underline"
+            className="text-sm text-[var(--crm-accent)] hover:underline"
           >
             {value}
           </a>
         ) : isPhone ? (
           <a
             href={`sms:${value.replace(/[^\d+]/g, "")}`}
-            className="text-sm text-[#3A6B4C] hover:underline"
+            className="text-sm text-[var(--crm-accent)] hover:underline"
           >
             {value}
           </a>
@@ -683,15 +683,15 @@ function ScheduleCard({
   }
 
   return (
-    <Card className="border-[#2D8C6F]/30">
+    <Card className="border-[var(--crm-accent-line)]">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CalendarCheck className="h-4 w-4 text-[#2D8C6F]" />
+            <CalendarCheck className="h-4 w-4 text-[var(--crm-accent)]" />
             <CardTitle className="text-base">Schedule</CardTitle>
           </div>
           {isScheduled && !editing && (
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)]">
               Scheduled
             </span>
           )}
@@ -743,7 +743,7 @@ function ScheduleCard({
               onClick={handleSchedule}
               disabled={saving || !date || !time}
               size="sm"
-              className="bg-[#2D8C6F] hover:bg-[#1F6B54] text-white"
+              className="bg-[var(--crm-accent)] hover:bg-[#1F6B54] text-white"
             >
               {saving ? (
                 <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />

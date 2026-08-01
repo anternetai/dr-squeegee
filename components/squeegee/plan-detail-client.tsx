@@ -30,10 +30,10 @@ interface Props {
 
 const STATUS_BADGE: Record<PlanStatus, string> = {
   draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  sent: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  signed: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
-  active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  cancelled: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  sent: "bg-[var(--crm-idle-bg)] text-[var(--crm-idle)] dark:bg-[var(--crm-idle-bg)] dark:text-[var(--crm-idle)]",
+  signed: "bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)]",
+  active: "bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)]",
+  cancelled: "bg-[var(--crm-dead-bg)] text-[var(--crm-dead)] dark:bg-[var(--crm-dead-bg)] dark:text-[var(--crm-dead)]",
 }
 
 function formatDate(dateStr: string | null): string {
@@ -143,13 +143,13 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
           </div>
           <p className="text-sm text-muted-foreground mt-1">{plan.address}</p>
           {plan.client_phone && (
-            <a href={`tel:+${plan.client_phone.replace(/^\+/, "")}`} className="text-sm text-[#2D8C6F] mt-0.5 inline-block">
+            <a href={`tel:+${plan.client_phone.replace(/^\+/, "")}`} className="text-sm text-[var(--crm-accent)] mt-0.5 inline-block">
               {plan.client_phone}
             </a>
           )}
         </div>
         <div className="text-right">
-          <p className="text-2xl font-black tabular-nums text-[#2D8C6F]">
+          <p className="text-2xl font-black tabular-nums text-[var(--crm-accent)]">
             {formatMoney(Number(plan.total_price))}
           </p>
           <p className="text-xs text-muted-foreground">
@@ -162,8 +162,8 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
 
       {/* Pending reschedules alert */}
       {pendingReschedules.length > 0 && (
-        <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
-          <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+        <div className="rounded-xl border border-[var(--crm-attention-bg)] dark:border-[var(--crm-attention-bg)] bg-[var(--crm-attention-bg)] dark:bg-[var(--crm-attention-bg)] px-4 py-3">
+          <p className="text-sm font-semibold text-[var(--crm-attention)] dark:text-[var(--crm-attention)]">
             {pendingReschedules.length} reschedule request{pendingReschedules.length !== 1 ? "s" : ""} waiting — review below
           </p>
         </div>
@@ -179,7 +179,7 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
               <p className="text-xs truncate">{agreementUrl}</p>
             </div>
             <Button variant="outline" size="icon" onClick={() => copy(agreementUrl, "agreement")} title="Copy">
-              {copied === "agreement" ? <Check className="h-4 w-4 text-[#2D8C6F]" /> : <Copy className="h-4 w-4" />}
+              {copied === "agreement" ? <Check className="h-4 w-4 text-[var(--crm-accent)]" /> : <Copy className="h-4 w-4" />}
             </Button>
             <SendTextButton phone={plan.client_phone} body={agreementSms} kind="plan_agreement" size="icon" iconOnly sentLabel="Sent" />
             <Button variant="outline" size="icon" asChild title="Open">
@@ -194,7 +194,7 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
               <p className="text-xs truncate">{portalUrl}</p>
             </div>
             <Button variant="outline" size="icon" onClick={() => copy(portalUrl, "portal")} title="Copy">
-              {copied === "portal" ? <Check className="h-4 w-4 text-[#2D8C6F]" /> : <Copy className="h-4 w-4" />}
+              {copied === "portal" ? <Check className="h-4 w-4 text-[var(--crm-accent)]" /> : <Copy className="h-4 w-4" />}
             </Button>
             <SendTextButton phone={plan.client_phone} body={portalSms} kind="plan_portal" size="icon" iconOnly sentLabel="Sent" />
             <Button variant="outline" size="icon" asChild title="Open">
@@ -221,7 +221,7 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
         {plan.status !== "cancelled" && (
           <Button
             variant="outline"
-            className="text-red-500 hover:text-red-600"
+            className="text-[var(--crm-dead)] hover:text-[var(--crm-dead)]"
             disabled={busy === "cancel"}
             onClick={() => {
               if (confirm("Cancel this plan?")) patchPlan({ status: "cancelled" }, "cancel")
@@ -239,7 +239,7 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
         </p>
         {member ? (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-            <span className="font-bold text-[#2D8C6F] tabular-nums">
+            <span className="font-bold text-[var(--crm-accent)] tabular-nums">
               Member #{String(member.member_number).padStart(4, "0")}
             </span>
             <span className="text-muted-foreground">{member.email}</span>
@@ -324,7 +324,7 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
                 type="date"
                 value={genTermStart}
                 onChange={(e) => setGenTermStart(e.target.value)}
-                className="h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-[#2D8C6F]"
+                className="h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-[var(--crm-accent)]"
               />
               <Button onClick={generateSchedule} disabled={busy === "generate"}>
                 <CalendarDays className="h-4 w-4 mr-2" />
@@ -339,7 +339,7 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
                 key={v.id}
                 className={`rounded-lg border px-3 py-2.5 ${
                   v.status === "reschedule_requested"
-                    ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/10"
+                    ? "border-[var(--crm-attention-bg)] dark:border-[var(--crm-attention-bg)] bg-[var(--crm-attention-bg)] dark:bg-[var(--crm-attention-bg)]"
                     : "border-border"
                 }`}
               >
@@ -418,7 +418,7 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
                   </div>
                 </div>
                 {v.reschedule_note && v.status === "reschedule_requested" && (
-                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-1.5">
+                  <p className="text-xs text-[var(--crm-attention)] dark:text-[var(--crm-attention)] mt-1.5">
                     &ldquo;{v.reschedule_note}&rdquo;
                   </p>
                 )}

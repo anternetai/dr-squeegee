@@ -20,10 +20,10 @@ function getAdmin() {
 
 const STATUS_BADGE: Record<PlanStatus, string> = {
   draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  sent: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  sent: "bg-[var(--crm-idle-bg)] text-[var(--crm-idle)] dark:bg-[var(--crm-idle-bg)] dark:text-[var(--crm-idle)]",
   signed: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
-  active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  cancelled: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  active: "bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)]",
+  cancelled: "bg-[var(--crm-dead-bg)] text-[var(--crm-dead)] dark:bg-[var(--crm-dead-bg)] dark:text-[var(--crm-dead)]",
 }
 
 export default async function PlansPage() {
@@ -52,7 +52,7 @@ export default async function PlansPage() {
           <p className="text-sm text-muted-foreground">
             {livePlans.length} live &middot; {formatMoney(bookedRevenue)} booked
             {rescheduleCount ? (
-              <span className="ml-2 text-amber-600 dark:text-amber-400 font-medium">
+              <span className="ml-2 text-[var(--crm-attention)] dark:text-[var(--crm-attention)] font-medium">
                 &middot; {rescheduleCount} reschedule request{rescheduleCount !== 1 ? "s" : ""}
               </span>
             ) : null}
@@ -80,7 +80,7 @@ export default async function PlansPage() {
             <Link
               key={plan.id}
               href={`/crm/plans/${plan.id}`}
-              className="block rounded-xl border border-border bg-card px-4 py-3.5 hover:border-[#2D8C6F]/50 transition-colors"
+              className="block rounded-xl border border-border bg-card px-4 py-3.5 hover:border-[var(--crm-accent)]/50 transition-colors"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">

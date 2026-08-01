@@ -26,10 +26,10 @@ function getIcon(type: string) {
 }
 
 function getIconColor(type: string) {
-  if (type.startsWith("status_")) return "text-[#3A6B4C]"
-  if (type === "invoice_created") return "text-blue-600 dark:text-blue-400"
-  if (type === "invoice_paid") return "text-green-600 dark:text-green-400"
-  if (type === "invoice_sent") return "text-purple-600 dark:text-purple-400"
+  if (type.startsWith("status_")) return "text-[var(--crm-accent)]"
+  if (type === "invoice_created") return "text-[var(--crm-idle)] dark:text-[var(--crm-idle)]"
+  if (type === "invoice_paid") return "text-[var(--crm-accent)] dark:text-[var(--crm-accent)]"
+  if (type === "invoice_sent") return "text-[var(--crm-idle)] dark:text-[var(--crm-idle)]"
   return "text-muted-foreground"
 }
 
@@ -87,7 +87,7 @@ export function JobActivity({ jobId }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-[#3A6B4C]" />
+            <Activity className="h-4 w-4 text-[var(--crm-accent)]" />
             <CardTitle className="text-base">Activity</CardTitle>
           </div>
           {lastRefreshed && (
@@ -106,11 +106,11 @@ export function JobActivity({ jobId }: Props) {
           </div>
         ) : error ? (
           <div className="text-center py-6 text-muted-foreground">
-            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-red-400 opacity-60" />
+            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-[var(--crm-dead)] opacity-60" />
             <p className="text-sm">Failed to load activity.</p>
             <button
               onClick={fetchActivity}
-              className="mt-2 text-xs text-[#3A6B4C] hover:underline"
+              className="mt-2 text-xs text-[var(--crm-accent)] hover:underline"
             >
               Try again
             </button>

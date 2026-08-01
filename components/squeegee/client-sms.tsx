@@ -53,13 +53,13 @@ export function ClientSms({
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-[#2D8C6F]" /> Text {first}
+          <MessageSquare className="h-4 w-4 text-[var(--crm-accent)]" /> Text {first}
           {consent ? (
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 font-medium inline-flex items-center gap-1">
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)] font-medium inline-flex items-center gap-1">
               <ShieldCheck className="h-3 w-3" /> Consented
             </span>
           ) : (
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 font-medium">
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--crm-attention-bg)] text-[var(--crm-attention)] dark:bg-[var(--crm-attention-bg)] dark:text-[var(--crm-attention)] font-medium">
               No consent on file
             </span>
           )}
@@ -70,20 +70,20 @@ export function ClientSms({
           value={msg}
           onChange={(e) => setMsg(e.target.value)}
           rows={3}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-[#2D8C6F] focus:ring-1 focus:ring-[#2D8C6F]"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-[var(--crm-accent)] focus:ring-1 focus:ring-[var(--crm-accent)]"
         />
         <p className="text-xs text-muted-foreground">&quot;Reply STOP to opt out&quot; is added automatically.</p>
         {!consent && (
           <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={recordConsent} onChange={(e) => setRecordConsent(e.target.checked)} className="h-4 w-4 accent-[#2D8C6F]" />
+            <input type="checkbox" checked={recordConsent} onChange={(e) => setRecordConsent(e.target.checked)} className="h-4 w-4 accent-[var(--crm-accent)]" />
             Customer agreed to receive texts (record consent)
           </label>
         )}
         <div className="flex items-center gap-3">
-          <Button onClick={send} disabled={busy || !msg.trim()} className="bg-[#2D8C6F] hover:bg-[#1F6B54]">
+          <Button onClick={send} disabled={busy || !msg.trim()} className="bg-[var(--crm-accent)] hover:bg-[#1F6B54]">
             {busy ? "Sending…" : result?.startsWith("Sent") ? <><Check className="h-4 w-4 mr-1.5" /> {result}</> : "Send text"}
           </Button>
-          {result && !result.startsWith("Sent") && <span className="text-sm text-amber-600">{result}</span>}
+          {result && !result.startsWith("Sent") && <span className="text-sm text-[var(--crm-attention)]">{result}</span>}
         </div>
       </CardContent>
     </Card>

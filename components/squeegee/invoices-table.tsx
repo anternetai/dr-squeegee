@@ -19,9 +19,9 @@ type PaymentMethod = "cash" | "zelle" | "check"
 
 const STATUS_BADGE: Record<InvoiceStatus, string> = {
   draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  sent: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  paid: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  overdue: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  sent: "bg-[var(--crm-idle-bg)] text-[var(--crm-idle)] dark:bg-[var(--crm-idle-bg)] dark:text-[var(--crm-idle)]",
+  paid: "bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)]",
+  overdue: "bg-[var(--crm-dead-bg)] text-[var(--crm-dead)] dark:bg-[var(--crm-dead-bg)] dark:text-[var(--crm-dead)]",
 }
 
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
@@ -109,7 +109,7 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceRow[] }) {
     <div className="space-y-3">
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <Card className="border-[#2D8C6F]/30 bg-[#2D8C6F]/5">
+        <Card className="border-[var(--crm-accent-line)] bg-[var(--crm-accent)]/5">
           <div className="p-3 flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium">
               {selected.size} invoice{selected.size !== 1 ? "s" : ""} selected
@@ -123,7 +123,7 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceRow[] }) {
                   className={cn(
                     "px-2.5 text-xs font-medium transition-colors h-full",
                     method === m.value
-                      ? "bg-[#2D8C6F] text-white"
+                      ? "bg-[var(--crm-accent)] text-white"
                       : "bg-background text-muted-foreground hover:bg-muted"
                   )}
                 >
@@ -135,7 +135,7 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceRow[] }) {
               size="sm"
               onClick={markSelectedPaid}
               disabled={processing}
-              className="bg-[#2D8C6F] hover:bg-[#1F6B54] text-white gap-1.5"
+              className="bg-[var(--crm-accent)] hover:bg-[#1F6B54] text-white gap-1.5"
             >
               {processing ? (
                 <>
@@ -210,12 +210,12 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceRow[] }) {
                         <Link href={`/crm/jobs/${inv.job_id}`} className="block">
                           ${Number(inv.amount).toFixed(2)}
                           {Number(inv.tip_amount) > 0 && (
-                            <span className="block text-xs font-normal text-[#2D8C6F]">+ ${Number(inv.tip_amount).toFixed(2)} tip</span>
+                            <span className="block text-xs font-normal text-[var(--crm-accent)]">+ ${Number(inv.tip_amount).toFixed(2)} tip</span>
                           )}
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Link href={`/crm/jobs/${inv.job_id}`} className="text-xs text-[#3A6B4C] group-hover:underline">
+                        <Link href={`/crm/jobs/${inv.job_id}`} className="text-xs text-[var(--crm-accent)] group-hover:underline">
                           View Job →
                         </Link>
                       </td>
@@ -259,7 +259,7 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceRow[] }) {
                   <div className="text-right">
                     <p className="font-bold">${Number(inv.amount).toFixed(2)}</p>
                     {Number(inv.tip_amount) > 0 && (
-                      <p className="text-xs font-normal text-[#2D8C6F]">+ ${Number(inv.tip_amount).toFixed(2)} tip</p>
+                      <p className="text-xs font-normal text-[var(--crm-accent)]">+ ${Number(inv.tip_amount).toFixed(2)} tip</p>
                     )}
                   </div>
                 </Link>

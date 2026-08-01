@@ -43,7 +43,7 @@ export interface AssignedJob {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-[#2D8C6F] focus:ring-1 focus:ring-[#2D8C6F]"
+  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-[var(--crm-accent)] focus:ring-1 focus:ring-[var(--crm-accent)]"
 
 function joinLink(token: string): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "https://www.drsqueegeeclt.com"
@@ -174,7 +174,7 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
 
       {/* Invite link for un-onboarded crew */}
       {pending && token && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+        <div className="rounded-xl border border-[var(--crm-attention-bg)] bg-[var(--crm-attention-bg)] p-4 space-y-3">
           <p className="text-sm font-medium">Setup pending — send them their invite link:</p>
           <div className="rounded-lg bg-background border border-border px-3 py-2 text-xs break-all">{joinLink(token)}</div>
           <div className="flex flex-wrap gap-2">
@@ -186,7 +186,7 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
                 label="Send invite"
                 sentLabel="Invite sent"
                 variant="default"
-                className="bg-[#2D8C6F] hover:bg-[#1F6B54]"
+                className="bg-[var(--crm-accent)] hover:bg-[#1F6B54]"
               />
             )}
             <Button size="sm" variant="outline" onClick={copyLink}>
@@ -212,7 +212,7 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
                 onClick={() => !t.auto && toggleTask(t.key)}
                 className={`w-full flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-left ${t.auto ? "cursor-default" : "hover:bg-muted"}`}
               >
-                <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border flex items-center justify-center ${done ? "bg-[#2D8C6F] border-[#2D8C6F]" : "border-border"}`}>
+                <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border flex items-center justify-center ${done ? "bg-[var(--crm-accent)] border-[var(--crm-accent)]" : "border-border"}`}>
                   {done && <Check className="h-3 w-3 text-white" />}
                 </span>
                 <span className="min-w-0">
@@ -277,7 +277,7 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
                 type="button"
                 onClick={() => toggleDay(d.key)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                  on ? "bg-[#2D8C6F] text-white border-[#2D8C6F]" : "bg-background border-border text-muted-foreground hover:border-[#2D8C6F]"
+                  on ? "bg-[var(--crm-accent)] text-white border-[var(--crm-accent)]" : "bg-background border-border text-muted-foreground hover:border-[var(--crm-accent)]"
                 }`}
               >
                 {d.label}
@@ -311,7 +311,7 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
         ) : (
           <div className="space-y-1.5">
             {jobs.map((j) => (
-              <Link key={j.id} href={`/crm/jobs/${j.id}`} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:border-[#2D8C6F] transition-colors">
+              <Link key={j.id} href={`/crm/jobs/${j.id}`} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:border-[var(--crm-accent)] transition-colors">
                 <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="flex-1 min-w-0 truncate">
                   <span className="font-medium">{j.client_name}</span>
@@ -326,14 +326,14 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
         )}
       </Card>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-[var(--crm-dead)]">{error}</p>}
 
       <div className="flex items-center gap-2 sticky bottom-0 bg-background/90 backdrop-blur py-3 -mx-4 px-4 border-t border-border">
-        <Button className="flex-1 bg-[#2D8C6F] hover:bg-[#1F6B54]" onClick={save} disabled={busy}>
+        <Button className="flex-1 bg-[var(--crm-accent)] hover:bg-[#1F6B54]" onClick={save} disabled={busy}>
           {saved ? <><Check className="h-4 w-4 mr-1.5" /> Saved</> : <><Save className="h-4 w-4 mr-1.5" /> Save changes</>}
         </Button>
         {form.status !== "inactive" ? (
-          <Button variant="outline" onClick={() => setForm({ ...form, status: "inactive" })} className="text-red-500 border-red-500/30 hover:bg-red-500/10">
+          <Button variant="outline" onClick={() => setForm({ ...form, status: "inactive" })} className="text-[var(--crm-dead)] border-[var(--crm-dead-bg)] hover:bg-[var(--crm-dead-bg)]">
             <UserX className="h-4 w-4 mr-1.5" /> Deactivate
           </Button>
         ) : (

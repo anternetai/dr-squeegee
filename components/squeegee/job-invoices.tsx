@@ -28,9 +28,9 @@ type InvoiceStatus = SqueegeeInvoice["status"]
 
 const STATUS_BADGE: Record<InvoiceStatus, string> = {
   draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  sent: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  paid: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  overdue: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  sent: "bg-[var(--crm-idle-bg)] text-[var(--crm-idle)] dark:bg-[var(--crm-idle-bg)] dark:text-[var(--crm-idle)]",
+  paid: "bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)]",
+  overdue: "bg-[var(--crm-dead-bg)] text-[var(--crm-dead)] dark:bg-[var(--crm-dead-bg)] dark:text-[var(--crm-dead)]",
 }
 
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
@@ -58,7 +58,7 @@ function CopyButton({ text }: { text: string }) {
       variant="ghost"
       size="sm"
       onClick={handleCopy}
-      className={cn("h-7 px-2 gap-1 text-xs", copied && "text-green-600")}
+      className={cn("h-7 px-2 gap-1 text-xs", copied && "text-[var(--crm-accent)]")}
     >
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
       {copied ? "Copied" : "Copy link"}
@@ -218,7 +218,7 @@ export function JobInvoices({ job, quoteToken }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-[#3A6B4C]" />
+            <FileText className="h-4 w-4 text-[var(--crm-accent)]" />
             <CardTitle className="text-base">
               Invoices
               {invoices.length > 0 && (
@@ -232,7 +232,7 @@ export function JobInvoices({ job, quoteToken }: Props) {
             <Button
               size="sm"
               onClick={() => setShowForm(true)}
-              className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
+              className="bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white"
             >
               <Plus className="h-3.5 w-3.5 mr-1.5" />
               Create Invoice
@@ -306,7 +306,7 @@ export function JobInvoices({ job, quoteToken }: Props) {
                   type="submit"
                   size="sm"
                   disabled={submitting}
-                  className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
+                  className="bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white"
                 >
                   {submitting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
                   Create Invoice
@@ -465,7 +465,7 @@ function InvoiceRow({
           <span className="font-semibold">
             ${Number(invoice.amount).toFixed(2)}
             {Number(invoice.tip_amount) > 0 && (
-              <span className="ml-1 text-xs font-normal text-[#2D8C6F]">+ ${Number(invoice.tip_amount).toFixed(2)} tip</span>
+              <span className="ml-1 text-xs font-normal text-[var(--crm-accent)]">+ ${Number(invoice.tip_amount).toFixed(2)} tip</span>
             )}
           </span>
           {/* Edit button */}
@@ -489,7 +489,7 @@ function InvoiceRow({
                 type="button"
                 onClick={onConfirmDelete}
                 disabled={isDeleting}
-                className="px-2 py-0.5 rounded bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center gap-1"
+                className="px-2 py-0.5 rounded bg-[var(--crm-dead-bg)] text-white text-xs font-medium hover:bg-[var(--crm-dead-bg)] transition-colors disabled:opacity-50 flex items-center gap-1"
               >
                 {isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Delete"}
               </button>
@@ -506,7 +506,7 @@ function InvoiceRow({
               type="button"
               title="Delete invoice"
               onClick={(e) => { e.stopPropagation(); onRequestDelete() }}
-              className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors dark:hover:bg-red-900/20"
+              className="p-1 rounded hover:bg-[var(--crm-dead-bg)] text-muted-foreground hover:text-[var(--crm-dead)] transition-colors dark:hover:bg-[var(--crm-dead-bg)]"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -522,11 +522,11 @@ function InvoiceRow({
       {/* Inline edit form */}
       {showEditForm && (
         <div
-          className="border-t border-[#3A6B4C]/30 px-4 py-3 bg-[#3A6B4C]/5 space-y-3"
+          className="border-t border-[var(--crm-accent-line)] px-4 py-3 bg-[var(--crm-accent)]/5 space-y-3"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-[#3A6B4C]">Edit Invoice</p>
+            <p className="text-xs font-medium text-[var(--crm-accent)]">Edit Invoice</p>
             <button
               type="button"
               onClick={() => { setShowEditForm(false); setEditError(null) }}
@@ -580,7 +580,7 @@ function InvoiceRow({
                 type="submit"
                 size="sm"
                 disabled={isUpdating}
-                className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white h-7 text-xs px-3"
+                className="bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white h-7 text-xs px-3"
               >
                 {isUpdating && <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />}
                 Save
@@ -642,7 +642,7 @@ function InvoiceRow({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 px-3 gap-1.5 text-xs text-green-700 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20"
+                className="h-7 px-3 gap-1.5 text-xs text-[var(--crm-accent)] border-[var(--crm-accent-line)] hover:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)] dark:border-[var(--crm-accent-line)] dark:hover:bg-[var(--crm-accent-weak)]"
                 onClick={(e) => {
                   e.stopPropagation()
                   setShowPaymentMethods(true)
@@ -663,7 +663,7 @@ function InvoiceRow({
                     key={m.value}
                     variant="outline"
                     size="sm"
-                    className="h-7 px-2.5 text-xs text-green-700 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20"
+                    className="h-7 px-2.5 text-xs text-[var(--crm-accent)] border-[var(--crm-accent-line)] hover:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)] dark:border-[var(--crm-accent-line)] dark:hover:bg-[var(--crm-accent-weak)]"
                     onClick={() => {
                       onMarkPaid(m.value)
                       setShowPaymentMethods(false)
@@ -685,7 +685,7 @@ function InvoiceRow({
             )}
 
             {invoice.status === "paid" && invoice.paid_at && (
-              <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+              <p className="text-xs text-[var(--crm-accent)] dark:text-[var(--crm-accent)] flex items-center gap-1">
                 <Check className="h-3 w-3" />
                 Paid{invoice.payment_method ? ` (${PAYMENT_METHOD_LABEL[invoice.payment_method] || invoice.payment_method})` : ""}{" "}
                 {new Date(invoice.paid_at).toLocaleDateString("en-US", {

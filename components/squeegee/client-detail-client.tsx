@@ -40,14 +40,14 @@ function InfoRow({
             href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(value)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-[#3A6B4C] hover:underline"
+            className="text-sm text-[var(--crm-accent)] hover:underline"
           >
             {value}
           </a>
         ) : isPhone ? (
           <a
             href={`sms:${value.replace(/[^\d+]/g, "")}`}
-            className="text-sm text-[#3A6B4C] hover:underline"
+            className="text-sm text-[var(--crm-accent)] hover:underline"
           >
             {value}
           </a>
@@ -187,7 +187,7 @@ export function ClientDetailClient({ client: initialClient }: Props) {
                 size="sm"
                 onClick={saveEdit}
                 disabled={saving}
-                className="bg-[#3A6B4C] hover:bg-[#2F5A3F] text-white"
+                className="bg-[var(--crm-accent)] hover:bg-[#2F5A3F] text-white"
               >
                 {saving ? (
                   <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -261,12 +261,12 @@ export function ClientDetailClient({ client: initialClient }: Props) {
     <>
       {/* Blacklist banner */}
       {client.blacklisted && (
-        <div className="flex items-center gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-950/40">
-          <ShieldBan className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
+        <div className="flex items-center gap-3 rounded-lg border border-[var(--crm-dead-bg)] bg-[var(--crm-dead-bg)] px-4 py-3 dark:border-[var(--crm-dead-bg)] dark:bg-[var(--crm-dead-bg)]">
+          <ShieldBan className="h-5 w-5 text-[var(--crm-dead)] dark:text-[var(--crm-dead)] shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-red-700 dark:text-red-300">Blacklisted Client</p>
+            <p className="text-sm font-semibold text-[var(--crm-dead)] dark:text-[var(--crm-dead)]">Blacklisted Client</p>
             {client.blacklist_reason && (
-              <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">{client.blacklist_reason}</p>
+              <p className="text-xs text-[var(--crm-dead)] dark:text-[var(--crm-dead)] mt-0.5">{client.blacklist_reason}</p>
             )}
           </div>
           <Button
@@ -274,7 +274,7 @@ export function ClientDetailClient({ client: initialClient }: Props) {
             variant="outline"
             onClick={toggleBlacklist}
             disabled={togglingBlacklist}
-            className="border-red-300 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/40"
+            className="border-[var(--crm-dead-bg)] text-[var(--crm-dead)] hover:bg-[var(--crm-dead-bg)] dark:border-[var(--crm-dead-bg)] dark:text-[var(--crm-dead)] dark:hover:bg-[var(--crm-dead-bg)]"
           >
             {togglingBlacklist ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />}
             Remove
@@ -287,7 +287,7 @@ export function ClientDetailClient({ client: initialClient }: Props) {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Client Info</CardTitle>
             <div className="flex items-center gap-2">
-              <Button size="sm" asChild className="bg-[#2D8C6F] hover:bg-[#1F6B54] text-white">
+              <Button size="sm" asChild className="bg-[var(--crm-accent)] hover:bg-[#1F6B54] text-white">
                 <Link href={`/crm/pitch?client=${client.id}`}>
                   <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                   Pitch Club
@@ -317,7 +317,7 @@ export function ClientDetailClient({ client: initialClient }: Props) {
             {!client.phone && !client.email && !client.address && !client.notes && (
               <p className="sm:col-span-2 text-sm text-muted-foreground italic">
                 No details saved yet.{" "}
-                <button onClick={startEdit} className="underline text-[#3A6B4C]">
+                <button onClick={startEdit} className="underline text-[var(--crm-accent)]">
                   Add some
                 </button>
               </p>

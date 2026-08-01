@@ -80,7 +80,7 @@ export function OpsView({
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2"><Gauge className="h-6 w-6 text-[#2D8C6F]" /> Command Center</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2"><Gauge className="h-6 w-6 text-[var(--crm-accent)]" /> Command Center</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Everything on the board — crew, the week, care-plan visits, texts.</p>
       </div>
 
@@ -94,21 +94,21 @@ export function OpsView({
 
       {/* Needs attention */}
       {(unassigned.length > 0 || unscheduled.length > 0) && (
-        <Section title="Needs attention" icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}>
+        <Section title="Needs attention" icon={<AlertTriangle className="h-4 w-4 text-[var(--crm-attention)]" />}>
           {unscheduled.map((j) => (
             <Row key={j.id}>
               <div className="min-w-0 flex-1">
                 <p className="font-medium truncate">{j.client_name} <span className="text-muted-foreground font-normal">· {j.service_type}</span></p>
-                <p className="text-xs text-amber-600">Approved — no date set</p>
+                <p className="text-xs text-[var(--crm-attention)]">Approved — no date set</p>
               </div>
-              <Link href={`/crm/jobs/${j.id}`} className="text-sm text-[#2D8C6F] hover:underline shrink-0">Schedule →</Link>
+              <Link href={`/crm/jobs/${j.id}`} className="text-sm text-[var(--crm-accent)] hover:underline shrink-0">Schedule →</Link>
             </Row>
           ))}
           {unassigned.map((j) => (
             <Row key={j.id}>
               <div className="min-w-0 flex-1">
                 <p className="font-medium truncate">{j.client_name} <span className="text-muted-foreground font-normal">· {prettyDate(j.appointment_date)}</span></p>
-                <p className="text-xs text-amber-600">Scheduled — no crew assigned</p>
+                <p className="text-xs text-[var(--crm-attention)]">Scheduled — no crew assigned</p>
               </div>
               <AssignSelect crew={crew} value="" busy={busy === j.id} onChange={(v) => assign(j.id, v)} />
             </Row>
@@ -117,7 +117,7 @@ export function OpsView({
       )}
 
       {/* Upcoming jobs */}
-      <Section title="Scheduled jobs" icon={<Briefcase className="h-4 w-4 text-[#2D8C6F]" />}>
+      <Section title="Scheduled jobs" icon={<Briefcase className="h-4 w-4 text-[var(--crm-accent)]" />}>
         {scheduled.length === 0 && <Empty>No scheduled jobs.</Empty>}
         {scheduled.map((j) => {
           const when = j.appointment_date === today ? "today" : `on ${prettyDate(j.appointment_date)}`
@@ -145,7 +145,7 @@ export function OpsView({
       </Section>
 
       {/* Care-plan visits */}
-      <Section title="Care-plan visits" icon={<CalendarRange className="h-4 w-4 text-[#2D8C6F]" />}>
+      <Section title="Care-plan visits" icon={<CalendarRange className="h-4 w-4 text-[var(--crm-accent)]" />}>
         {visits.length === 0 && <Empty>No upcoming plan visits in the next 21 days.</Empty>}
         {visits.map((v) => {
           const key = `visit-${v.id}`
@@ -169,24 +169,24 @@ export function OpsView({
       </Section>
 
       {/* Crew load */}
-      <Section title="Crew load" icon={<HardHat className="h-4 w-4 text-[#2D8C6F]" />}>
-        {crew.length === 0 && <Empty>No active crew. <Link href="/crm/team" className="text-[#2D8C6F] hover:underline">Add someone →</Link></Empty>}
+      <Section title="Crew load" icon={<HardHat className="h-4 w-4 text-[var(--crm-accent)]" />}>
+        {crew.length === 0 && <Empty>No active crew. <Link href="/crm/team" className="text-[var(--crm-accent)] hover:underline">Add someone →</Link></Empty>}
         {crew.map((c) => (
           <Row key={c.id}>
-            <Link href={`/crm/team/${c.id}`} className="font-medium hover:text-[#2D8C6F]">{c.name}</Link>
+            <Link href={`/crm/team/${c.id}`} className="font-medium hover:text-[var(--crm-accent)]">{c.name}</Link>
             <span className="text-sm text-muted-foreground">{jobsByCrew[c.id] ?? 0} open {(jobsByCrew[c.id] ?? 0) === 1 ? "job" : "jobs"}</span>
           </Row>
         ))}
       </Section>
 
       {/* Recent texts */}
-      <Section title="Recent texts" icon={<MessageSquare className="h-4 w-4 text-[#2D8C6F]" />}>
+      <Section title="Recent texts" icon={<MessageSquare className="h-4 w-4 text-[var(--crm-accent)]" />}>
         {sms.length === 0 && <Empty>No texts yet.</Empty>}
         {sms.map((s) => (
           <div key={s.id} className="rounded-lg border border-border bg-card p-3">
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
               <span className="flex items-center gap-1.5">
-                <span className={s.direction === "inbound" ? "text-blue-500" : "text-[#2D8C6F]"}>{s.direction === "inbound" ? "◀ in" : "▶ out"}</span>
+                <span className={s.direction === "inbound" ? "text-[var(--crm-idle)]" : "text-[var(--crm-accent)]"}>{s.direction === "inbound" ? "◀ in" : "▶ out"}</span>
                 <span>•••-{s.phone10.slice(-4)}</span>
                 {s.kind && <span className="px-1.5 py-0.5 rounded bg-muted">{s.kind}</span>}
                 <StatusPill status={s.status} test={s.was_test} />
@@ -203,9 +203,9 @@ export function OpsView({
 
 function Kpi({ label, value, icon, tone, href }: { label: string; value: number; icon: React.ReactNode; tone?: "amber"; href?: string }) {
   const inner = (
-    <div className={`rounded-xl border p-3 ${tone === "amber" ? "border-amber-500/40 bg-amber-500/5" : "border-border bg-card"}`}>
+    <div className={`rounded-xl border p-3 ${tone === "amber" ? "border-[var(--crm-attention-bg)] bg-[var(--crm-attention-bg)]" : "border-border bg-card"}`}>
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">{icon}{label}</div>
-      <div className={`text-2xl font-bold mt-1 ${tone === "amber" ? "text-amber-600" : ""}`}>{value}</div>
+      <div className={`text-2xl font-bold mt-1 ${tone === "amber" ? "text-[var(--crm-attention)]" : ""}`}>{value}</div>
     </div>
   )
   return href ? <Link href={href}>{inner}</Link> : inner
@@ -234,7 +234,7 @@ function AssignSelect({ crew, value, busy, onChange }: { crew: OpsCrew[]; value:
       value={value}
       disabled={busy || crew.length === 0}
       onChange={(e) => onChange(e.target.value)}
-      className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-[#2D8C6F] max-w-[130px]"
+      className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-[var(--crm-accent)] max-w-[130px]"
     >
       <option value="">Unassigned</option>
       {crew.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -249,7 +249,7 @@ function ReminderBtn({ disabled, done, onClick }: { disabled: boolean; done: boo
       disabled={disabled || done}
       title={done ? "Reminder sent" : "Send reminder text"}
       className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium shrink-0 transition-colors ${
-        done ? "border-[#2D8C6F]/40 text-[#2D8C6F]" : "border-border hover:border-[#2D8C6F] disabled:opacity-40"
+        done ? "border-[var(--crm-accent-line)] text-[var(--crm-accent)]" : "border-border hover:border-[var(--crm-accent)] disabled:opacity-40"
       }`}
     >
       {done ? <><Check className="h-3.5 w-3.5" /> Reminded</> : <><Send className="h-3.5 w-3.5" /> Remind</>}
@@ -259,6 +259,6 @@ function ReminderBtn({ disabled, done, onClick }: { disabled: boolean; done: boo
 
 function StatusPill({ status, test }: { status: string; test: boolean }) {
   const label = test ? "test" : status
-  const cls = status === "sent" ? "text-[#2D8C6F]" : status === "blocked" ? "text-amber-600" : status === "failed" ? "text-red-500" : "text-muted-foreground"
+  const cls = status === "sent" ? "text-[var(--crm-accent)]" : status === "blocked" ? "text-[var(--crm-attention)]" : status === "failed" ? "text-[var(--crm-dead)]" : "text-muted-foreground"
   return <span className={cls}>{label}</span>
 }

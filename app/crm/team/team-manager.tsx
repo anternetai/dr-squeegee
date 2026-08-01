@@ -24,8 +24,8 @@ export interface CrewRow {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  invited: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  onboarding: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  invited: "bg-[var(--crm-attention-bg)] text-[var(--crm-attention)] dark:bg-[var(--crm-attention-bg)] dark:text-[var(--crm-attention)]",
+  onboarding: "bg-[var(--crm-attention-bg)] text-[var(--crm-attention)] dark:bg-[var(--crm-attention-bg)] dark:text-[var(--crm-attention)]",
   active: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
   inactive: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
 }
@@ -64,13 +64,13 @@ export function TeamManager({ initial }: { initial: CrewRow[] }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="h-6 w-6 text-[#2D8C6F]" /> Team
+            <Users className="h-6 w-6 text-[var(--crm-accent)]" /> Team
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {active.length} active · {pending.length} pending
           </p>
         </div>
-        <Button onClick={() => setShowInvite(true)} className="bg-[#2D8C6F] hover:bg-[#1F6B54]">
+        <Button onClick={() => setShowInvite(true)} className="bg-[var(--crm-accent)] hover:bg-[#1F6B54]">
           <UserPlus className="h-4 w-4 mr-1.5" /> Invite crew
         </Button>
       </div>
@@ -138,7 +138,7 @@ function CrewCard({
       <div className="flex items-start justify-between gap-3">
         <Link href={`/crm/team/${r.id}`} className="min-w-0 flex-1 group">
           <div className="flex items-center gap-2">
-            <span className="font-semibold group-hover:text-[#2D8C6F] transition-colors truncate">
+            <span className="font-semibold group-hover:text-[var(--crm-accent)] transition-colors truncate">
               {r.name}
             </span>
             <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[r.status] ?? ""}`}>
@@ -287,10 +287,10 @@ function InviteModal({
                 <input className={inputCls} value={form.pay_rate} onChange={(e) => setForm({ ...form, pay_rate: e.target.value.replace(/[^0-9.]/g, "") })} placeholder="e.g. 25" inputMode="decimal" />
               </Field>
             </div>
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-[var(--crm-dead)]">{error}</p>}
             <div className="flex gap-2 pt-1">
               <Button variant="ghost" className="flex-1" onClick={onClose}>Cancel</Button>
-              <Button className="flex-1 bg-[#2D8C6F] hover:bg-[#1F6B54]" onClick={submit} disabled={busy}>
+              <Button className="flex-1 bg-[var(--crm-accent)] hover:bg-[#1F6B54]" onClick={submit} disabled={busy}>
                 {busy ? "Creating…" : "Create & invite"}
               </Button>
             </div>
@@ -298,8 +298,8 @@ function InviteModal({
         ) : (
           <>
             <div className="text-center space-y-1">
-              <div className="mx-auto h-11 w-11 rounded-full bg-[#2D8C6F]/15 flex items-center justify-center">
-                <Check className="h-6 w-6 text-[#2D8C6F]" />
+              <div className="mx-auto h-11 w-11 rounded-full bg-[var(--crm-accent-weak)] flex items-center justify-center">
+                <Check className="h-6 w-6 text-[var(--crm-accent)]" />
               </div>
               <h2 className="text-lg font-bold">{created.name} added</h2>
               <p className="text-sm text-muted-foreground">
@@ -316,10 +316,10 @@ function InviteModal({
                 sentLabel="Invite sent ✓"
                 variant="default"
                 size="default"
-                className="w-full bg-[#2D8C6F] hover:bg-[#1F6B54]"
+                className="w-full bg-[var(--crm-accent)] hover:bg-[#1F6B54]"
               />
             ) : (
-              <Button className="w-full bg-[#2D8C6F] hover:bg-[#1F6B54]" onClick={copySms}>
+              <Button className="w-full bg-[var(--crm-accent)] hover:bg-[#1F6B54]" onClick={copySms}>
                 {copied ? <><Check className="h-4 w-4 mr-1.5" /> Copied</> : <><Copy className="h-4 w-4 mr-1.5" /> Copy invite text</>}
               </Button>
             )}
@@ -337,7 +337,7 @@ function InviteModal({
 }
 
 const inputCls =
-  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-[#2D8C6F] focus:ring-1 focus:ring-[#2D8C6F]"
+  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-[var(--crm-accent)] focus:ring-1 focus:ring-[var(--crm-accent)]"
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

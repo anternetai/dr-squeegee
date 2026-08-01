@@ -82,10 +82,10 @@ export default async function InvoicesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
-              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <CheckCircle2 className="h-4 w-4 text-[var(--crm-accent)] dark:text-[var(--crm-accent)]" />
               <p className="text-xs text-muted-foreground">Paid</p>
             </div>
-            <p className="text-xl font-bold text-green-700 dark:text-green-400">
+            <p className="text-xl font-bold text-[var(--crm-accent)] dark:text-[var(--crm-accent)]">
               ${totalPaid.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </CardContent>
@@ -94,10 +94,10 @@ export default async function InvoicesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
-              <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <FileText className="h-4 w-4 text-[var(--crm-idle)] dark:text-[var(--crm-idle)]" />
               <p className="text-xs text-muted-foreground">Outstanding</p>
             </div>
-            <p className="text-xl font-bold text-blue-700 dark:text-blue-400">
+            <p className="text-xl font-bold text-[var(--crm-idle)] dark:text-[var(--crm-idle)]">
               ${outstanding.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </CardContent>
@@ -106,10 +106,10 @@ export default async function InvoicesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
-              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+              <AlertCircle className="h-4 w-4 text-[var(--crm-dead)] dark:text-[var(--crm-dead)]" />
               <p className="text-xs text-muted-foreground">Overdue</p>
             </div>
-            <p className="text-xl font-bold text-red-700 dark:text-red-400">
+            <p className="text-xl font-bold text-[var(--crm-dead)] dark:text-[var(--crm-dead)]">
               ${overdue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </CardContent>

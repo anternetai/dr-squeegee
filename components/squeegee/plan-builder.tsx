@@ -116,7 +116,7 @@ export function PlanBuilder({ clients }: Props) {
   }
 
   const inputCls =
-    "w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-[#2D8C6F]"
+    "w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-[var(--crm-accent)]"
 
   return (
     <div className="space-y-5 pb-32">
@@ -175,7 +175,7 @@ export function PlanBuilder({ clients }: Props) {
               />
               <button
                 onClick={() => removeService(i)}
-                className="p-2 text-muted-foreground hover:text-red-500 transition-colors shrink-0"
+                className="p-2 text-muted-foreground hover:text-[var(--crm-dead)] transition-colors shrink-0"
                 title="Remove"
               >
                 <Trash2 className="h-4 w-4" />
@@ -217,7 +217,7 @@ export function PlanBuilder({ clients }: Props) {
               <button
                 key={c.name}
                 onClick={() => addService(c)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full border border-[#2D8C6F]/40 text-[#2D8C6F] px-3 py-1.5 hover:bg-[#2D8C6F]/10 transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full border border-[var(--crm-accent-line)] text-[var(--crm-accent)] px-3 py-1.5 hover:bg-[var(--crm-accent-weak)] transition-colors"
               >
                 <Plus className="h-3 w-3" />
                 {c.name}
@@ -283,7 +283,7 @@ export function PlanBuilder({ clients }: Props) {
         </div>
       </div>
 
-      {errorMsg && <p className="text-sm text-red-500 font-medium">{errorMsg}</p>}
+      {errorMsg && <p className="text-sm text-[var(--crm-dead)] font-medium">{errorMsg}</p>}
 
       {/* Sticky pricing bar */}
       <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur z-40">
@@ -299,8 +299,8 @@ export function PlanBuilder({ clients }: Props) {
                 <p className="font-bold tabular-nums">{formatMoney(pricing.monthlyPrice)}/mo</p>
               </div>
               <div>
-                <p className="text-[11px] text-[#2D8C6F]">PIF ({discount}% off)</p>
-                <p className="font-black text-[#2D8C6F] tabular-nums text-lg">
+                <p className="text-[11px] text-[var(--crm-accent)]">PIF ({discount}% off)</p>
+                <p className="font-black text-[var(--crm-accent)] tabular-nums text-lg">
                   {formatMoney(pricing.pifTotal)}
                 </p>
               </div>

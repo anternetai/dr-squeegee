@@ -192,13 +192,13 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
   }
 
   const inputCls =
-    "w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-[#2D8C6F]"
+    "w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:border-[var(--crm-accent)]"
 
   return (
     <div className="space-y-5 pb-56">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-[#2D8C6F]" />
+          <Sparkles className="h-5 w-5 text-[var(--crm-accent)]" />
           Care Club Pitch
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -214,7 +214,7 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
               <p className="font-semibold">{selected.name}</p>
               <p className="text-xs text-muted-foreground truncate">{selected.address}</p>
               <p className="text-xs mt-1.5">
-                <span className="text-[#2D8C6F] font-semibold tabular-nums">
+                <span className="text-[var(--crm-accent)] font-semibold tabular-nums">
                   {clientJobs.length} job{clientJobs.length !== 1 ? "s" : ""} · {formatMoney(lifetimeValue)} lifetime
                 </span>
                 {lastJob && (
@@ -281,7 +281,7 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
                     onClick={() => setAnchor(s.name)}
                     className={`text-xs font-medium rounded-full border px-3 py-1.5 transition-colors ${
                       active
-                        ? "border-[#2D8C6F] bg-[#2D8C6F]/10 text-[#2D8C6F]"
+                        ? "border-[var(--crm-accent)] bg-[var(--crm-accent-weak)] text-[var(--crm-accent)]"
                         : "border-border text-muted-foreground hover:bg-muted"
                     }`}
                   >
@@ -306,7 +306,7 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
                 />
               </div>
               <div>
-                <label className="text-[11px] text-[#2D8C6F]">
+                <label className="text-[11px] text-[var(--crm-accent)]">
                   Member rate (−{cadence.suggestedDiscountPct}% suggested)
                 </label>
                 <input
@@ -330,7 +330,7 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
                     onClick={() => pickCadence(c)}
                     className={`text-xs font-medium rounded-full border px-3 py-1.5 transition-colors ${
                       cadence.visitsPerYear === c.visitsPerYear
-                        ? "border-[#2D8C6F] bg-[#2D8C6F]/10 text-[#2D8C6F]"
+                        ? "border-[var(--crm-accent)] bg-[var(--crm-accent-weak)] text-[var(--crm-accent)]"
                         : "border-border text-muted-foreground hover:bg-muted"
                     }`}
                   >
@@ -346,7 +346,7 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
                     onClick={() => pickCadence(c)}
                     className={`text-xs font-medium rounded-full border px-3 py-1.5 transition-colors ${
                       cadence.visitsPerYear === c.visitsPerYear
-                        ? "border-[#2D8C6F] bg-[#2D8C6F]/10 text-[#2D8C6F]"
+                        ? "border-[var(--crm-accent)] bg-[var(--crm-accent-weak)] text-[var(--crm-accent)]"
                         : "border-border text-muted-foreground hover:bg-muted"
                     }`}
                   >
@@ -372,8 +372,8 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
                     onClick={() => toggleAddOn(s.name)}
                     className={`text-xs font-medium rounded-full border px-3 py-1.5 transition-colors ${
                       on
-                        ? "border-[#2D8C6F] bg-[#2D8C6F] text-white"
-                        : "border-[#2D8C6F]/40 text-[#2D8C6F] hover:bg-[#2D8C6F]/10"
+                        ? "border-[var(--crm-accent)] bg-[var(--crm-accent)] text-white"
+                        : "border-[var(--crm-accent-line)] text-[var(--crm-accent)] hover:bg-[var(--crm-accent-weak)]"
                     }`}
                   >
                     {on ? "✓ " : "+ "}
@@ -389,7 +389,7 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
                   <p className="text-sm font-medium">{a.name}</p>
                   <button
                     onClick={() => toggleAddOn(a.name)}
-                    className="p-1.5 text-muted-foreground hover:text-red-500"
+                    className="p-1.5 text-muted-foreground hover:text-[var(--crm-dead)]"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -460,7 +460,7 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
             )}
           </div>
 
-          {errorMsg && <p className="text-sm text-red-500 font-medium">{errorMsg}</p>}
+          {errorMsg && <p className="text-sm text-[var(--crm-dead)] font-medium">{errorMsg}</p>}
         </>
       )}
 
@@ -468,7 +468,7 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
       {selected && anchorFamily && (
         <div className="fixed bottom-0 left-0 right-0 z-40">
           <div className="mx-auto max-w-5xl px-4 pb-3">
-            <div className="rounded-2xl bg-[#0A0A0A] border border-[#2D8C6F]/40 px-5 py-4 shadow-2xl">
+            <div className="rounded-2xl bg-[#0A0A0A] border border-[var(--crm-accent-line)] px-5 py-4 shadow-2xl">
               <div className="flex items-baseline justify-between text-sm">
                 <span className="text-white/50">One-time {anchorFamily.toLowerCase()}</span>
                 <span className="text-white/50 line-through tabular-nums">
@@ -479,7 +479,7 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
                 <span className="text-white font-semibold text-sm">
                   Member · {cadence.label.toLowerCase()}
                 </span>
-                <span className="text-[#2D8C6F] font-black text-xl tabular-nums">
+                <span className="text-[var(--crm-accent)] font-black text-xl tabular-nums">
                   {formatMoney(memberRate)}/visit
                 </span>
               </div>
@@ -493,7 +493,7 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
                     <span className="text-white font-bold tabular-nums">
                       PIF {formatMoney(pricing.pifTotal)}
                     </span>
-                    <span className="text-[#2D8C6F] text-xs font-semibold ml-2">
+                    <span className="text-[var(--crm-accent)] text-xs font-semibold ml-2">
                       save {formatMoney(pricing.annualValue - pricing.pifTotal)}
                     </span>
                   </div>
@@ -513,7 +513,7 @@ export function PitchBuilder({ clients, jobs, initialClientId, initialPhone }: P
                 <Button
                   onClick={createPlan}
                   disabled={submitting || services.length === 0}
-                  className="bg-[#2D8C6F] hover:bg-[#1F6B54] text-white font-bold"
+                  className="bg-[var(--crm-accent)] hover:bg-[#1F6B54] text-white font-bold"
                 >
                   {submitting ? "Creating..." : "Create Plan + Agreement"}
                 </Button>
