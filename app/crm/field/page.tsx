@@ -142,7 +142,7 @@ export default async function FieldPage() {
             {ranked.map(({ territory, kpis }) => (
               <Link
                 key={territory.id}
-                href={`/crm/field/knocks?territory=${encodeURIComponent(territory.id)}`}
+                href={`/crm/field/${territory.id}`}
                 className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[var(--crm-surface-high)]"
               >
                 <div className="min-w-0 flex-1">
