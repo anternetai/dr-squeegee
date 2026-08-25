@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyCrmAuth } from '@/lib/crm-auth-check'
-import { reviewAskLine } from '@/lib/squeegee/review-ask'
+import { sendReceiptForInvoice } from '@/lib/squeegee/send-receipt'
+import { smsReviewOnce } from '@/lib/squeegee/sms-events'
 
 function getAdmin() {
   return createClient(
@@ -71,10 +72,36 @@ export async function POST(
       note: `Invoice marked as paid - $${Number(invoice.amount).toFixed(2)}${paymentMethod ? ` (${paymentMethod})` : ''}`,
     })
 
-    // Manual payments are Anthony's own action — no "payment received" noise,
-    // but the review moment still deserves a nudge (only when the URL is set).
-    const reviewAsk = await reviewAskLine(supabase, invoice.job_id)
-    if (reviewAsk && process.env.SLACK_BOT_TOKEN) {
+    // Cash, check and Zelle get the same treatment a card payment gets: the
+    // customer receives a receipt, and the review ask goes out. Neither can
+    // throw — the money is already collected, and a failed text must not turn
+    // a successful mark-paid into an error on Anthony's screen.
+    const receipt = await sendReceiptForInvoice(id).catch((err) => {
+      console.error('Receipt send threw:', err)
+      return { ok: false, reason: 'send error' as const, receiptUrl: undefined }
+    })
+
+    let reviewNote = ''
+    if (invoice.job_id && process.env.GOOGLE_REVIEW_URL) {
+      const { data: job } = await supabase
+        .from('squeegee_jobs')
+        .select('client_name, client_phone')
+        .eq('id', invoice.job_id)
+        .maybeSingle()
+      if (job?.client_name) {
+        const r = await smsReviewOnce({
+          jobId: invoice.job_id,
+          name: job.client_name as string,
+          phone: (job.client_phone as string | null) ?? null,
+        }).catch(() => null)
+        reviewNote = r === null ? ' Review ask: already asked.' : r.sent ? ' Review ask sent.' : ` Review ask NOT sent (${r.reason}).`
+      }
+    }
+
+    if (process.env.SLACK_BOT_TOKEN) {
+      const receiptNote = receipt.ok
+        ? ` Receipt sent — ${receipt.receiptUrl}`
+        : ` ⚠️ Receipt NOT sent (${receipt.reason ?? 'unknown'}).`
       await fetch('https://slack.com/api/chat.postMessage', {
         method: 'POST',
         headers: {
@@ -83,12 +110,12 @@ export async function POST(
         },
         body: JSON.stringify({
           channel: 'U0ABZDLENJ1',
-          text: `💵 Invoice ${invoice.invoice_number} marked paid.${reviewAsk}`,
+          text: `💵 Invoice ${invoice.invoice_number} marked paid${paymentMethod ? ` (${paymentMethod})` : ''}.${receiptNote}${reviewNote}`,
         }),
-      }).catch((e) => console.error('review-ask Slack post failed:', e))
+      }).catch((e) => console.error('mark-paid Slack post failed:', e))
     }
 
-    return NextResponse.json(invoice)
+    return NextResponse.json({ ...invoice, receipt_sent: receipt.ok, receipt_url: receipt.receiptUrl ?? null })
   } catch (err) {
     console.error('Mark paid error:', err)
     const message = err instanceof Error ? err.message : 'Internal server error'

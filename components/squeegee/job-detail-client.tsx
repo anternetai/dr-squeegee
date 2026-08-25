@@ -34,6 +34,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SendTextButton } from "@/components/squeegee/send-text-button"
+import { smsTemplates } from "@/lib/squeegee/sms-templates"
 
 const STATUS_COLORS: Record<JobStatus, string> = {
   new: "bg-[var(--crm-idle-bg)] text-[var(--crm-idle)] dark:bg-[var(--crm-idle-bg)] dark:text-[var(--crm-idle)] border-[var(--crm-idle-bg)] dark:border-[var(--crm-idle-bg)]",
@@ -45,6 +46,14 @@ const STATUS_COLORS: Record<JobStatus, string> = {
 
 interface Props {
   job: SqueegeeJob
+  /** Work is finished — status complete, or an invoice on it is paid. */
+  isDone?: boolean
+  /** An invoice on this job is paid. */
+  isPaid?: boolean
+  /** GOOGLE_REVIEW_URL, read server-side and passed down (not a public env). */
+  reviewUrl?: string | null
+  /** Receipt token of the paid invoice, for the quick link. */
+  receiptToken?: string | null
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -84,7 +93,13 @@ async function syncCalendar(jobId: string, action: "create" | "delete") {
   }
 }
 
-export function JobDetailClient({ job: initialJob }: Props) {
+export function JobDetailClient({
+  job: initialJob,
+  isDone = false,
+  isPaid = false,
+  reviewUrl = null,
+  receiptToken = null,
+}: Props) {
   const router = useRouter()
   const [job, setJob] = useState(initialJob)
   const [updatingStatus, setUpdatingStatus] = useState(false)
@@ -115,6 +130,10 @@ export function JobDetailClient({ job: initialJob }: Props) {
     job.appointment_date && job.appointment_time
       ? `Hey ${job.client_name.split(" ")[0]}! Confirming your Dr. Squeegee appointment for ${job.service_type} at ${job.address} on ${formatDate(job.appointment_date)} at ${formatTime(job.appointment_time)}. We'll see you then! Any questions, just reply here.`
       : null
+
+  // Built from the same template the automatic send uses, so what Anthony reads
+  // here is exactly what the customer gets — no second copy to drift.
+  const reviewSms = smsTemplates.reviewRequest(job.client_name, reviewUrl ?? "")
 
   const currentStatusIdx = STATUS_ORDER.indexOf(job.status)
   const nextStatus = STATUS_ORDER[currentStatusIdx + 1] as JobStatus | undefined
@@ -476,7 +495,74 @@ export function JobDetailClient({ job: initialJob }: Props) {
         </CardContent>
       </Card>
 
-      {/* Generate Quote Text */}
+      {/* The review ask — the only thing left to do on a finished job, so it
+          gets the whole screen to itself instead of sitting under three cards
+          about work that already happened. */}
+      {isDone && (
+        <Card className="border-[var(--crm-accent-line)]">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-[var(--crm-accent)]" />
+              <CardTitle className="text-base">Ask for a review</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {reviewUrl ? (
+              <>
+                <p className="text-sm bg-muted rounded-lg p-4 whitespace-pre-wrap leading-relaxed">
+                  {reviewSms.body}
+                  {"\n\n"}
+                  <span className="text-[var(--crm-accent)]">{reviewSms.link}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Sends as two messages — the note, then the link on its own so it arrives
+                  tappable.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <CopyButton text={`${reviewSms.body}\n\n${reviewSms.link}`} />
+                  {job.client_phone && (
+                    <SendTextButton
+                      phone={job.client_phone}
+                      body={reviewSms.body}
+                      link={reviewSms.link}
+                      clientId={job.client_id ?? undefined}
+                      kind="review"
+                      label="Text review link"
+                      sentLabel="Sent ✓"
+                      variant="default"
+                      className="gap-1.5 bg-[var(--crm-accent)] hover:bg-[#1F6B54] text-white"
+                    />
+                  )}
+                  {receiptToken && (
+                    <Button asChild size="sm" variant="outline" className="gap-1.5">
+                      <a
+                        href={`https://www.drsqueegeeclt.com/r/${receiptToken}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        View receipt
+                      </a>
+                    </Button>
+                  )}
+                </div>
+                {isPaid && (
+                  <p className="text-xs text-muted-foreground">
+                    Paid jobs send this automatically. Use the button to send it again.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Set <code className="text-xs">GOOGLE_REVIEW_URL</code> to enable the review ask.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Generate Quote Text — a finished job has nothing left to quote. */}
+      {!isDone && (
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -504,8 +590,10 @@ export function JobDetailClient({ job: initialJob }: Props) {
           </div>
         </CardContent>
       </Card>
+      )}
 
-      {/* Generate Appointment Confirmation */}
+      {/* Appointment Confirmation — pointless once the appointment has happened. */}
+      {!isDone && (
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -541,8 +629,12 @@ export function JobDetailClient({ job: initialJob }: Props) {
           )}
         </CardContent>
       </Card>
+      )}
 
-      {/* Danger Zone */}
+      {/* Danger Zone — a paid job is a financial record. Deleting it would take
+          the invoice, the receipt and the activity trail with it, so the option
+          is not offered once money has changed hands. */}
+      {!isDone && (
       <div className="rounded-lg border border-[var(--crm-dead-bg)] dark:border-[var(--crm-dead-bg)] bg-[var(--crm-dead-bg)] dark:bg-[var(--crm-dead-bg)] p-4">
         <p className="text-xs font-semibold text-[var(--crm-dead)] dark:text-[var(--crm-dead)] uppercase tracking-wide mb-3">
           Danger Zone
@@ -570,6 +662,7 @@ export function JobDetailClient({ job: initialJob }: Props) {
           </Button>
         </div>
       </div>
+      )}
     </div>
   )
 }

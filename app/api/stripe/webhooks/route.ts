@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
-import { reviewAskLine } from '@/lib/squeegee/review-ask'
 import { sendReceiptForInvoice } from '@/lib/squeegee/send-receipt'
+import { smsReviewOnce } from '@/lib/squeegee/sms-events'
 
 function getAdmin() {
   return createClient(
@@ -126,12 +126,44 @@ async function markInvoicePaid(
     receiptLine = '\n⚠️ *Receipt NOT sent* — send it manually from the invoice page.'
   }
 
-  const reviewAsk = await reviewAskLine(supabase, invoice.job_id)
+  // Review ask, automatic from 8/25/2026 on. Paying is the high-water mark of
+  // how a customer feels about the job, so the ask goes out now rather than
+  // waiting for Anthony to remember. smsReviewOnce de-dupes per job, so a job
+  // completed by crew AND then paid still only ever asks once. Only fires on
+  // payments happening from here forward — nothing back-fills old customers.
+  const reviewLine = await reviewAskResult(supabase, invoice.job_id)
+
   const tipLine = opts.tip > 0 ? `\n*Tip:* $${opts.tip.toFixed(2)}` : ''
   const grand = Number(invoice.amount) + opts.tip
   await sendSlackNotification(
-    `💵 *Payment Received!*\n*Invoice:* ${invoice.invoice_number}\n*Service:* $${Number(invoice.amount).toFixed(2)}${tipLine}\n*Total paid:* $${grand.toFixed(2)}\n*Status:* Paid ✅${receiptLine}${reviewAsk}`
+    `💵 *Payment Received!*\n*Invoice:* ${invoice.invoice_number}\n*Service:* $${Number(invoice.amount).toFixed(2)}${tipLine}\n*Total paid:* $${grand.toFixed(2)}\n*Status:* Paid ✅${receiptLine}${reviewLine}`
   )
+}
+
+// Fire the review ask and report what happened, for the Slack line.
+async function reviewAskResult(supabase: SupabaseClient, jobId: string | null): Promise<string> {
+  if (!jobId) return ''
+  if (!process.env.GOOGLE_REVIEW_URL) return '\n*Review ask:* skipped (GOOGLE_REVIEW_URL not set)'
+  try {
+    const { data: job } = await supabase
+      .from('squeegee_jobs')
+      .select('client_name, client_phone')
+      .eq('id', jobId)
+      .maybeSingle()
+    if (!job?.client_name) return ''
+
+    const r = await smsReviewOnce({
+      jobId,
+      name: job.client_name as string,
+      phone: (job.client_phone as string | null) ?? null,
+    })
+    if (r === null) return '\n*Review ask:* already asked on this job'
+    if (r.sent) return '\n⭐ *Review ask:* sent'
+    return `\n⚠️ *Review ask NOT sent* (${r.reason ?? 'unknown'}) — send it from the job page.`
+  } catch (err) {
+    console.error('Review ask threw:', err)
+    return '\n⚠️ *Review ask NOT sent* — send it from the job page.'
+  }
 }
 
 export async function POST(request: NextRequest) {

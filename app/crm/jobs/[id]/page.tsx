@@ -56,6 +56,25 @@ export default async function JobDetailPage({ params }: PageProps) {
 
   const assignedEmployeeId = (job as { assigned_employee_id?: string | null }).assigned_employee_id ?? null
 
+  // A finished job is a different screen than a live one. Once the work is done
+  // and paid there is nothing left to quote, confirm, crew or delete — the only
+  // thing left to do is ask for the review. Everything else is noise on the way
+  // to it, so the page hides it rather than making Anthony scroll past it.
+  const { data: paidInvoice } = await supabase
+    .from("squeegee_invoices")
+    .select("id, receipt_token")
+    .eq("job_id", id)
+    .eq("status", "paid")
+    .order("paid_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const isPaid = Boolean(paidInvoice)
+  const isDone = job.status === "complete" || isPaid
+
+  // Server-only env — read here and pass down rather than exposing it publicly.
+  const reviewUrl = process.env.GOOGLE_REVIEW_URL ?? null
+
   return (
     <div className="space-y-5">
       <div>
@@ -76,8 +95,15 @@ export default async function JobDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      <JobDetailClient job={job} />
-      <JobAssign jobId={job.id} employees={crew ?? []} current={assignedEmployeeId} />
+      <JobDetailClient
+        job={job}
+        isDone={isDone}
+        isPaid={isPaid}
+        reviewUrl={reviewUrl}
+        receiptToken={paidInvoice?.receipt_token ?? null}
+      />
+      {/* Crew assignment is for work that still has to happen. */}
+      {!isDone && <JobAssign jobId={job.id} employees={crew ?? []} current={assignedEmployeeId} />}
       <JobInvoices job={job} quoteToken={latestQuote?.token ?? null} />
       <JobActivity jobId={job.id} />
     </div>
