@@ -52,7 +52,8 @@ export async function POST(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
-    // Update linked job status to 'complete'
+    // Paying closes the job. completed_at is only stamped when it is still
+    // empty — if crew already marked it done, that timestamp is the true one.
     if (invoice.job_id) {
       const { error: jobError } = await supabase
         .from('squeegee_jobs')
@@ -63,6 +64,12 @@ export async function POST(
         console.error('Job status update error:', jobError)
         // Non-fatal — continue and still return the invoice
       }
+
+      await supabase
+        .from('squeegee_jobs')
+        .update({ completed_at: new Date().toISOString() })
+        .eq('id', invoice.job_id)
+        .is('completed_at', null)
     }
 
     // Log activity

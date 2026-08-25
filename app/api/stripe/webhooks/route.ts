@@ -99,7 +99,15 @@ async function markInvoicePaid(
   }
 
   if (invoice.job_id) {
+    // Paying closes the job. completed_at is only stamped when it is still
+    // empty — if crew already marked it done, that timestamp is the true one
+    // and payment may be days later. The receipt reads this for "Serviced on".
     await supabase.from('squeegee_jobs').update({ status: 'complete' }).eq('id', invoice.job_id)
+    await supabase
+      .from('squeegee_jobs')
+      .update({ completed_at: new Date().toISOString() })
+      .eq('id', invoice.job_id)
+      .is('completed_at', null)
   }
 
   const tipNote = opts.tip > 0 ? ` + $${opts.tip.toFixed(2)} tip` : ''
