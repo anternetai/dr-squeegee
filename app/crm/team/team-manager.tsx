@@ -35,9 +35,17 @@ function joinLink(token: string): string {
   return `${origin}/team/join/${token}`
 }
 
+// Prose only — the join URL travels as SendTextButton's `link` so it lands as
+// its own tappable message. inviteSmsFull is for clipboard copies, where the
+// whole thing has to be one pasteable blob.
 function inviteSms(name: string, token: string): string {
+  void token
   const first = (name || "there").trim().split(/\s+/)[0]
-  return `Hey ${first}, welcome to the Dr. Squeegee crew! Set up your crew account here (takes 2 min): ${joinLink(token)}`
+  return `Hey ${first}, welcome to the Dr. Squeegee crew! Set up your crew account at the link below (takes 2 min).`
+}
+
+function inviteSmsFull(name: string, token: string): string {
+  return `${inviteSms(name, token)}\n\n${joinLink(token)}`
 }
 
 export function TeamManager({ initial }: { initial: CrewRow[] }) {
@@ -158,7 +166,7 @@ function CrewCard({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => onCopy(inviteSms(r.name, r.invite_token!), `sms-${r.id}`)}
+            onClick={() => onCopy(inviteSmsFull(r.name, r.invite_token!), `sms-${r.id}`)}
           >
             {copied === `sms-${r.id}` ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
             Copy invite text
@@ -167,6 +175,7 @@ function CrewCard({
             <SendTextButton
               phone={r.phone}
               body={inviteSms(r.name, r.invite_token!)}
+              link={joinLink(r.invite_token!)}
               kind="crew_invite"
               label="Send invite"
               sentLabel="Invite sent"
@@ -238,7 +247,7 @@ function InviteModal({
   async function copySms() {
     if (!created) return
     try {
-      await navigator.clipboard.writeText(inviteSms(created.name, created.token))
+      await navigator.clipboard.writeText(inviteSmsFull(created.name, created.token))
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)
     } catch {
@@ -306,11 +315,12 @@ function InviteModal({
                 {created.phone ? "Text them their setup link — one tap." : "Copy this text to send them their setup link."}
               </p>
             </div>
-            <div className="rounded-lg bg-muted p-3 text-sm">{inviteSms(created.name, created.token)}</div>
+            <div className="rounded-lg bg-muted p-3 text-sm whitespace-pre-wrap">{inviteSmsFull(created.name, created.token)}</div>
             {created.phone ? (
               <SendTextButton
                 phone={created.phone}
                 body={inviteSms(created.name, created.token)}
+                link={joinLink(created.token)}
                 kind="crew_invite"
                 label="Send invite text"
                 sentLabel="Invite sent ✓"

@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
-import { sendSms } from "@/lib/squeegee/sms"
+import { sendSmsWithLink } from "@/lib/squeegee/sms"
 
 // Daily follow-up digest — surfaces quotes/plans waiting on a customer answer.
 //
@@ -96,7 +96,9 @@ export async function GET(request: NextRequest) {
           amount: Number(q.total_price) || 0,
           daysOut: daysAgo(q.created_at as string),
           url,
-          suggestedText: `Hey ${first}, it's Anthony with Dr. Squeegee — just making sure my quote made it to you. Happy to answer anything: ${url}`,
+          suggestedText: `Hey ${first}, it's Anthony with Dr. Squeegee - just making sure my quote made it to you. Happy to answer anything.
+
+${url}`,
         }
       }),
       ...(plans || []).map((p) => {
@@ -110,7 +112,9 @@ export async function GET(request: NextRequest) {
           amount: Number(p.total_price) || 0,
           daysOut: daysAgo(p.created_at as string),
           url,
-          suggestedText: `Hey ${first}, Anthony with Dr. Squeegee — your ${p.plan_name || "care plan"} agreement is ready whenever you are. Questions? Just text back: ${url}`,
+          suggestedText: `Hey ${first}, Anthony with Dr. Squeegee - your ${p.plan_name || "care plan"} agreement is ready whenever you are. Questions? Just text back.
+
+${url}`,
         }
       }),
     ]
@@ -155,8 +159,18 @@ export async function GET(request: NextRequest) {
     if (process.env.FOLLOWUPS_SMS_ENABLED === "true") {
       for (const i of items) {
         if (!i.phone) continue
-        const body = `Dr. Squeegee: Hi ${firstName(i.clientName)}, just following up — still happy to get you taken care of: ${i.url}. Reply STOP to opt out.`
-        await sendSms({ phone: i.phone, body, kind: "quote_followup", relatedType: i.kind, relatedId: i.id }).catch(() => {})
+        // Prose and link go out as two messages — a URL buried in a sentence
+        // (and followed by a period) is the exact shape that arrives unclickable
+        // with no preview card. See lib/squeegee/sms.ts sendSmsWithLink.
+        const body = `Dr. Squeegee: Hi ${firstName(i.clientName)}, just following up - still happy to get you taken care of. Details below. Reply STOP to opt out.`
+        await sendSmsWithLink({
+          phone: i.phone,
+          body,
+          link: i.url,
+          kind: "quote_followup",
+          relatedType: i.kind,
+          relatedId: i.id,
+        }).catch(() => {})
       }
     }
 

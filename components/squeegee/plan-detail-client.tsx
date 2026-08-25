@@ -67,8 +67,10 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
   const services = Array.isArray(plan.services) ? plan.services : []
   const pendingReschedules = visits.filter((v) => v.status === "reschedule_requested")
 
-  const agreementSms = `Hi ${plan.client_name.split(" ")[0]}! Here's your Dr. Squeegee ${plan.plan_name} agreement — review and sign here: ${agreementUrl}`
-  const portalSms = `Welcome to the Dr. Squeegee family! Your member portal (visit schedule, rescheduling, everything): ${portalUrl} — bookmark it!`
+  // URLs stay OUT of these bodies — they're passed to SendTextButton as `link`
+  // and sent as their own message so they arrive tappable with a preview card.
+  const agreementSms = `Hi ${plan.client_name.split(" ")[0]}! Here's your Dr. Squeegee ${plan.plan_name} agreement - review and sign it at the link below.`
+  const portalSms = `Welcome to the Dr. Squeegee family! Your member portal - visit schedule, rescheduling, everything - is at the link below. Bookmark it!`
 
   async function copy(text: string, key: string) {
     await navigator.clipboard.writeText(text)
@@ -181,7 +183,7 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
             <Button variant="outline" size="icon" onClick={() => copy(agreementUrl, "agreement")} title="Copy">
               {copied === "agreement" ? <Check className="h-4 w-4 text-[var(--crm-accent)]" /> : <Copy className="h-4 w-4" />}
             </Button>
-            <SendTextButton phone={plan.client_phone} body={agreementSms} kind="plan_agreement" size="icon" iconOnly sentLabel="Sent" />
+            <SendTextButton phone={plan.client_phone} body={agreementSms} link={agreementUrl} kind="plan_agreement" size="icon" iconOnly sentLabel="Sent" />
             <Button variant="outline" size="icon" asChild title="Open">
               <a href={agreementUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="h-4 w-4" />
@@ -196,7 +198,7 @@ export function PlanDetailClient({ plan, visits, member }: Props) {
             <Button variant="outline" size="icon" onClick={() => copy(portalUrl, "portal")} title="Copy">
               {copied === "portal" ? <Check className="h-4 w-4 text-[var(--crm-accent)]" /> : <Copy className="h-4 w-4" />}
             </Button>
-            <SendTextButton phone={plan.client_phone} body={portalSms} kind="plan_portal" size="icon" iconOnly sentLabel="Sent" />
+            <SendTextButton phone={plan.client_phone} body={portalSms} link={portalUrl} kind="plan_portal" size="icon" iconOnly sentLabel="Sent" />
             <Button variant="outline" size="icon" asChild title="Open">
               <a href={portalUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="h-4 w-4" />

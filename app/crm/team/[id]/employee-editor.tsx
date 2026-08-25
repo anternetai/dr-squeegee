@@ -181,7 +181,8 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
             {form.phone && (
               <SendTextButton
                 phone={form.phone}
-                body={`Hey ${(form.name || "there").trim().split(/\s+/)[0]}, welcome to the Dr. Squeegee crew! Set up your crew account here (takes 2 min): ${joinLink(token)}`}
+                body={`Hey ${(form.name || "there").trim().split(/\s+/)[0]}, welcome to the Dr. Squeegee crew! Set up your crew account at the link below (takes 2 min).`}
+                link={joinLink(token)}
                 kind="crew_invite"
                 label="Send invite"
                 sentLabel="Invite sent"

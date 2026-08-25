@@ -10,6 +10,7 @@ import { Send, Check, Loader2, MessageSquare } from "lucide-react"
 export function SendTextButton({
   phone,
   body,
+  link,
   kind = "manual",
   clientId,
   label = "Send text",
@@ -22,6 +23,13 @@ export function SendTextButton({
 }: {
   phone: string | null | undefined
   body: string
+  /**
+   * A URL to deliver with this text. Pass it here rather than writing it into
+   * `body` — it goes out as a SECOND message containing nothing but the link,
+   * which is the only shape iMessage draws a preview card for and the only one
+   * that stays reliably tappable on Android. See lib/squeegee/sms.ts.
+   */
+  link?: string
   kind?: string
   clientId?: string | null
   label?: string
@@ -43,7 +51,7 @@ export function SendTextButton({
       const res = await fetch("/api/crm/sms/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, body, kind, client_id: clientId ?? undefined }),
+        body: JSON.stringify({ phone, body, link: link ?? undefined, kind, client_id: clientId ?? undefined }),
       })
       const data = await res.json().catch(() => ({}))
       if (data.ok) {

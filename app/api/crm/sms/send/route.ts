@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { verifyCrmAuth } from "@/lib/crm-auth-check"
-import { sendSms, normalizePhone } from "@/lib/squeegee/sms"
+import { sendSms, sendSmsWithLink, normalizePhone } from "@/lib/squeegee/sms"
 
 function getAdmin() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -29,14 +29,21 @@ export async function POST(req: NextRequest) {
       .eq("id", String(body.client_id))
   }
 
-  const result = await sendSms({
-    phone: body.phone,
+  const common = {
+    phone: body.phone as string,
     body: String(body.body),
     kind: body.kind ? String(body.kind) : "manual",
     relatedType: body.client_id ? "client" : null,
     relatedId: body.client_id ? String(body.client_id) : null,
     force: body.force !== false, // manual admin sends default to force; opt-out still blocks
-  })
+  }
+
+  // When the caller has a URL to deliver it passes it as `link`, never baked
+  // into `body` — the link then goes out as its own message so iMessage renders
+  // a preview card and no linkifier can swallow adjacent punctuation.
+  const result = body.link
+    ? await sendSmsWithLink({ ...common, link: String(body.link) })
+    : await sendSms(common)
 
   if (!result.sent) {
     return NextResponse.json({ ok: false, reason: result.reason, test: result.test }, { status: 200 })

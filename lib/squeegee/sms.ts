@@ -11,6 +11,7 @@
 //      while we shake it out. The live flip is a human decision, never code's.
 
 import { createClient } from "@supabase/supabase-js"
+import { sanitizeForSms, isSendableLink, smsInfo } from "./gsm7"
 
 function getAdmin() {
   return createClient(
@@ -86,6 +87,11 @@ export interface SendArgs {
   relatedId?: string | null
   requireConsent?: boolean // default true
   force?: boolean          // bypass consent check (still blocked by opt-out) — manual admin sends
+  // Send `body` byte-for-byte: no opt-out tail, no [TEST] prefix. ONLY for the
+  // bare-URL half of sendSmsWithLink — a link message has to be nothing but the
+  // link or iMessage won't draw a preview card. Never set this by hand; the
+  // opt-out language must ride on the prose message that precedes it.
+  bare?: boolean
 }
 
 export interface SendResult {
@@ -134,11 +140,16 @@ export async function sendSms(args: SendArgs): Promise<SendResult> {
     return { sent: false, test: !live, reason: "no consent" }
   }
 
-  const body = withOptOut(args.body)
-  // Test mode: redirect to Anthony's cell, tag the intended recipient.
+  // Smart punctuation is transliterated to GSM-7 on EVERY outbound body. One em
+  // dash flips the whole message to UCS-2 and splits it into segments the
+  // handset has to rejoin — which is where link auto-detection dies. See gsm7.ts.
+  const body = args.bare ? sanitizeForSms(args.body) : withOptOut(sanitizeForSms(args.body))
+  // Test mode: redirect to Anthony's cell, tag the intended recipient. A bare
+  // link message is never tagged — the [TEST] prefix would stop it being a
+  // URL-only message, which is the exact behaviour a test send needs to prove.
   const testTo = process.env.SMS_TEST_TO
   const to = live ? norm.e164 : (testTo ?? "")
-  const finalBody = live ? body : `[TEST → ${norm.e164}] ${body}`
+  const finalBody = live || args.bare ? body : `[TEST → ${norm.e164}] ${body}`
 
   if (!to) {
     await log("failed", { error: "no recipient (SMS_TEST_TO unset)" })
@@ -178,4 +189,65 @@ export async function sendSms(args: SendArgs): Promise<SendResult> {
     await log("failed", { error: String(err), was_test: !live, to_phone: to })
     return { sent: false, test: !live, reason: "send error" }
   }
+}
+
+/**
+ * Send a link the way phones actually want to receive one: prose first, then a
+ * second message containing nothing but the URL.
+ *
+ * Why two messages rather than one:
+ *   - iMessage draws its rich preview card ONLY when the message body is just a
+ *     URL. Wrapped in a sentence it renders as plain blue text with no card.
+ *   - Android/RCS linkifiers routinely swallow punctuation that touches a URL
+ *     ("...pay here: https://x/q/abc." -> the trailing dot lands in the href and
+ *     the tap 404s).
+ *   - A bare ASCII URL is always GSM-7 and always a single segment, so it never
+ *     depends on multi-segment reassembly — which is the failure mode that made
+ *     links unclickable on both platforms.
+ *
+ * The prose message carries the opt-out language, so the pair stays compliant
+ * with what the A2P campaign registered.
+ */
+export interface SendLinkArgs extends Omit<SendArgs, "bare"> {
+  link: string
+}
+
+export interface SendLinkResult extends SendResult {
+  /** The bare-URL message. Undefined when the prose message never went out. */
+  linkResult?: SendResult
+}
+
+export async function sendSmsWithLink(args: SendLinkArgs): Promise<SendLinkResult> {
+  // A malformed link would silently become an unclickable text message — the
+  // very bug this function exists to kill. Say so loudly rather than send it.
+  if (!isSendableLink(args.link)) {
+    console.error(
+      `[sms] refusing to send an unsafe link message (kind=${args.kind}): ${JSON.stringify(args.link)} — ` +
+        `must be a bare https URL, no whitespace, no trailing punctuation, single GSM-7 segment ` +
+        `(${JSON.stringify(smsInfo(args.link))})`
+    )
+    return { sent: false, test: process.env.SMS_LIVE !== "true", reason: "unsafe link" }
+  }
+
+  // 1) Prose. Consent, opt-out, test-mode and logging all enforced inside sendSms.
+  const prose = await sendSms({ ...args, body: args.body })
+  // If the prose was blocked (opted out, no consent, bad number), the link must
+  // not go out on its own — that would be an unsolicited bare URL.
+  if (!prose.sent) return prose
+
+  // 2) The link, alone. Awaited after the prose so they arrive in order.
+  const linkResult = await sendSms({
+    ...args,
+    body: args.link,
+    kind: `${args.kind}_link`,
+    bare: true,
+    // The consent decision was already made and passed one line above; re-running
+    // it can only produce a prose-without-link split if state changed mid-send.
+    force: true,
+  })
+
+  if (!linkResult.sent) {
+    console.error(`[sms] prose sent but link message failed (kind=${args.kind}): ${linkResult.reason}`)
+  }
+  return { ...prose, linkResult }
 }

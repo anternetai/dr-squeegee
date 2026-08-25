@@ -196,9 +196,12 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
   }
 
   if (result) {
+    // The quote URL is NOT written into the body — it rides as `link` and goes
+    // out as its own message, so the customer gets a tappable link with a
+    // preview card instead of grey text buried mid-sentence.
     const smsParts = [
-      `Hey ${clientName.split(" ")[0]}! This is Anthony from Dr. Squeegee. Here's your quote: ${result.quote_url}`,
-      address ? `Service address: ${address}` : null,
+      `Hey ${clientName.split(" ")[0]}! This is Anthony from Dr. Squeegee. Here's your quote:`,
+      address ? `Service address: ${address}.` : null,
       result.scheduled && apptDate && apptTime
         ? `We've got you scheduled for ${formatDate(apptDate)} at ${formatTime(apptTime)}.`
         : null,
@@ -241,6 +244,7 @@ export function QuickQuoteFlow({ clients, initialClient }: Props) {
               <SendTextButton
                 phone={clientPhone}
                 body={smsBody}
+                link={result.quote_url}
                 kind="quote_ready"
                 label="Text it"
                 sentLabel="Texted ✓"
