@@ -23,6 +23,7 @@ import {
   AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { SendReceiptButton } from "@/components/squeegee/send-receipt-button"
 
 type InvoiceStatus = SqueegeeInvoice["status"]
 
@@ -693,9 +694,36 @@ function InvoiceRow({
                   day: "numeric",
                   year: "numeric",
                 })}
+                {invoice.card_brand && invoice.card_last4 && (
+                  <span className="text-muted-foreground">
+                    · {invoice.card_brand} ••••{invoice.card_last4}
+                  </span>
+                )}
               </p>
             )}
           </div>
+
+          {/* Receipt — auto-sent by the Stripe webhook on card payments; this is
+              the manual path for cash/check/Zelle and for re-sends. */}
+          {invoice.status === "paid" && (
+            <div className="pt-1 border-t border-border/60 space-y-1.5">
+              <SendReceiptButton
+                invoiceId={invoice.id}
+                alreadySent={Boolean(invoice.receipt_sent_at)}
+              />
+              {invoice.receipt_sent_at && (
+                <p className="text-[11px] text-muted-foreground">
+                  Receipt sent{" "}
+                  {new Date(invoice.receipt_sent_at).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

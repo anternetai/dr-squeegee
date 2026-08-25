@@ -4,6 +4,7 @@
 // customer's flow must not fail on email delivery.
 
 import { BRAND, CLUB_NAME } from "@/lib/squeegee/brand"
+import { paymentLabel, type ReceiptData } from "@/lib/squeegee/receipt-format"
 
 const FROM = "Dr. Squeegee <care@drsqueegeeclt.com>"
 const REPLY_TO = "care@drsqueegeeclt.com"
@@ -157,4 +158,89 @@ export async function sendMagicLinkEmail(
     </p>
   `)
   await send(to, `Your ${CLUB_NAME} portal link`, html)
+}
+
+// (d) Payment receipt. Sent alongside the SMS whenever the customer has an email
+// on file — many don't, which is why the texted /r/ link is the primary channel.
+// The full itemised receipt lives on the page; this email carries the proof
+// (amount, date, card) so it stands alone in an inbox search years later.
+export async function sendReceiptEmail(receipt: ReceiptData, receiptUrl: string): Promise<void> {
+  if (!receipt.clientEmail) return
+  const first = escapeHtml(receipt.clientName.split(" ")[0])
+  const paidOn = receipt.paidAt
+    ? new Date(receipt.paidAt).toLocaleString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "America/New_York",
+      })
+    : "—"
+
+  const lineRows = receipt.services
+    .map(
+      (s) =>
+        `<tr><td style="padding:6px 0;color:rgba(255,255,255,0.85);">${escapeHtml(s.name)}${
+          s.detail ? `<br/><span style="color:rgba(255,255,255,0.4);font-size:12px;">${escapeHtml(s.detail)}</span>` : ""
+        }</td><td style="padding:6px 0;text-align:right;color:rgba(255,255,255,0.85);white-space:nowrap;">$${s.price.toFixed(
+          2
+        )}</td></tr>`
+    )
+    .join("")
+
+  const discountRow =
+    receipt.discountAmount > 0
+      ? `<tr><td style="padding:4px 0;color:#2D8C6F;font-size:13px;">${escapeHtml(
+          receipt.discountLabel ?? "Discount"
+        )}</td><td style="padding:4px 0;text-align:right;color:#2D8C6F;font-size:13px;">-$${receipt.discountAmount.toFixed(
+          2
+        )}</td></tr>`
+      : ""
+
+  const tipRow =
+    receipt.tip > 0
+      ? `<tr><td style="padding:4px 0;color:rgba(255,255,255,0.6);font-size:13px;">Tip</td><td style="padding:4px 0;text-align:right;color:rgba(255,255,255,0.85);font-size:13px;">$${receipt.tip.toFixed(
+          2
+        )}</td></tr>`
+      : ""
+
+  const html = layout(`
+    <div style="text-align:center;margin-bottom:18px;">
+      <span style="display:inline-block;background:rgba(45,140,111,0.15);border:1px solid #2D8C6F;color:#2D8C6F;font-weight:bold;font-size:12px;letter-spacing:2px;padding:6px 18px;border-radius:999px;">PAID</span>
+    </div>
+    <h1 style="margin:0 0 6px;font-size:22px;text-align:center;">Thank you, ${first}!</h1>
+    <p style="color:rgba(255,255,255,0.6);margin:0 0 4px;font-size:14px;line-height:1.6;text-align:center;">
+      Receipt <strong style="color:#fff;">${escapeHtml(receipt.receiptNumber)}</strong>
+    </p>
+    <p style="text-align:center;margin:14px 0 4px;">
+      <span style="color:#2D8C6F;font-size:34px;font-weight:bold;">$${receipt.totalPaid.toFixed(2)}</span>
+    </p>
+    <p style="color:rgba(255,255,255,0.45);font-size:12px;text-align:center;margin:0 0 18px;">
+      ${escapeHtml(paidOn)} ET &middot; ${escapeHtml(paymentLabel(receipt))}
+    </p>
+
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border-top:1px solid #242424;padding-top:8px;">
+      ${lineRows}
+      ${discountRow}
+      ${tipRow}
+    </table>
+    <div style="border-top:1px solid #242424;margin:12px 0 0;padding-top:12px;font-size:15px;display:flex;">
+      <span style="color:rgba(255,255,255,0.6);">Total paid</span>
+      <span style="color:#2D8C6F;font-weight:bold;float:right;">$${receipt.totalPaid.toFixed(2)}</span>
+    </div>
+
+    <p style="color:rgba(255,255,255,0.5);font-size:13px;line-height:1.6;margin-top:18px;">
+      Service address: ${escapeHtml(receipt.address || "—")}<br/>
+      Invoice: ${escapeHtml(receipt.invoiceNumber)}
+    </p>
+
+    <div style="text-align:center;margin-top:10px;">
+      ${button(receiptUrl, "View / Print Receipt")}
+    </div>
+    <p style="color:rgba(255,255,255,0.35);font-size:12px;margin-top:14px;text-align:center;">
+      Keep this email for your records.
+    </p>
+  `)
+  await send(receipt.clientEmail, `Your Dr. Squeegee receipt — ${receipt.receiptNumber}`, html)
 }

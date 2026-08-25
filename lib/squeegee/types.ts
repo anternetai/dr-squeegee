@@ -67,6 +67,13 @@ export interface SqueegeeInvoice {
   stripe_payment_intent_id: string | null
   payment_method: "stripe" | "cash" | "zelle" | "check" | null
   notes: string | null
+  sent_at?: string | null
+  // Receipt fields — populated once an invoice is paid. receipt_token is the
+  // public /r/[token] URL the customer keeps; card_* come from the Stripe charge.
+  receipt_token?: string | null
+  receipt_sent_at?: string | null
+  card_brand?: string | null
+  card_last4?: string | null
 }
 
 export interface SqueegeeActivityItem {

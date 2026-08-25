@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 import { reviewAskLine } from '@/lib/squeegee/review-ask'
+import { sendReceiptForInvoice } from '@/lib/squeegee/send-receipt'
 
 function getAdmin() {
   return createClient(
@@ -44,12 +45,35 @@ interface InvoiceRow {
 // Shared finalizer for a paid invoice. Idempotent — a second delivery of the
 // same event (or a checkout + payment_intent pair for the same invoice) is a
 // no-op once the invoice is already 'paid'.
+// The card a payment was made with, for the receipt. A receipt that can't name
+// the tender ("Visa ending in 3084") isn't a real receipt, and Stripe is the
+// only place that knows. Never throws — receipt cosmetics must not break the
+// payment record.
+async function fetchCardDetails(
+  paymentIntentId: string | null
+): Promise<{ card_brand: string; card_last4: string } | null> {
+  if (!paymentIntentId) return null
+  try {
+    const pi = await getStripe().paymentIntents.retrieve(paymentIntentId, { expand: ['latest_charge'] })
+    const charge = pi.latest_charge as Stripe.Charge | null
+    const card = charge?.payment_method_details?.card
+    if (card?.brand && card?.last4) {
+      return { card_brand: card.brand, card_last4: card.last4 }
+    }
+  } catch (err) {
+    console.error('Could not read card details for receipt:', err)
+  }
+  return null
+}
+
 async function markInvoicePaid(
   supabase: SupabaseClient,
   invoice: InvoiceRow,
   opts: { paymentIntentId: string | null; tip: number }
 ) {
   if (invoice.status === 'paid') return
+
+  const card = await fetchCardDetails(opts.paymentIntentId)
 
   // The money is already captured in Stripe by the time this fires. If we can't
   // record it, don't send a "Paid ✅" confirmation on a still-unpaid invoice —
@@ -61,6 +85,7 @@ async function markInvoicePaid(
       paid_at: new Date().toISOString(),
       payment_method: 'stripe',
       tip_amount: opts.tip,
+      ...(card ?? {}),
       ...(opts.paymentIntentId ? { stripe_payment_intent_id: opts.paymentIntentId } : {}),
     })
     .eq('id', invoice.id)
@@ -84,11 +109,28 @@ async function markInvoicePaid(
     note: `Payment received for invoice ${invoice.invoice_number} — $${Number(invoice.amount).toFixed(2)}${tipNote}`,
   })
 
+  // Receipt to the customer — texted (and emailed when we have an address) the
+  // moment the money lands. Never throws: the payment is already recorded and a
+  // delivery failure must not turn this webhook into a retry loop.
+  let receiptLine = ''
+  try {
+    const sent = await sendReceiptForInvoice(invoice.id)
+    if (sent.ok) {
+      const via = [sent.sms?.sent ? 'text' : null, sent.email?.sent ? 'email' : null].filter(Boolean).join(' + ')
+      receiptLine = `\n*Receipt:* sent via ${via} — ${sent.receiptUrl}`
+    } else {
+      receiptLine = `\n⚠️ *Receipt NOT sent* (${sent.sms?.reason ?? sent.reason ?? 'unknown'}). Send it from the invoice page.`
+    }
+  } catch (err) {
+    console.error('Receipt send threw:', err)
+    receiptLine = '\n⚠️ *Receipt NOT sent* — send it manually from the invoice page.'
+  }
+
   const reviewAsk = await reviewAskLine(supabase, invoice.job_id)
   const tipLine = opts.tip > 0 ? `\n*Tip:* $${opts.tip.toFixed(2)}` : ''
   const grand = Number(invoice.amount) + opts.tip
   await sendSlackNotification(
-    `💵 *Payment Received!*\n*Invoice:* ${invoice.invoice_number}\n*Service:* $${Number(invoice.amount).toFixed(2)}${tipLine}\n*Total paid:* $${grand.toFixed(2)}\n*Status:* Paid ✅${reviewAsk}`
+    `💵 *Payment Received!*\n*Invoice:* ${invoice.invoice_number}\n*Service:* $${Number(invoice.amount).toFixed(2)}${tipLine}\n*Total paid:* $${grand.toFixed(2)}\n*Status:* Paid ✅${receiptLine}${reviewAsk}`
   )
 }
 
