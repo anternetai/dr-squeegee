@@ -24,7 +24,9 @@ const PREVIEW_BOTS = [
 ]
 
 export default function robots(): MetadataRoute.Robots {
-  const publicPaths = ["/get-quote", "/about", "/blog", "/privacy", "/terms", "/bumblebread", "/llms.txt"]
+  // /review is a real public page now (branded review + private-feedback doors),
+  // not the old redirect — it carries no customer data, so it is fully public.
+  const publicPaths = ["/get-quote", "/about", "/blog", "/privacy", "/terms", "/bumblebread", "/llms.txt", "/review"]
 
   // Token-gated customer pages. Allowed for preview bots only.
   const customerPaths = ["/q/", "/r/"]
