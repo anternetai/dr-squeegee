@@ -1,0 +1,102 @@
+{
+  "name": "Vapi Tool — Quote Service",
+  "nodes": [
+    {
+      "id": "s1",
+      "name": "Note s1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -680,
+        -240
+      ],
+      "parameters": {
+        "content": "## Pricing mirror\\nThe Code node mirrors `dr-squeegee/lib/squeegee/pricing.ts`.\\n**If those constants change, re-sync this node.**\\n\\nNo network calls here — this is pure math, so it answers in well under a second.",
+        "height": 200,
+        "width": 380,
+        "color": 4
+      }
+    },
+    {
+      "id": "wh",
+      "name": "Vapi Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -680,
+        0
+      ],
+      "webhookId": "vapi-quote-service",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi/quote-service",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wycoqjtM2qevxil3",
+          "name": "Vapi Tool Secret"
+        }
+      }
+    },
+    {
+      "id": "quote",
+      "name": "Compute Quote",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -420,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// ---- Vapi tool-call parsing (defensive) --------------------------------\n// Vapi POSTs { message: { type:'tool-calls', toolCallList:[{id,name,arguments}], call:{...} } }\n// n8n nests the HTTP body under $json.body. `arguments` sometimes arrives as a\n// JSON *string* rather than an object, so parse it defensively.\nfunction parseVapi(item) {\n  const body = item.body || item;\n  const msg = body.message || {};\n  const list = msg.toolCallList || msg.toolCalls || [];\n  const tc = list[0] || {};\n  let args = tc.arguments ?? tc.function?.arguments ?? {};\n  if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }\n  const callerNumber = msg.call?.customer?.number || null;\n  return {\n    toolCallId: tc.id || tc.toolCallId || 'unknown',\n    name: tc.name || tc.function?.name || '',\n    args: args || {},\n    callerNumber,\n    callId: msg.call?.id || null,\n  };\n}\n\n// ---- Phone normalisation (mirrors lib/squeegee/sms.ts) -----------------\nfunction normalizePhone(raw) {\n  const digits = String(raw ?? '').replace(/[^0-9]/g, '');\n  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;\n  if (ten.length !== 10) return null;\n  return { phone10: ten, e164: '+1' + ten };\n}\n\n// ---- Spoken-form money -------------------------------------------------\n// TTS reads \"$475\" inconsistently; spelling it out is the documented fix.\nconst ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',\n  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];\nconst TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];\nfunction under1000(n) {\n  let out = [];\n  if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }\n  if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '')); }\n  else if (n > 0) { out.push(ONES[n]); }\n  return out.join(' ');\n}\nfunction spellDollars(amount) {\n  const n = Math.round(Number(amount) || 0);\n  if (n === 0) return 'zero dollars';\n  const th = Math.floor(n / 1000), rest = n % 1000;\n  let s = '';\n  if (th) s += under1000(th) + ' thousand' + (rest ? ' ' : '');\n  if (rest) s += under1000(rest);\n  return s + ' dollars';\n}\n\n// ---- Spoken-form date/time (America/New_York) --------------------------\nfunction spokenSlot(iso) {\n  const d = new Date(iso);\n  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);\n  const hourFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);\n  let [clock, ampm] = hourFmt.split(' ');\n  let [h, m] = clock.split(':');\n  const timePart = m === '00' ? h : h + ' ' + m;\n  const hh = Number(h);\n  // 12 PM..4:59 PM = afternoon, 5 PM+ = evening (noon used to fall into 'evening').\n  const partOfDay = ampm === 'AM' ? 'in the morning' : ((hh === 12 || hh < 5) ? 'in the afternoon' : 'in the evening');\n  return day + ' at ' + timePart + ' ' + partOfDay;\n}\n\n// ---- DST-correct Eastern ISO (mirrors lib/squeegee/calcom.ts) ----------\nfunction easternOffsetFor(dateStr) {\n  try {\n    const dt = new Date(dateStr + 'T12:00:00Z');\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'longOffset' }).formatToParts(dt);\n    const tz = parts.find(p => p.type === 'timeZoneName')?.value;\n    const m = tz && tz.match(/GMT([+-]\\d{2}:\\d{2})/);\n    return m ? m[1] : '-05:00';\n  } catch (e) { return '-05:00'; }\n}\n\n// ---- Always-200 Vapi envelope -----------------------------------------\nfunction vapiResult(toolCallId, text) {\n  return [{ json: { results: [{ toolCallId, result: text }] } }];\n}\n\n// ---------------------------------------------------------------------------\n// SOURCE OF TRUTH: dr-squeegee/lib/squeegee/pricing.ts — mirrored, re-sync on change.\n// Verified against the repo 2026-08-28.\n// CONTRACT: matches the `quote_service` tool schema in vapi/tools.json.\n//   serviceType?  window_cleaning | house_wash | driveway | surface_cleaning |\n//                 pool_deck | pavers | gutter_cleaning | roof_soft_wash\n//   windowCounts? { story1: n, story2: n, story3: n }  (legacy \"1\"/\"2\"/\"3\" keys also accepted)\n//   coverage? exterior|both\n//   sqft? number  sqftService? Driveway|Surface Cleaning|Pool Deck|Pavers\n//   houseWashTier? one of the five tier keys\n// Service is inferred from whichever fields are present, so the model can omit\n// serviceType and still get a correct answer.\n// ---------------------------------------------------------------------------\nconst WINDOW_PRICING = {\n  base: 7, storyMult: { 1: 1, 2: 1.3, 3: 1.7 },\n  coverageMult: { exterior: 1, both: 1.8 }, minJob: 200, roundTo: 5,\n};\nconst SQFT_SERVICE_DEFAULTS = { 'Driveway': 0.20, 'Surface Cleaning': 0.18, 'Pool Deck': 0.22, 'Pavers': 0.25 };\nconst SQFT_ALIAS = { driveway: 'Driveway', surface_cleaning: 'Surface Cleaning',\n                     pool_deck: 'Pool Deck', pavers: 'Pavers' };\nconst HOUSE_WASH_TIERS = {\n  '1-story-standard': { label: '1-story, up to 1,500 square feet', price: 300 },\n  '1-story-large':    { label: '1-story, large',                   price: 350 },\n  '2-story-standard': { label: '2-story, up to 2,500 square feet', price: 400 },\n  '2-story-large':    { label: '2-story, large',                   price: 475 },\n  '3-story':          { label: '3-story',                          price: 550 },\n};\nconst ONSITE_ONLY = new Set(['gutter_cleaning', 'roof_soft_wash']);\n\nfunction computeWindowPriceMulti(counts, coverage) {\n  const cov = WINDOW_PRICING.coverageMult[coverage] ?? 1;\n  let subtotal = 0, count = 0;\n  for (const s of [1, 2, 3]) {\n    const c = Number(counts?.['story' + s] ?? counts?.[s] ?? counts?.[String(s)] ?? 0);\n    if (c > 0) { count += c; subtotal += c * WINDOW_PRICING.base * WINDOW_PRICING.storyMult[s]; }\n  }\n  if (count <= 0) return { price: 0, count: 0 };\n  const raw = subtotal * cov;\n  const rounded = Math.round(raw / WINDOW_PRICING.roundTo) * WINDOW_PRICING.roundTo;\n  return { price: Math.max(WINDOW_PRICING.minJob, rounded), count };  // min + rounding applied ONCE\n}\n\nfunction priceOne(s) {\n  const type = String(s.serviceType || '').toLowerCase().trim();\n  if (ONSITE_ONLY.has(type)) return { onsite: type.replace(/_/g, ' ') };\n\n  const counts = s.windowCounts || (type === 'window_cleaning' ? {} : null);\n  const hasWindows = counts && [1, 2, 3].some(k => Number(counts['story' + k] ?? counts[k] ?? counts[String(k)] ?? 0) > 0);\n  if (hasWindows) {\n    const coverage = s.coverage === 'both' ? 'both' : 'exterior';\n    const r = computeWindowPriceMulti(counts, coverage);\n    return { price: r.price, line: r.count + ' window' + (r.count === 1 ? '' : 's') + ', ' +\n      (coverage === 'both' ? 'inside and out' : 'exterior only') + ', ' + spellDollars(r.price) };\n  }\n\n  if (s.houseWashTier) {\n    const tier = HOUSE_WASH_TIERS[s.houseWashTier];\n    if (tier) return { price: tier.price, line: 'house wash, ' + tier.label + ', ' + spellDollars(tier.price) };\n    return { missing: 'house wash (need the story count and rough size)' };\n  }\n  if (type === 'house_wash') return { missing: 'house wash (need the story count and rough size)' };\n\n  const key = s.sqftService || SQFT_ALIAS[type];\n  const sqft = Number(s.sqft || 0);\n  if (key && SQFT_SERVICE_DEFAULTS[key] != null) {\n    if (sqft > 0) {\n      const price = Math.round(sqft * SQFT_SERVICE_DEFAULTS[key]);\n      return { price, line: key.toLowerCase() + ', ' + sqft + ' square feet, ' + spellDollars(price) };\n    }\n    return { missing: key.toLowerCase() + ' (need the rough square footage)' };\n  }\n  if (type === 'window_cleaning') return { missing: 'window cleaning (need the number of windows per floor)' };\n  return { missing: null };\n}\n\nconst v = parseVapi($input.first().json);\nconst a = v.args || {};\nconst services = Array.isArray(a.services) && a.services.length ? a.services : [a];\n\nlet total = 0;\nconst lines = [], onsite = [], missing = [];\nfor (const s of services) {\n  const r = priceOne(s || {});\n  if (r.onsite) { onsite.push(r.onsite); continue; }\n  if (r.missing !== undefined && r.price === undefined) { if (r.missing) missing.push(r.missing); continue; }\n  total += r.price; lines.push(r.line);\n}\n\nlet text;\nif (lines.length === 0 && onsite.length > 0) {\n  text = 'No set price for ' + onsite.join(' and ') + '. Tell the caller that one needs a quick look in person ' +\n         'and that Anthony confirms the number before any work happens. Do not say a figure.';\n} else if (lines.length === 0 && missing.length > 0) {\n  text = 'Not enough detail yet for ' + missing.join(' and ') + '. Ask for that, then call this again.';\n} else if (lines.length === 0) {\n  text = 'Not enough detail to price anything yet. Ask which service they want and the size or window count.';\n} else {\n  text = 'Estimate: ' + spellDollars(total) + ' total. Breakdown: ' + lines.join('; ') + '.';\n  if (onsite.length) text += ' They also asked about ' + onsite.join(' and ') +\n      ' — on-site quote only, so do not say a figure for that.';\n  if (missing.length) text += ' Still missing detail for ' + missing.join(' and ') + '.';\n  text += ' Say this is an estimate from what they described, confirmed on site.';\n}\nreturn vapiResult(v.toolCallId, text);\n"
+      }
+    },
+    {
+      "id": "respond",
+      "name": "Respond to Vapi",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -180,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Vapi Webhook": {
+      "main": [
+        [
+          {
+            "node": "Compute Quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Quote": {
+      "main": [
+        [
+          {
+            "node": "Respond to Vapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,358 @@
+{
+  "name": "Vapi Tool — Capture Lead",
+  "nodes": [
+    {
+      "id": "s1",
+      "name": "Note s1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        -280
+      ],
+      "parameters": {
+        "content": "## Consent is legally load-bearing\\n`sms_consent` is only written `true` when the assistant got a clear spoken opt-in. A2P campaign **C8TKR2H** covers this number; texting without recorded consent puts it at risk.\\n\\nThe owner SMS goes to `OWNER_PHONE` — Anthony's own line — so it is not a customer message.",
+        "height": 240,
+        "width": 460,
+        "color": 4
+      }
+    },
+    {
+      "id": "wh",
+      "name": "Vapi Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -400,
+        0
+      ],
+      "webhookId": "vapi-capture-lead",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi/capture-lead",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wycoqjtM2qevxil3",
+          "name": "Vapi Tool Secret"
+        }
+      }
+    },
+    {
+      "id": "parse",
+      "name": "Parse Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// ---- Vapi tool-call parsing (defensive) --------------------------------\n// Vapi POSTs { message: { type:'tool-calls', toolCallList:[{id,name,arguments}], call:{...} } }\n// n8n nests the HTTP body under $json.body. `arguments` sometimes arrives as a\n// JSON *string* rather than an object, so parse it defensively.\nfunction parseVapi(item) {\n  const body = item.body || item;\n  const msg = body.message || {};\n  const list = msg.toolCallList || msg.toolCalls || [];\n  const tc = list[0] || {};\n  let args = tc.arguments ?? tc.function?.arguments ?? {};\n  if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }\n  const callerNumber = msg.call?.customer?.number || null;\n  return {\n    toolCallId: tc.id || tc.toolCallId || 'unknown',\n    name: tc.name || tc.function?.name || '',\n    args: args || {},\n    callerNumber,\n    callId: msg.call?.id || null,\n  };\n}\n\n// ---- Phone normalisation (mirrors lib/squeegee/sms.ts) -----------------\nfunction normalizePhone(raw) {\n  const digits = String(raw ?? '').replace(/[^0-9]/g, '');\n  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;\n  if (ten.length !== 10) return null;\n  return { phone10: ten, e164: '+1' + ten };\n}\n\n// ---- Spoken-form money -------------------------------------------------\n// TTS reads \"$475\" inconsistently; spelling it out is the documented fix.\nconst ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',\n  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];\nconst TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];\nfunction under1000(n) {\n  let out = [];\n  if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }\n  if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '')); }\n  else if (n > 0) { out.push(ONES[n]); }\n  return out.join(' ');\n}\nfunction spellDollars(amount) {\n  const n = Math.round(Number(amount) || 0);\n  if (n === 0) return 'zero dollars';\n  const th = Math.floor(n / 1000), rest = n % 1000;\n  let s = '';\n  if (th) s += under1000(th) + ' thousand' + (rest ? ' ' : '');\n  if (rest) s += under1000(rest);\n  return s + ' dollars';\n}\n\n// ---- Spoken-form date/time (America/New_York) --------------------------\nfunction spokenSlot(iso) {\n  const d = new Date(iso);\n  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);\n  const hourFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);\n  let [clock, ampm] = hourFmt.split(' ');\n  let [h, m] = clock.split(':');\n  const timePart = m === '00' ? h : h + ' ' + m;\n  const hh = Number(h);\n  // 12 PM..4:59 PM = afternoon, 5 PM+ = evening (noon used to fall into 'evening').\n  const partOfDay = ampm === 'AM' ? 'in the morning' : ((hh === 12 || hh < 5) ? 'in the afternoon' : 'in the evening');\n  return day + ' at ' + timePart + ' ' + partOfDay;\n}\n\n// ---- DST-correct Eastern ISO (mirrors lib/squeegee/calcom.ts) ----------\nfunction easternOffsetFor(dateStr) {\n  try {\n    const dt = new Date(dateStr + 'T12:00:00Z');\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'longOffset' }).formatToParts(dt);\n    const tz = parts.find(p => p.type === 'timeZoneName')?.value;\n    const m = tz && tz.match(/GMT([+-]\\d{2}:\\d{2})/);\n    return m ? m[1] : '-05:00';\n  } catch (e) { return '-05:00'; }\n}\n\n// ---- Always-200 Vapi envelope -----------------------------------------\nfunction vapiResult(toolCallId, text) {\n  return [{ json: { results: [{ toolCallId, result: text }] } }];\n}\n\n// CONTRACT: `capture_lead` tool -> callerName, phoneNumber, email?, address?,\n//   servicesRequested[], reason (enum), notes?, smsConsent?, callbackRequested?\n// squeegee_leads has no `reason`/`notes` column, so the full context is ALSO\n// written to squeegee_activity (job_id NULL) and pushed to Slack + owner SMS —\n// nothing the caller said is lost. See README for the optional migration that\n// would give squeegee_leads first-class columns for these.\nconst v = parseVapi($input.first().json);\nconst a = v.args || {};\nconst norm = normalizePhone(a.phoneNumber || a.phone || v.callerNumber);\n\nlet services = a.servicesRequested ?? a.services ?? [];\nif (typeof services === 'string') services = [services];\nif (!Array.isArray(services) || services.length === 0) services = ['general enquiry'];\n\nconst consent = a.smsConsent === true || a.smsConsent === 'true';\nconst reason = String(a.reason || 'other');\nconst notes = String(a.notes || a.summary || '').trim();\nconst callback = a.callbackRequested === true || a.callbackRequested === 'true';\n\n\n// ---- one-parameter transport for Postgres writes ----------------------------\n// The Postgres node splits its Query Parameters string on commas AFTER resolving\n// expressions (observed live 2026-09-08), so a comma in an address shifts every\n// bind parameter. Base64 has no commas: ship one encoded JSON document and unpack\n// it in SQL with convert_from(decode($1,'base64'),'UTF8')::jsonb.\nfunction toB64(str) {\n  if (typeof Buffer !== 'undefined') return Buffer.from(str, 'utf8').toString('base64');\n  return btoa(unescape(encodeURIComponent(str)));\n}\n\nconst context = [\n  'Reason: ' + reason,\n  notes ? 'Notes: ' + notes : null,\n  callback ? 'Caller asked for a callback.' : null,\n  'Captured by the after-hours voice agent' + (v.callId ? ' (call ' + v.callId + ')' : '') + '.',\n].filter(Boolean).join(' ');\n\nreturn [{ json: {\n  ...v,\n  name: String(a.callerName || a.name || 'Unknown caller').trim(),\n  phone: norm ? norm.e164 : null,\n  phone10: norm ? norm.phone10 : null,\n  email: a.email ? String(a.email).trim() : '',\n  address: a.address ? String(a.address).trim() : '',\n  servicesText: services.join(', '),\n  propertyType: a.propertyType || '',\n  timeline: a.timeline || '',\n  reason,\n  notes,\n  callbackRequested: callback,\n  context,\n  smsConsent: consent,\n  consentAt: consent ? new Date().toISOString() : '',\n  hasPhone: !!(norm && norm.phone10),\n  leadPayloadB64: toB64(JSON.stringify({\n    name: String(a.callerName || a.name || 'Unknown caller').trim(),\n    phone: norm ? norm.e164 : null,\n    email: a.email ? String(a.email).trim() : '',\n    address: a.address ? String(a.address).trim() : '',\n    services,\n    property_type: a.propertyType || '',\n    timeline: a.timeline || '',\n    sms_consent: consent,\n    consent_at: consent ? new Date().toISOString() : '',\n  })),\n  // one pre-built string for the squeegee_activity note: n8n >= 2.5 turns every {{ }} in\n  // Query Parameters into its own bind parameter, so the note must be a single expression.\n  leadNoteB64: toB64(String(a.callerName || a.name || 'Unknown caller').trim() + ' — ' + (norm ? norm.e164 : 'no number') + ' — ' +\n    services.join(', ') + '. ' + context),\n} }];\n"
+      }
+    },
+    {
+      "id": "ins",
+      "name": "Insert Lead",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        40,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH p AS (SELECT convert_from(decode($1, 'base64'), 'UTF8')::jsonb AS j)\nINSERT INTO squeegee_leads\n  (name, phone, email, address, services, property_type, timeline, source, status, sms_consent, sms_consent_timestamp)\nSELECT j->>'name', j->>'phone', NULLIF(j->>'email', ''), NULLIF(j->>'address', ''),\n       ARRAY(SELECT jsonb_array_elements_text(j->'services')),\n       NULLIF(j->>'property_type', ''), NULLIF(j->>'timeline', ''), 'voice_agent', 'new',\n       coalesce((j->>'sms_consent')::boolean, false), NULLIF(j->>'consent_at', '')::timestamptz\nFROM p\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ $json.leadPayloadB64 }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "WJrBNk44uOAqNA1S",
+          "name": "Supabase Database"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "resp",
+      "name": "Build Vapi Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        -140
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// ---- Vapi tool-call parsing (defensive) --------------------------------\n// Vapi POSTs { message: { type:'tool-calls', toolCallList:[{id,name,arguments}], call:{...} } }\n// n8n nests the HTTP body under $json.body. `arguments` sometimes arrives as a\n// JSON *string* rather than an object, so parse it defensively.\nfunction parseVapi(item) {\n  const body = item.body || item;\n  const msg = body.message || {};\n  const list = msg.toolCallList || msg.toolCalls || [];\n  const tc = list[0] || {};\n  let args = tc.arguments ?? tc.function?.arguments ?? {};\n  if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }\n  const callerNumber = msg.call?.customer?.number || null;\n  return {\n    toolCallId: tc.id || tc.toolCallId || 'unknown',\n    name: tc.name || tc.function?.name || '',\n    args: args || {},\n    callerNumber,\n    callId: msg.call?.id || null,\n  };\n}\n\n// ---- Phone normalisation (mirrors lib/squeegee/sms.ts) -----------------\nfunction normalizePhone(raw) {\n  const digits = String(raw ?? '').replace(/[^0-9]/g, '');\n  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;\n  if (ten.length !== 10) return null;\n  return { phone10: ten, e164: '+1' + ten };\n}\n\n// ---- Spoken-form money -------------------------------------------------\n// TTS reads \"$475\" inconsistently; spelling it out is the documented fix.\nconst ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',\n  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];\nconst TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];\nfunction under1000(n) {\n  let out = [];\n  if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }\n  if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '')); }\n  else if (n > 0) { out.push(ONES[n]); }\n  return out.join(' ');\n}\nfunction spellDollars(amount) {\n  const n = Math.round(Number(amount) || 0);\n  if (n === 0) return 'zero dollars';\n  const th = Math.floor(n / 1000), rest = n % 1000;\n  let s = '';\n  if (th) s += under1000(th) + ' thousand' + (rest ? ' ' : '');\n  if (rest) s += under1000(rest);\n  return s + ' dollars';\n}\n\n// ---- Spoken-form date/time (America/New_York) --------------------------\nfunction spokenSlot(iso) {\n  const d = new Date(iso);\n  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);\n  const hourFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);\n  let [clock, ampm] = hourFmt.split(' ');\n  let [h, m] = clock.split(':');\n  const timePart = m === '00' ? h : h + ' ' + m;\n  const hh = Number(h);\n  // 12 PM..4:59 PM = afternoon, 5 PM+ = evening (noon used to fall into 'evening').\n  const partOfDay = ampm === 'AM' ? 'in the morning' : ((hh === 12 || hh < 5) ? 'in the afternoon' : 'in the evening');\n  return day + ' at ' + timePart + ' ' + partOfDay;\n}\n\n// ---- DST-correct Eastern ISO (mirrors lib/squeegee/calcom.ts) ----------\nfunction easternOffsetFor(dateStr) {\n  try {\n    const dt = new Date(dateStr + 'T12:00:00Z');\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'longOffset' }).formatToParts(dt);\n    const tz = parts.find(p => p.type === 'timeZoneName')?.value;\n    const m = tz && tz.match(/GMT([+-]\\d{2}:\\d{2})/);\n    return m ? m[1] : '-05:00';\n  } catch (e) { return '-05:00'; }\n}\n\n// ---- Always-200 Vapi envelope -----------------------------------------\nfunction vapiResult(toolCallId, text) {\n  return [{ json: { results: [{ toolCallId, result: text }] } }];\n}\n\nconst ctx = $('Parse Lead').first().json;\nconst row = $input.first().json || {};\nif (!ctx.hasPhone) {\n  return vapiResult(ctx.toolCallId,\n    'I still need a good callback number before I can pass this to Anthony. Ask for it, then call this again.');\n}\nif (!row || !row.id) {\n  return vapiResult(ctx.toolCallId,\n    'Details noted and Anthony has been alerted directly. Tell the caller he will be in touch shortly.');\n}\nreturn vapiResult(ctx.toolCallId,\n  'Got it — details saved and Anthony has been texted. Tell the caller he will follow up personally, and thank them for calling.');\n"
+      }
+    },
+    {
+      "id": "respond",
+      "name": "Respond to Vapi",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        480,
+        -140
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "slack",
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        260,
+        120
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "options": {
+          "timeout": 4000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const l = $('Parse Lead').first().json; const saved = !!$json.id; return JSON.stringify({ channel: 'U0ABZDLENJ1', text: '\\ud83d\\udd25 *New lead from the voice agent*\\n' + '*Name:* ' + l.name + '\\n' + '*Phone:* ' + (l.phone || 'not captured') + '\\n' + '*Address:* ' + (l.address || 'not captured') + '\\n' + '*Wants:* ' + l.servicesText + '\\n' + '*Reason:* ' + String(l.reason).replace(/_/g, ' ') + '\\n' + (l.callbackRequested ? '*Asked for a callback.*\\n' : '') + '*SMS consent:* ' + (l.smsConsent ? 'YES' : 'no') + '\\n' + (l.notes ? '*Notes:* ' + l.notes + '\\n' : '') + (saved ? '' : '\\u26a0\\ufe0f *Lead row did NOT save to the CRM* — this alert is the only record.') }); })() }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth"
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "28t8r7NccDmq8NVt",
+          "name": "Slack Bearer Token"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "sms",
+      "name": "Text Anthony",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        260,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/REPLACE_ME_TWILIO_ACCOUNT_SID/Messages.json",
+        "options": {
+          "timeout": 4000
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "MessagingServiceSid",
+              "value": "REPLACE_ME_TWILIO_MESSAGING_SERVICE_SID"
+            },
+            {
+              "name": "To",
+              "value": "+19802428048"
+            },
+            {
+              "name": "Body",
+              "value": "={{ (() => { const l = $('Parse Lead').first().json; return 'New lead: ' + l.name + ' (' + (l.phone || 'no number') + ') — ' + l.servicesText + (l.address ? ' at ' + l.address : '') + '. ' + String(l.reason).replace(/_/g, ' ') + '.' + (l.callbackRequested ? ' WANTS A CALLBACK.' : '') + ($json.id ? '' : ' CRM ROW DID NOT SAVE.') + ' Reply STOP to opt out.'; })() }}"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth"
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Sm4NXmuBaNMtJ9WN",
+          "name": "Twilio API Key (Dr Squeegee AC1ee98)"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "actn",
+      "name": "Log Lead Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        260,
+        480
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO squeegee_activity (job_id, type, note)\nVALUES (NULL, 'voice_lead', convert_from(decode($1, 'base64'), 'UTF8'));",
+        "options": {
+          "queryReplacement": "={{ $('Parse Lead').first().json.leadNoteB64 }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "WJrBNk44uOAqNA1S",
+          "name": "Supabase Database"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "hp1",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.hasPhone }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "has-phone",
+      "name": "Has Phone?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Vapi Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Lead": {
+      "main": [
+        [
+          {
+            "node": "Has Phone?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Lead": {
+      "main": [
+        [
+          {
+            "node": "Build Vapi Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Text Anthony",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Lead Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Vapi Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Text Anthony",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Lead Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Vapi Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Vapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Phone?": {
+      "main": [
+        [
+          {
+            "node": "Insert Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Vapi Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

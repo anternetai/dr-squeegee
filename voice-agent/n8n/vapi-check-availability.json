@@ -1,0 +1,281 @@
+{
+  "name": "Vapi Tool — Check Availability",
+  "nodes": [
+    {
+      "id": "s1",
+      "name": "Note s1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -680,
+        -260
+      ],
+      "parameters": {
+        "content": "## Needs env var\\n`CAL_COM_API_KEY` must be set on the **n8n service** in Railway (not just in the dr-squeegee app).\\n\\nCal.com v2 uses a **different `cal-api-version` per resource**: event-types `2024-06-14`, slots `2024-09-04`, bookings `2024-08-13`. Do not unify them.\n\n**2026-09-08:** this n8n blocks `$env` inside nodes, so Cal.com auth is the *Cal.com API Key (drsqclt)* Header Auth credential (id 6N8Gw12AStkWa9P3) and the Twilio account SID, messaging-service SID and owner number are constants in the nodes. No Railway env vars are read.",
+        "height": 240,
+        "width": 380,
+        "color": 4
+      }
+    },
+    {
+      "id": "wh",
+      "name": "Vapi Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -680,
+        0
+      ],
+      "webhookId": "vapi-check-availability",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi/check-availability",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wycoqjtM2qevxil3",
+          "name": "Vapi Tool Secret"
+        }
+      }
+    },
+    {
+      "id": "parse",
+      "name": "Parse Tool Call",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// ---- Vapi tool-call parsing (defensive) --------------------------------\n// Vapi POSTs { message: { type:'tool-calls', toolCallList:[{id,name,arguments}], call:{...} } }\n// n8n nests the HTTP body under $json.body. `arguments` sometimes arrives as a\n// JSON *string* rather than an object, so parse it defensively.\nfunction parseVapi(item) {\n  const body = item.body || item;\n  const msg = body.message || {};\n  const list = msg.toolCallList || msg.toolCalls || [];\n  const tc = list[0] || {};\n  let args = tc.arguments ?? tc.function?.arguments ?? {};\n  if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }\n  const callerNumber = msg.call?.customer?.number || null;\n  return {\n    toolCallId: tc.id || tc.toolCallId || 'unknown',\n    name: tc.name || tc.function?.name || '',\n    args: args || {},\n    callerNumber,\n    callId: msg.call?.id || null,\n  };\n}\n\n// ---- Phone normalisation (mirrors lib/squeegee/sms.ts) -----------------\nfunction normalizePhone(raw) {\n  const digits = String(raw ?? '').replace(/[^0-9]/g, '');\n  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;\n  if (ten.length !== 10) return null;\n  return { phone10: ten, e164: '+1' + ten };\n}\n\n// ---- Spoken-form money -------------------------------------------------\n// TTS reads \"$475\" inconsistently; spelling it out is the documented fix.\nconst ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',\n  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];\nconst TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];\nfunction under1000(n) {\n  let out = [];\n  if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }\n  if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '')); }\n  else if (n > 0) { out.push(ONES[n]); }\n  return out.join(' ');\n}\nfunction spellDollars(amount) {\n  const n = Math.round(Number(amount) || 0);\n  if (n === 0) return 'zero dollars';\n  const th = Math.floor(n / 1000), rest = n % 1000;\n  let s = '';\n  if (th) s += under1000(th) + ' thousand' + (rest ? ' ' : '');\n  if (rest) s += under1000(rest);\n  return s + ' dollars';\n}\n\n// ---- Spoken-form date/time (America/New_York) --------------------------\nfunction spokenSlot(iso) {\n  const d = new Date(iso);\n  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);\n  const hourFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);\n  let [clock, ampm] = hourFmt.split(' ');\n  let [h, m] = clock.split(':');\n  const timePart = m === '00' ? h : h + ' ' + m;\n  const hh = Number(h);\n  // 12 PM..4:59 PM = afternoon, 5 PM+ = evening (noon used to fall into 'evening').\n  const partOfDay = ampm === 'AM' ? 'in the morning' : ((hh === 12 || hh < 5) ? 'in the afternoon' : 'in the evening');\n  return day + ' at ' + timePart + ' ' + partOfDay;\n}\n\n// ---- DST-correct Eastern ISO (mirrors lib/squeegee/calcom.ts) ----------\nfunction easternOffsetFor(dateStr) {\n  try {\n    const dt = new Date(dateStr + 'T12:00:00Z');\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'longOffset' }).formatToParts(dt);\n    const tz = parts.find(p => p.type === 'timeZoneName')?.value;\n    const m = tz && tz.match(/GMT([+-]\\d{2}:\\d{2})/);\n    return m ? m[1] : '-05:00';\n  } catch (e) { return '-05:00'; }\n}\n\n// ---- Always-200 Vapi envelope -----------------------------------------\nfunction vapiResult(toolCallId, text) {\n  return [{ json: { results: [{ toolCallId, result: text }] } }];\n}\n\n// CONTRACT: `check_availability` tool -> { startDate (YYYY-MM-DD, required),\n//                                          daysToSearch (int, optional, default 7) }\n// Older/alternate names tolerated so a prompt tweak can't silently break this.\nconst v = parseVapi($input.first().json);\nconst a = v.args || {};\nconst days = Math.min(Math.max(Number(a.daysToSearch ?? a.daysAhead ?? 7), 1), 21);\nconst raw = a.startDate || a.preferredDate || null;\nconst todayET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York',\n  year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());\nlet startDate = raw ? String(raw).slice(0, 10) : todayET;\nif (!/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate)) startDate = todayET;\nif (startDate < todayET) startDate = todayET;          // never search the past\nconst end = new Date(startDate + 'T12:00:00Z');\nend.setUTCDate(end.getUTCDate() + days);\nreturn [{ json: { ...v, startDate, endDate: end.toISOString().slice(0, 10) } }];\n"
+      }
+    },
+    {
+      "id": "et",
+      "name": "Get Cal Event Types",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -240,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.cal.com/v2/event-types",
+        "options": {
+          "timeout": 3000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "cal-api-version",
+              "value": "2024-06-14"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "6N8Gw12AStkWa9P3",
+          "name": "Cal.com API Key (drsqclt)"
+        }
+      }
+    },
+    {
+      "id": "etid",
+      "name": "Resolve Event Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// ---- Vapi tool-call parsing (defensive) --------------------------------\n// Vapi POSTs { message: { type:'tool-calls', toolCallList:[{id,name,arguments}], call:{...} } }\n// n8n nests the HTTP body under $json.body. `arguments` sometimes arrives as a\n// JSON *string* rather than an object, so parse it defensively.\nfunction parseVapi(item) {\n  const body = item.body || item;\n  const msg = body.message || {};\n  const list = msg.toolCallList || msg.toolCalls || [];\n  const tc = list[0] || {};\n  let args = tc.arguments ?? tc.function?.arguments ?? {};\n  if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }\n  const callerNumber = msg.call?.customer?.number || null;\n  return {\n    toolCallId: tc.id || tc.toolCallId || 'unknown',\n    name: tc.name || tc.function?.name || '',\n    args: args || {},\n    callerNumber,\n    callId: msg.call?.id || null,\n  };\n}\n\n// ---- Phone normalisation (mirrors lib/squeegee/sms.ts) -----------------\nfunction normalizePhone(raw) {\n  const digits = String(raw ?? '').replace(/[^0-9]/g, '');\n  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;\n  if (ten.length !== 10) return null;\n  return { phone10: ten, e164: '+1' + ten };\n}\n\n// ---- Spoken-form money -------------------------------------------------\n// TTS reads \"$475\" inconsistently; spelling it out is the documented fix.\nconst ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',\n  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];\nconst TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];\nfunction under1000(n) {\n  let out = [];\n  if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }\n  if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '')); }\n  else if (n > 0) { out.push(ONES[n]); }\n  return out.join(' ');\n}\nfunction spellDollars(amount) {\n  const n = Math.round(Number(amount) || 0);\n  if (n === 0) return 'zero dollars';\n  const th = Math.floor(n / 1000), rest = n % 1000;\n  let s = '';\n  if (th) s += under1000(th) + ' thousand' + (rest ? ' ' : '');\n  if (rest) s += under1000(rest);\n  return s + ' dollars';\n}\n\n// ---- Spoken-form date/time (America/New_York) --------------------------\nfunction spokenSlot(iso) {\n  const d = new Date(iso);\n  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);\n  const hourFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);\n  let [clock, ampm] = hourFmt.split(' ');\n  let [h, m] = clock.split(':');\n  const timePart = m === '00' ? h : h + ' ' + m;\n  const hh = Number(h);\n  // 12 PM..4:59 PM = afternoon, 5 PM+ = evening (noon used to fall into 'evening').\n  const partOfDay = ampm === 'AM' ? 'in the morning' : ((hh === 12 || hh < 5) ? 'in the afternoon' : 'in the evening');\n  return day + ' at ' + timePart + ' ' + partOfDay;\n}\n\n// ---- DST-correct Eastern ISO (mirrors lib/squeegee/calcom.ts) ----------\nfunction easternOffsetFor(dateStr) {\n  try {\n    const dt = new Date(dateStr + 'T12:00:00Z');\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'longOffset' }).formatToParts(dt);\n    const tz = parts.find(p => p.type === 'timeZoneName')?.value;\n    const m = tz && tz.match(/GMT([+-]\\d{2}:\\d{2})/);\n    return m ? m[1] : '-05:00';\n  } catch (e) { return '-05:00'; }\n}\n\n// ---- Always-200 Vapi envelope -----------------------------------------\nfunction vapiResult(toolCallId, text) {\n  return [{ json: { results: [{ toolCallId, result: text }] } }];\n}\n\nconst res = $input.first().json || {};\nconst list = Array.isArray(res.data) ? res.data : [];\nconst et = list.find(e => e.slug === 'service-job');\nconst ctx = $('Parse Tool Call').first().json;\nreturn [{ json: { ...ctx, eventTypeId: et ? et.id : null } }];\n"
+      }
+    },
+    {
+      "id": "slots",
+      "name": "Get Cal Slots",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        200,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.cal.com/v2/slots",
+        "options": {
+          "timeout": 3500
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "cal-api-version",
+              "value": "2024-09-04"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "eventTypeId",
+              "value": "={{ $json.eventTypeId }}"
+            },
+            {
+              "name": "start",
+              "value": "={{ $json.startDate }}"
+            },
+            {
+              "name": "end",
+              "value": "={{ $json.endDate }}"
+            },
+            {
+              "name": "timeZone",
+              "value": "America/New_York"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "6N8Gw12AStkWa9P3",
+          "name": "Cal.com API Key (drsqclt)"
+        }
+      }
+    },
+    {
+      "id": "fmt",
+      "name": "Format Slots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// ---- Vapi tool-call parsing (defensive) --------------------------------\n// Vapi POSTs { message: { type:'tool-calls', toolCallList:[{id,name,arguments}], call:{...} } }\n// n8n nests the HTTP body under $json.body. `arguments` sometimes arrives as a\n// JSON *string* rather than an object, so parse it defensively.\nfunction parseVapi(item) {\n  const body = item.body || item;\n  const msg = body.message || {};\n  const list = msg.toolCallList || msg.toolCalls || [];\n  const tc = list[0] || {};\n  let args = tc.arguments ?? tc.function?.arguments ?? {};\n  if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }\n  const callerNumber = msg.call?.customer?.number || null;\n  return {\n    toolCallId: tc.id || tc.toolCallId || 'unknown',\n    name: tc.name || tc.function?.name || '',\n    args: args || {},\n    callerNumber,\n    callId: msg.call?.id || null,\n  };\n}\n\n// ---- Phone normalisation (mirrors lib/squeegee/sms.ts) -----------------\nfunction normalizePhone(raw) {\n  const digits = String(raw ?? '').replace(/[^0-9]/g, '');\n  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;\n  if (ten.length !== 10) return null;\n  return { phone10: ten, e164: '+1' + ten };\n}\n\n// ---- Spoken-form money -------------------------------------------------\n// TTS reads \"$475\" inconsistently; spelling it out is the documented fix.\nconst ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',\n  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];\nconst TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];\nfunction under1000(n) {\n  let out = [];\n  if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }\n  if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '')); }\n  else if (n > 0) { out.push(ONES[n]); }\n  return out.join(' ');\n}\nfunction spellDollars(amount) {\n  const n = Math.round(Number(amount) || 0);\n  if (n === 0) return 'zero dollars';\n  const th = Math.floor(n / 1000), rest = n % 1000;\n  let s = '';\n  if (th) s += under1000(th) + ' thousand' + (rest ? ' ' : '');\n  if (rest) s += under1000(rest);\n  return s + ' dollars';\n}\n\n// ---- Spoken-form date/time (America/New_York) --------------------------\nfunction spokenSlot(iso) {\n  const d = new Date(iso);\n  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);\n  const hourFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);\n  let [clock, ampm] = hourFmt.split(' ');\n  let [h, m] = clock.split(':');\n  const timePart = m === '00' ? h : h + ' ' + m;\n  const hh = Number(h);\n  // 12 PM..4:59 PM = afternoon, 5 PM+ = evening (noon used to fall into 'evening').\n  const partOfDay = ampm === 'AM' ? 'in the morning' : ((hh === 12 || hh < 5) ? 'in the afternoon' : 'in the evening');\n  return day + ' at ' + timePart + ' ' + partOfDay;\n}\n\n// ---- DST-correct Eastern ISO (mirrors lib/squeegee/calcom.ts) ----------\nfunction easternOffsetFor(dateStr) {\n  try {\n    const dt = new Date(dateStr + 'T12:00:00Z');\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'longOffset' }).formatToParts(dt);\n    const tz = parts.find(p => p.type === 'timeZoneName')?.value;\n    const m = tz && tz.match(/GMT([+-]\\d{2}:\\d{2})/);\n    return m ? m[1] : '-05:00';\n  } catch (e) { return '-05:00'; }\n}\n\n// ---- Always-200 Vapi envelope -----------------------------------------\nfunction vapiResult(toolCallId, text) {\n  return [{ json: { results: [{ toolCallId, result: text }] } }];\n}\n\nconst ctx = $('Resolve Event Type').first().json;\nconst res = $input.first().json || {};\n\nif (!ctx.eventTypeId) {\n  return vapiResult(ctx.toolCallId,\n    'I could not reach the calendar just now. Offer to take their details and have Anthony call back with times.');\n}\nif (res.error || res.status === 'error') {\n  return vapiResult(ctx.toolCallId,\n    'I could not reach the calendar just now. Offer to take their details and have Anthony call back with times.');\n}\nconst data = res.data || {};\nconst starts = [];\nfor (const day of Object.keys(data).sort()) {\n  const arr = Array.isArray(data[day]) ? data[day] : [];\n  for (const s of arr) { if (s && s.start) starts.push(s.start); }\n}\nif (starts.length === 0) {\n  return vapiResult(ctx.toolCallId,\n    'Nothing open in that window. Offer to take their details so Anthony can call with the next opening.');\n}\n// Spread the three offers across different days where possible — three slots on\n// one morning is a worse offer than three across the week.\nconst byDay = {};\nfor (const s of starts) {\n  const d = s.slice(0, 10);\n  (byDay[d] = byDay[d] || []).push(s);\n}\nconst days = Object.keys(byDay).sort();\nconst picks = [];\nfor (const d of days) { if (picks.length < 3) picks.push(byDay[d][0]); }\nlet i = 0;\nwhile (picks.length < 3 && i < days.length) {\n  const extra = byDay[days[i]][1];\n  if (extra) picks.push(extra);\n  i++;\n}\npicks.sort();\n// book_job takes appointmentDate (YYYY-MM-DD) + appointmentTime (HH:MM, 24h, Eastern) —\n// hand the model those exact values per slot so it never has to derive them itself.\nfunction etParts(iso) {\n  const d = new Date(iso);\n  const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit',\n    day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });\n  const p = Object.fromEntries(f.formatToParts(d).map(x => [x.type, x.value]));\n  const hh = p.hour === '24' ? '00' : p.hour;\n  return { date: p.year + '-' + p.month + '-' + p.day, time: hh + ':' + p.minute };\n}\nconst lines = picks.map(iso => {\n  const { date, time } = etParts(iso);\n  return spokenSlot(iso) + ' [appointmentDate ' + date + ', appointmentTime ' + time + ']';\n});\nconst text = 'Available: ' + lines.join('; or ') +\n  '. Offer only these exact times, spoken naturally — never read the bracketed values aloud. ' +\n  'When the caller picks one, pass its bracketed appointmentDate and appointmentTime to book_job exactly as written.';\nreturn vapiResult(ctx.toolCallId, text);\n"
+      }
+    },
+    {
+      "id": "respond",
+      "name": "Respond to Vapi",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        640,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Vapi Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Tool Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Tool Call": {
+      "main": [
+        [
+          {
+            "node": "Get Cal Event Types",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Cal Event Types": {
+      "main": [
+        [
+          {
+            "node": "Resolve Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resolve Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Event Type": {
+      "main": [
+        [
+          {
+            "node": "Get Cal Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Cal Slots": {
+      "main": [
+        [
+          {
+            "node": "Format Slots",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slots": {
+      "main": [
+        [
+          {
+            "node": "Respond to Vapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

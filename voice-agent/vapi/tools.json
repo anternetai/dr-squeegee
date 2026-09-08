@@ -1,0 +1,365 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "lookup_caller",
+      "description": "Look up the caller by the phone number Vapi already captured for this call. Call this exactly once, immediately at the start of the call, before you ask the caller anything beyond a greeting -- it takes no input, it reads the caller ID automatically. Always call it first, before any other tool. Never call it again later in the same call, and never ask the caller to repeat their number just to run this lookup.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    "server": {
+      "url": "https://n8n-production-1286.up.railway.app/webhook/vapi/lookup-caller",
+      "headers": {
+        "x-vapi-secret": "REPLACE_ME_VAPI_SERVER_SECRET"
+      },
+      "timeoutSeconds": 10
+    },
+    "messages": [
+      {
+        "type": "request-start",
+        "content": "Give me just a second here."
+      },
+      {
+        "type": "request-response-delayed",
+        "content": "Sorry, my system's being a little slow tonight, bear with me.",
+        "timingMilliseconds": 4000
+      },
+      {
+        "type": "request-failed",
+        "content": "I'm not pulling that up, no big deal, let's just get started."
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "quote_service",
+      "description": "Call this whenever the caller wants a price for window cleaning, a house wash, or a flat-surface clean (driveway, pool deck, pavers, or general surface cleaning), using exactly the details they gave you -- never estimate or state a price yourself. You can pass more than one service in the same call if the caller wants a combined quote for a bundle. Do NOT call this for gutter cleaning or roof soft-washing -- there is no pricing model for either, they are on-site quotes only; tell the caller that directly instead of calling this tool. Give at least one of windowCounts (always with coverage), sqft (always with sqftService), or houseWashTier -- or a services[] bundle of those for a combined quote.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "serviceType": {
+            "type": "string",
+            "enum": [
+              "window_cleaning",
+              "house_wash",
+              "driveway",
+              "surface_cleaning",
+              "pool_deck",
+              "pavers",
+              "gutter_cleaning",
+              "roof_soft_wash"
+            ],
+            "description": "Which service to price. Pass gutter_cleaning or roof_soft_wash only to confirm they are on-site-quote-only; the tool will never return a number for those."
+          },
+          "windowCounts": {
+            "type": "object",
+            "description": "Number of windows to quote at each story height. Include this only when the caller wants window cleaning quoted.",
+            "properties": {
+              "story1": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Count of first-story (ground floor) windows."
+              },
+              "story2": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Count of second-story windows."
+              },
+              "story3": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Count of third-story windows."
+              }
+            },
+            "additionalProperties": false
+          },
+          "coverage": {
+            "type": "string",
+            "enum": [
+              "exterior",
+              "both"
+            ],
+            "description": "Required whenever windowCounts is given. 'exterior' means outside glass only. 'both' means inside and outside. Ask the caller which they want rather than assuming."
+          },
+          "sqft": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Square footage of the flat surface to clean. Include this only when the caller wants a driveway, pool deck, paver, or general surface cleaning quoted."
+          },
+          "sqftService": {
+            "type": "string",
+            "enum": [
+              "Driveway",
+              "Surface Cleaning",
+              "Pool Deck",
+              "Pavers"
+            ],
+            "description": "Required whenever sqft is given. Which flat-surface service the square footage applies to."
+          },
+          "houseWashTier": {
+            "type": "string",
+            "enum": [
+              "1-story-standard",
+              "1-story-large",
+              "2-story-standard",
+              "2-story-large",
+              "3-story"
+            ],
+            "description": "Flat-rate house soft-wash tier. Pick by story count and whether the caller describes the house as average-sized or large for that story count. Include this only when the caller wants a house wash quoted."
+          }
+        },
+        "required": []
+      }
+    },
+    "server": {
+      "url": "https://n8n-production-1286.up.railway.app/webhook/vapi/quote-service",
+      "headers": {
+        "x-vapi-secret": "REPLACE_ME_VAPI_SERVER_SECRET"
+      },
+      "timeoutSeconds": 8
+    },
+    "messages": [
+      {
+        "type": "request-start",
+        "content": "Let me run the numbers on that for you."
+      },
+      {
+        "type": "request-response-delayed",
+        "content": "Give me just a couple more seconds, I want to get this exactly right.",
+        "timingMilliseconds": 3000
+      },
+      {
+        "type": "request-failed",
+        "content": "My pricing tool's not cooperating right now, let me have Anthony follow up with your exact quote."
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "check_availability",
+      "description": "Call this before you offer or confirm ANY appointment day or time to the caller -- never state that a date or time is open from memory or assumption. Pass the date the caller wants to start looking from; it returns real open slots, each with a bracketed appointmentDate and appointmentTime to hand to book_job. Only offer times it actually returns, never read the bracketed values aloud, and do not call book_job until the caller has agreed to one of them.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "First day to start searching for openings, as YYYY-MM-DD. If the caller says 'as soon as possible' or gives no preference, use today's date worked out from the Context section of your instructions."
+          },
+          "daysToSearch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 14,
+            "default": 5,
+            "description": "How many days forward from startDate to search. Default to 5 unless the caller names a narrower window, like 'just this week' or a wider one like 'sometime next month'."
+          }
+        },
+        "required": [
+          "startDate"
+        ]
+      }
+    },
+    "server": {
+      "url": "https://n8n-production-1286.up.railway.app/webhook/vapi/check-availability",
+      "headers": {
+        "x-vapi-secret": "REPLACE_ME_VAPI_SERVER_SECRET"
+      },
+      "timeoutSeconds": 15
+    },
+    "messages": [
+      {
+        "type": "request-start",
+        "content": "Let me check the schedule real quick."
+      },
+      {
+        "type": "request-response-delayed",
+        "content": "The calendar's taking its time loading, still checking.",
+        "timingMilliseconds": 5000
+      },
+      {
+        "type": "request-failed",
+        "content": "I can't pull up the calendar right this second, let me grab your info and have Anthony confirm a time with you directly."
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "book_job",
+      "description": "Call this ONLY after check_availability has returned an open slot AND the caller has said yes to that specific date and time, and after you've read back and confirmed their name, phone number, and service address. This creates the real booking on Anthony's calendar -- never call it speculatively or 'to see what happens'. This does not modify or reschedule an existing appointment; for that, use capture_lead instead so Anthony can handle it personally.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callerName": {
+            "type": "string",
+            "description": "Caller's full name, spelled back and confirmed before booking."
+          },
+          "phoneNumber": {
+            "type": "string",
+            "pattern": "^\\+1[0-9]{10}$",
+            "description": "Best callback number in E.164 format, e.g. +19805551234. Confirm it with the caller even if it matches the caller ID."
+          },
+          "serviceAddress": {
+            "type": "string",
+            "description": "Full service address including street, city, state, and zip. Read back and confirmed with the caller."
+          },
+          "servicesRequested": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "Plain-language list of the services being booked, e.g. 'window cleaning, outside only, 2-story' or 'house wash, 2-story large'."
+          },
+          "quotedPriceUsd": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "The exact total price quote_service returned for this job. Never estimate this -- it must be the number the tool returned."
+          },
+          "appointmentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Confirmed appointment date as YYYY-MM-DD -- copy the bracketed appointmentDate check_availability returned for the slot the caller chose, exactly as written."
+          },
+          "appointmentTime": {
+            "type": "string",
+            "description": "Confirmed appointment start time as 24-hour HH:MM -- copy the bracketed appointmentTime check_availability returned for the slot the caller chose, exactly as written."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Anything else worth passing along -- gate code, a dog on the property, access instructions, special requests."
+          },
+          "smsConsent": {
+            "type": "boolean",
+            "description": "True only if the caller explicitly agreed to text messages after you asked the consent question. Omit or set false otherwise."
+          }
+        },
+        "required": [
+          "callerName",
+          "phoneNumber",
+          "serviceAddress",
+          "servicesRequested",
+          "quotedPriceUsd",
+          "appointmentDate",
+          "appointmentTime"
+        ]
+      }
+    },
+    "server": {
+      "url": "https://n8n-production-1286.up.railway.app/webhook/vapi/book-job",
+      "headers": {
+        "x-vapi-secret": "REPLACE_ME_VAPI_SERVER_SECRET"
+      },
+      "timeoutSeconds": 20
+    },
+    "messages": [
+      {
+        "type": "request-start",
+        "content": "Great, I'm locking that in for you now."
+      },
+      {
+        "type": "request-response-delayed",
+        "content": "Almost done getting this on the books, one more second.",
+        "timingMilliseconds": 6000
+      },
+      {
+        "type": "request-failed",
+        "content": "Hmm, that didn't go through on my end. Let me get Anthony to confirm this with you directly so nothing falls through the cracks."
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "capture_lead",
+      "description": "Call this whenever the caller will NOT be booked on this call -- they want their quote followed up later, need an on-site estimate for gutters or roof soft-washing, are an existing customer asking to reschedule or restart recurring service, or need anything else that requires Anthony's personal follow-up. This notifies Anthony directly. Do not call this for a caller you are actively booking with book_job, and do not call both tools for the same request.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callerName": {
+            "type": "string",
+            "description": "Caller's name. If they won't give one, use 'Caller' and rely on phoneNumber."
+          },
+          "phoneNumber": {
+            "type": "string",
+            "pattern": "^\\+1[0-9]{10}$",
+            "description": "Best callback number in E.164 format."
+          },
+          "email": {
+            "type": "string",
+            "description": "Caller's email, only if they offered one."
+          },
+          "address": {
+            "type": "string",
+            "description": "Property address, if known."
+          },
+          "servicesRequested": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "What the caller is interested in, in plain language."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "quote_follow_up",
+              "not_ready_to_book",
+              "needs_onsite_quote",
+              "reschedule_request",
+              "general_question",
+              "other"
+            ],
+            "description": "Why this is being captured instead of booked now."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Anything Anthony should know before he calls back -- timeline, specific concerns, existing-customer context."
+          },
+          "smsConsent": {
+            "type": "boolean",
+            "description": "True only if the caller explicitly agreed to text messages after you asked the consent question."
+          },
+          "callbackRequested": {
+            "type": "boolean",
+            "description": "True if the caller explicitly asked for a callback."
+          }
+        },
+        "required": [
+          "callerName",
+          "phoneNumber",
+          "servicesRequested",
+          "reason"
+        ]
+      }
+    },
+    "server": {
+      "url": "https://n8n-production-1286.up.railway.app/webhook/vapi/capture-lead",
+      "headers": {
+        "x-vapi-secret": "REPLACE_ME_VAPI_SERVER_SECRET"
+      },
+      "timeoutSeconds": 15
+    },
+    "messages": [
+      {
+        "type": "request-start",
+        "content": "Let me get this over to Anthony."
+      },
+      {
+        "type": "request-response-delayed",
+        "content": "Just a few more seconds, making sure this gets logged for him.",
+        "timingMilliseconds": 5000
+      },
+      {
+        "type": "request-failed",
+        "content": "That didn't save on my end, but I've still got your number from this call, so Anthony will see it."
+      }
+    ]
+  }
+]

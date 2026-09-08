@@ -1,0 +1,612 @@
+{
+  "name": "Vapi Tool — Book Job",
+  "nodes": [
+    {
+      "id": "s1",
+      "name": "Note s1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        -300
+      ],
+      "parameters": {
+        "content": "## Order matters\\nVapi gets its answer as soon as **Cal.com + the CRM insert** succeed. Slack, the activity log and the owner SMS hang off the same node and run *after* the response is sent — they must never sit in the caller's latency budget.\\n\\n`google_calendar_event_id` is deliberately left NULL: Cal.com already syncs to Anthony's Google Calendar, and writing both creates duplicate events.",
+        "height": 280,
+        "width": 460,
+        "color": 4
+      }
+    },
+    {
+      "id": "s2",
+      "name": "Note s2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        20
+      ],
+      "parameters": {
+        "content": "## Env vars on the n8n service\\n`CAL_COM_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_MESSAGING_SERVICE_SID`, `OWNER_PHONE`.\\n\\nSelect your real **Twilio API Key** basic-auth credential on *Text Anthony*.\n\n**2026-09-08:** this n8n blocks `$env` inside nodes, so Cal.com auth is the *Cal.com API Key (drsqclt)* Header Auth credential (id 6N8Gw12AStkWa9P3) and the Twilio account SID and messaging-service SID are REPLACE_ME_* placeholders that deploy.py injects from env (TWILIO_ACCOUNT_SID / TWILIO_MESSAGING_SERVICE_SID) and the owner number is a constant. No Railway env vars are read.",
+        "height": 200,
+        "width": 460,
+        "color": 4
+      }
+    },
+    {
+      "id": "wh",
+      "name": "Vapi Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -400,
+        0
+      ],
+      "webhookId": "vapi-book-job",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi/book-job",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wycoqjtM2qevxil3",
+          "name": "Vapi Tool Secret"
+        }
+      }
+    },
+    {
+      "id": "parse",
+      "name": "Parse Booking Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// ---- Vapi tool-call parsing (defensive) --------------------------------\n// Vapi POSTs { message: { type:'tool-calls', toolCallList:[{id,name,arguments}], call:{...} } }\n// n8n nests the HTTP body under $json.body. `arguments` sometimes arrives as a\n// JSON *string* rather than an object, so parse it defensively.\nfunction parseVapi(item) {\n  const body = item.body || item;\n  const msg = body.message || {};\n  const list = msg.toolCallList || msg.toolCalls || [];\n  const tc = list[0] || {};\n  let args = tc.arguments ?? tc.function?.arguments ?? {};\n  if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }\n  const callerNumber = msg.call?.customer?.number || null;\n  return {\n    toolCallId: tc.id || tc.toolCallId || 'unknown',\n    name: tc.name || tc.function?.name || '',\n    args: args || {},\n    callerNumber,\n    callId: msg.call?.id || null,\n  };\n}\n\n// ---- Phone normalisation (mirrors lib/squeegee/sms.ts) -----------------\nfunction normalizePhone(raw) {\n  const digits = String(raw ?? '').replace(/[^0-9]/g, '');\n  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;\n  if (ten.length !== 10) return null;\n  return { phone10: ten, e164: '+1' + ten };\n}\n\n// ---- Spoken-form money -------------------------------------------------\n// TTS reads \"$475\" inconsistently; spelling it out is the documented fix.\nconst ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',\n  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];\nconst TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];\nfunction under1000(n) {\n  let out = [];\n  if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }\n  if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '')); }\n  else if (n > 0) { out.push(ONES[n]); }\n  return out.join(' ');\n}\nfunction spellDollars(amount) {\n  const n = Math.round(Number(amount) || 0);\n  if (n === 0) return 'zero dollars';\n  const th = Math.floor(n / 1000), rest = n % 1000;\n  let s = '';\n  if (th) s += under1000(th) + ' thousand' + (rest ? ' ' : '');\n  if (rest) s += under1000(rest);\n  return s + ' dollars';\n}\n\n// ---- Spoken-form date/time (America/New_York) --------------------------\nfunction spokenSlot(iso) {\n  const d = new Date(iso);\n  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);\n  const hourFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);\n  let [clock, ampm] = hourFmt.split(' ');\n  let [h, m] = clock.split(':');\n  const timePart = m === '00' ? h : h + ' ' + m;\n  const hh = Number(h);\n  // 12 PM..4:59 PM = afternoon, 5 PM+ = evening (noon used to fall into 'evening').\n  const partOfDay = ampm === 'AM' ? 'in the morning' : ((hh === 12 || hh < 5) ? 'in the afternoon' : 'in the evening');\n  return day + ' at ' + timePart + ' ' + partOfDay;\n}\n\n// ---- DST-correct Eastern ISO (mirrors lib/squeegee/calcom.ts) ----------\nfunction easternOffsetFor(dateStr) {\n  try {\n    const dt = new Date(dateStr + 'T12:00:00Z');\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'longOffset' }).formatToParts(dt);\n    const tz = parts.find(p => p.type === 'timeZoneName')?.value;\n    const m = tz && tz.match(/GMT([+-]\\d{2}:\\d{2})/);\n    return m ? m[1] : '-05:00';\n  } catch (e) { return '-05:00'; }\n}\n\n// ---- Always-200 Vapi envelope -----------------------------------------\nfunction vapiResult(toolCallId, text) {\n  return [{ json: { results: [{ toolCallId, result: text }] } }];\n}\n\n// CONTRACT: `book_job` tool -> callerName, phoneNumber, serviceAddress,\n//   servicesRequested[], quotedPriceUsd, appointmentDate (YYYY-MM-DD),\n//   appointmentTime (HH:MM, 24h, Eastern), notes?, smsConsent?\n// The wall-clock date+time are converted to a DST-correct ISO string with an\n// explicit Eastern offset — the same approach as buildEasternISOString() in\n// dr-squeegee/lib/squeegee/calcom.ts. Cal.com rejects ambiguous local times.\nconst v = parseVapi($input.first().json);\nconst a = v.args || {};\nconst norm = normalizePhone(a.phoneNumber || a.customerPhone || v.callerNumber);\n\nconst date = String(a.appointmentDate || '').slice(0, 10);\nlet time = String(a.appointmentTime || '');\nif (/^\\d{1,2}:\\d{2}/.test(time)) { time = time.slice(0, 5).padStart(5, '0'); } else { time = ''; }\n\nlet startISO = a.startISO || null;\nif (!startISO && /^\\d{4}-\\d{2}-\\d{2}$/.test(date) && time) {\n  startISO = date + 'T' + time + ':00' + easternOffsetFor(date);\n}\n\nlet services = a.servicesRequested ?? a.serviceType ?? [];\nif (typeof services === 'string') services = [services];\nif (!Array.isArray(services) || services.length === 0) services = ['Exterior cleaning'];\nconst serviceType = services.join(' + ');\n\nconst d = startISO ? new Date(startISO) : null;\nconst valid = !!(startISO && d && !isNaN(d.getTime()) && String(a.callerName || '').trim() && String(a.serviceAddress || '').trim());\n\nreturn [{ json: {\n  ...v,\n  valid,\n  startISO,\n  customerName: String(a.callerName || a.customerName || '').trim(),\n  customerPhone: norm ? norm.e164 : null,\n  phone10: norm ? norm.phone10 : null,\n  serviceAddress: String(a.serviceAddress || '').trim(),\n  serviceType,\n  quotedPrice: (a.quotedPriceUsd ?? a.quotedPrice) != null ? Number(a.quotedPriceUsd ?? a.quotedPrice) : null,\n  // string form for the SQL NULLIF($6,'') — never let a null render as the word 'null'\n  quotedPriceText: (a.quotedPriceUsd ?? a.quotedPrice) != null ? String(Number(a.quotedPriceUsd ?? a.quotedPrice)) : '',\n  notes: String(a.notes || '').trim(),\n  smsConsent: a.smsConsent === true || a.smsConsent === 'true',\n  apptDate: date,\n  apptTime: time,\n  spoken: startISO ? spokenSlot(startISO) : 'that time',\n} }];\n"
+      }
+    },
+    {
+      "id": "et",
+      "name": "Get Cal Event Types",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        40,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.cal.com/v2/event-types",
+        "options": {
+          "timeout": 3000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "cal-api-version",
+              "value": "2024-06-14"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "6N8Gw12AStkWa9P3",
+          "name": "Cal.com API Key (drsqclt)"
+        }
+      }
+    },
+    {
+      "id": "etid",
+      "name": "Resolve Event Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// ---- Vapi tool-call parsing (defensive) --------------------------------\n// Vapi POSTs { message: { type:'tool-calls', toolCallList:[{id,name,arguments}], call:{...} } }\n// n8n nests the HTTP body under $json.body. `arguments` sometimes arrives as a\n// JSON *string* rather than an object, so parse it defensively.\nfunction parseVapi(item) {\n  const body = item.body || item;\n  const msg = body.message || {};\n  const list = msg.toolCallList || msg.toolCalls || [];\n  const tc = list[0] || {};\n  let args = tc.arguments ?? tc.function?.arguments ?? {};\n  if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }\n  const callerNumber = msg.call?.customer?.number || null;\n  return {\n    toolCallId: tc.id || tc.toolCallId || 'unknown',\n    name: tc.name || tc.function?.name || '',\n    args: args || {},\n    callerNumber,\n    callId: msg.call?.id || null,\n  };\n}\n\n// ---- Phone normalisation (mirrors lib/squeegee/sms.ts) -----------------\nfunction normalizePhone(raw) {\n  const digits = String(raw ?? '').replace(/[^0-9]/g, '');\n  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;\n  if (ten.length !== 10) return null;\n  return { phone10: ten, e164: '+1' + ten };\n}\n\n// ---- Spoken-form money -------------------------------------------------\n// TTS reads \"$475\" inconsistently; spelling it out is the documented fix.\nconst ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',\n  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];\nconst TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];\nfunction under1000(n) {\n  let out = [];\n  if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }\n  if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '')); }\n  else if (n > 0) { out.push(ONES[n]); }\n  return out.join(' ');\n}\nfunction spellDollars(amount) {\n  const n = Math.round(Number(amount) || 0);\n  if (n === 0) return 'zero dollars';\n  const th = Math.floor(n / 1000), rest = n % 1000;\n  let s = '';\n  if (th) s += under1000(th) + ' thousand' + (rest ? ' ' : '');\n  if (rest) s += under1000(rest);\n  return s + ' dollars';\n}\n\n// ---- Spoken-form date/time (America/New_York) --------------------------\nfunction spokenSlot(iso) {\n  const d = new Date(iso);\n  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);\n  const hourFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);\n  let [clock, ampm] = hourFmt.split(' ');\n  let [h, m] = clock.split(':');\n  const timePart = m === '00' ? h : h + ' ' + m;\n  const hh = Number(h);\n  // 12 PM..4:59 PM = afternoon, 5 PM+ = evening (noon used to fall into 'evening').\n  const partOfDay = ampm === 'AM' ? 'in the morning' : ((hh === 12 || hh < 5) ? 'in the afternoon' : 'in the evening');\n  return day + ' at ' + timePart + ' ' + partOfDay;\n}\n\n// ---- DST-correct Eastern ISO (mirrors lib/squeegee/calcom.ts) ----------\nfunction easternOffsetFor(dateStr) {\n  try {\n    const dt = new Date(dateStr + 'T12:00:00Z');\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'longOffset' }).formatToParts(dt);\n    const tz = parts.find(p => p.type === 'timeZoneName')?.value;\n    const m = tz && tz.match(/GMT([+-]\\d{2}:\\d{2})/);\n    return m ? m[1] : '-05:00';\n  } catch (e) { return '-05:00'; }\n}\n\n// ---- Always-200 Vapi envelope -----------------------------------------\nfunction vapiResult(toolCallId, text) {\n  return [{ json: { results: [{ toolCallId, result: text }] } }];\n}\n\nconst res = $input.first().json || {};\nconst list = Array.isArray(res.data) ? res.data : [];\nconst et = list.find(e => e.slug === 'service-job');\nconst ctx = $('Parse Booking Request').first().json;\nreturn [{ json: { ...ctx, eventTypeId: et ? et.id : null } }];\n"
+      }
+    },
+    {
+      "id": "book",
+      "name": "Create Cal Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cal.com/v2/bookings",
+        "options": {
+          "timeout": 4000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "cal-api-version",
+              "value": "2024-08-13"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ eventTypeId: $json.eventTypeId, start: $json.startISO, attendee: { name: ($json.customerName + ' \\u2014 ' + $json.serviceType), email: 'care@drsqueegeeclt.com', timeZone: 'America/New_York' }, bookingFieldsResponses: { notes: ($json.notes || 'Booked by the after-hours voice agent.') } }) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "6N8Gw12AStkWa9P3",
+          "name": "Cal.com API Key (drsqclt)"
+        }
+      }
+    },
+    {
+      "id": "merge",
+      "name": "Merge Booking Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// ---- Vapi tool-call parsing (defensive) --------------------------------\n// Vapi POSTs { message: { type:'tool-calls', toolCallList:[{id,name,arguments}], call:{...} } }\n// n8n nests the HTTP body under $json.body. `arguments` sometimes arrives as a\n// JSON *string* rather than an object, so parse it defensively.\nfunction parseVapi(item) {\n  const body = item.body || item;\n  const msg = body.message || {};\n  const list = msg.toolCallList || msg.toolCalls || [];\n  const tc = list[0] || {};\n  let args = tc.arguments ?? tc.function?.arguments ?? {};\n  if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }\n  const callerNumber = msg.call?.customer?.number || null;\n  return {\n    toolCallId: tc.id || tc.toolCallId || 'unknown',\n    name: tc.name || tc.function?.name || '',\n    args: args || {},\n    callerNumber,\n    callId: msg.call?.id || null,\n  };\n}\n\n// ---- Phone normalisation (mirrors lib/squeegee/sms.ts) -----------------\nfunction normalizePhone(raw) {\n  const digits = String(raw ?? '').replace(/[^0-9]/g, '');\n  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;\n  if (ten.length !== 10) return null;\n  return { phone10: ten, e164: '+1' + ten };\n}\n\n// ---- Spoken-form money -------------------------------------------------\n// TTS reads \"$475\" inconsistently; spelling it out is the documented fix.\nconst ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',\n  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];\nconst TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];\nfunction under1000(n) {\n  let out = [];\n  if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }\n  if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '')); }\n  else if (n > 0) { out.push(ONES[n]); }\n  return out.join(' ');\n}\nfunction spellDollars(amount) {\n  const n = Math.round(Number(amount) || 0);\n  if (n === 0) return 'zero dollars';\n  const th = Math.floor(n / 1000), rest = n % 1000;\n  let s = '';\n  if (th) s += under1000(th) + ' thousand' + (rest ? ' ' : '');\n  if (rest) s += under1000(rest);\n  return s + ' dollars';\n}\n\n// ---- Spoken-form date/time (America/New_York) --------------------------\nfunction spokenSlot(iso) {\n  const d = new Date(iso);\n  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);\n  const hourFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);\n  let [clock, ampm] = hourFmt.split(' ');\n  let [h, m] = clock.split(':');\n  const timePart = m === '00' ? h : h + ' ' + m;\n  const hh = Number(h);\n  // 12 PM..4:59 PM = afternoon, 5 PM+ = evening (noon used to fall into 'evening').\n  const partOfDay = ampm === 'AM' ? 'in the morning' : ((hh === 12 || hh < 5) ? 'in the afternoon' : 'in the evening');\n  return day + ' at ' + timePart + ' ' + partOfDay;\n}\n\n// ---- DST-correct Eastern ISO (mirrors lib/squeegee/calcom.ts) ----------\nfunction easternOffsetFor(dateStr) {\n  try {\n    const dt = new Date(dateStr + 'T12:00:00Z');\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'longOffset' }).formatToParts(dt);\n    const tz = parts.find(p => p.type === 'timeZoneName')?.value;\n    const m = tz && tz.match(/GMT([+-]\\d{2}:\\d{2})/);\n    return m ? m[1] : '-05:00';\n  } catch (e) { return '-05:00'; }\n}\n\n// ---- Always-200 Vapi envelope -----------------------------------------\nfunction vapiResult(toolCallId, text) {\n  return [{ json: { results: [{ toolCallId, result: text }] } }];\n}\n\nconst ctx = $('Parse Booking Request').first().json;\nconst cal = $input.first().json || {};\n\n// ---- one-parameter transport for Postgres writes ----------------------------\n// The Postgres node splits its Query Parameters string on commas AFTER resolving\n// expressions (observed live 2026-09-08), so a comma in an address shifts every\n// bind parameter. Base64 has no commas: ship one encoded JSON document and unpack\n// it in SQL with convert_from(decode($1,'base64'),'UTF8')::jsonb.\nfunction toB64(str) {\n  if (typeof Buffer !== 'undefined') return Buffer.from(str, 'utf8').toString('base64');\n  return btoa(unescape(encodeURIComponent(str)));\n}\n\nconst uid = cal?.data?.uid || null;\nconst jobPayload = {\n  name: ctx.customerName, phone: ctx.customerPhone, address: ctx.serviceAddress,\n  service_type: ctx.serviceType, notes: ctx.notes || '', price: ctx.quotedPriceText || '',\n  appt_date: ctx.apptDate, appt_time: ctx.apptTime, cal_uid: uid, sms_consent: !!ctx.smsConsent,\n};\nreturn [{ json: { ...ctx, calBookingUid: uid, calOk: !!uid, jobPayloadB64: toB64(JSON.stringify(jobPayload)) } }];\n"
+      }
+    },
+    {
+      "id": "ins",
+      "name": "Insert Job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        920,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH p AS (\n  SELECT convert_from(decode($1, 'base64'), 'UTF8')::jsonb AS j\n),\nargs AS (\n  SELECT j->>'name' AS name, j->>'phone' AS phone, j->>'address' AS address, j->>'service_type' AS service_type,\n         j->>'notes' AS notes, NULLIF(j->>'price', '')::numeric AS price,\n         (j->>'appt_date')::date AS appt_date, (j->>'appt_time')::time AS appt_time,\n         j->>'cal_uid' AS cal_uid, coalesce((j->>'sms_consent')::boolean, false) AS sms_consent,\n         right(regexp_replace(coalesce(j->>'phone', ''), '[^0-9]', '', 'g'), 10) AS p10\n  FROM p\n),\nexisting AS (\n  SELECT c.id FROM squeegee_clients c, args a\n  WHERE a.p10 <> '' AND right(regexp_replace(coalesce(c.phone, ''), '[^0-9]', '', 'g'), 10) = a.p10\n  ORDER BY c.created_at DESC LIMIT 1\n),\ninserted_client AS (\n  INSERT INTO squeegee_clients (name, phone, address, sms_consent, sms_consent_at, sms_consent_method, sms_consent_note)\n  SELECT a.name, a.phone, a.address, a.sms_consent,\n         CASE WHEN a.sms_consent THEN now() END,\n         CASE WHEN a.sms_consent THEN 'verbal' END,\n         CASE WHEN a.sms_consent THEN 'Agreed to texts on a call answered by the after-hours voice agent.' END\n  FROM args a WHERE NOT EXISTS (SELECT 1 FROM existing)\n  RETURNING id\n),\nconsented AS (\n  UPDATE squeegee_clients c\n     SET sms_consent = true,\n         sms_consent_at = coalesce(c.sms_consent_at, now()),\n         sms_consent_method = coalesce(c.sms_consent_method, 'verbal'),\n         sms_consent_note = coalesce(c.sms_consent_note, 'Agreed to texts on a call answered by the after-hours voice agent.')\n    FROM args a\n   WHERE c.id = (SELECT id FROM existing) AND a.sms_consent AND NOT c.sms_consent\n  RETURNING c.id\n),\ncid AS (SELECT id FROM existing UNION ALL SELECT id FROM inserted_client)\nINSERT INTO squeegee_jobs\n  (client_name, client_phone, address, service_type, notes, price, status,\n   appointment_date, appointment_time, cal_booking_uid, client_id)\nSELECT a.name, a.phone, a.address, a.service_type, NULLIF(a.notes, ''), a.price, 'scheduled',\n       a.appt_date, a.appt_time, a.cal_uid, (SELECT id FROM cid LIMIT 1)\nFROM args a\nRETURNING id, client_name, address, service_type, price, appointment_date, appointment_time, client_id;",
+        "options": {
+          "queryReplacement": "={{ $json.jobPayloadB64 }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "WJrBNk44uOAqNA1S",
+          "name": "Supabase Database"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "resp",
+      "name": "Build Vapi Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        -140
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// ---- Vapi tool-call parsing (defensive) --------------------------------\n// Vapi POSTs { message: { type:'tool-calls', toolCallList:[{id,name,arguments}], call:{...} } }\n// n8n nests the HTTP body under $json.body. `arguments` sometimes arrives as a\n// JSON *string* rather than an object, so parse it defensively.\nfunction parseVapi(item) {\n  const body = item.body || item;\n  const msg = body.message || {};\n  const list = msg.toolCallList || msg.toolCalls || [];\n  const tc = list[0] || {};\n  let args = tc.arguments ?? tc.function?.arguments ?? {};\n  if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }\n  const callerNumber = msg.call?.customer?.number || null;\n  return {\n    toolCallId: tc.id || tc.toolCallId || 'unknown',\n    name: tc.name || tc.function?.name || '',\n    args: args || {},\n    callerNumber,\n    callId: msg.call?.id || null,\n  };\n}\n\n// ---- Phone normalisation (mirrors lib/squeegee/sms.ts) -----------------\nfunction normalizePhone(raw) {\n  const digits = String(raw ?? '').replace(/[^0-9]/g, '');\n  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;\n  if (ten.length !== 10) return null;\n  return { phone10: ten, e164: '+1' + ten };\n}\n\n// ---- Spoken-form money -------------------------------------------------\n// TTS reads \"$475\" inconsistently; spelling it out is the documented fix.\nconst ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',\n  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];\nconst TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];\nfunction under1000(n) {\n  let out = [];\n  if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }\n  if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '')); }\n  else if (n > 0) { out.push(ONES[n]); }\n  return out.join(' ');\n}\nfunction spellDollars(amount) {\n  const n = Math.round(Number(amount) || 0);\n  if (n === 0) return 'zero dollars';\n  const th = Math.floor(n / 1000), rest = n % 1000;\n  let s = '';\n  if (th) s += under1000(th) + ' thousand' + (rest ? ' ' : '');\n  if (rest) s += under1000(rest);\n  return s + ' dollars';\n}\n\n// ---- Spoken-form date/time (America/New_York) --------------------------\nfunction spokenSlot(iso) {\n  const d = new Date(iso);\n  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);\n  const hourFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);\n  let [clock, ampm] = hourFmt.split(' ');\n  let [h, m] = clock.split(':');\n  const timePart = m === '00' ? h : h + ' ' + m;\n  const hh = Number(h);\n  // 12 PM..4:59 PM = afternoon, 5 PM+ = evening (noon used to fall into 'evening').\n  const partOfDay = ampm === 'AM' ? 'in the morning' : ((hh === 12 || hh < 5) ? 'in the afternoon' : 'in the evening');\n  return day + ' at ' + timePart + ' ' + partOfDay;\n}\n\n// ---- DST-correct Eastern ISO (mirrors lib/squeegee/calcom.ts) ----------\nfunction easternOffsetFor(dateStr) {\n  try {\n    const dt = new Date(dateStr + 'T12:00:00Z');\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'longOffset' }).formatToParts(dt);\n    const tz = parts.find(p => p.type === 'timeZoneName')?.value;\n    const m = tz && tz.match(/GMT([+-]\\d{2}:\\d{2})/);\n    return m ? m[1] : '-05:00';\n  } catch (e) { return '-05:00'; }\n}\n\n// ---- Always-200 Vapi envelope -----------------------------------------\nfunction vapiResult(toolCallId, text) {\n  return [{ json: { results: [{ toolCallId, result: text }] } }];\n}\n\nconst ctx = $('Merge Booking Result').first().json;\nconst row = $input.first().json || {};\nconst jobId = row?.id || null;\n\nif (!jobId) {\n  // Cal booking exists but the CRM write failed — say booked (it is), and flag it.\n  return vapiResult(ctx.toolCallId,\n    'Booked on the calendar for ' + ctx.spoken + '. Confirm that back to the caller. (Internal: CRM record did not save — Anthony has been alerted.)');\n}\nreturn vapiResult(ctx.toolCallId,\n  'Booked for ' + ctx.spoken + ' at ' + ctx.serviceAddress +\n  '. Confirm the day, time and address back to the caller, then let them know Anthony will follow up to confirm.');\n"
+      }
+    },
+    {
+      "id": "respond",
+      "name": "Respond to Vapi",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1360,
+        -140
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "act",
+      "name": "Log Activity",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1140,
+        120
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO squeegee_activity (job_id, type, note)\nVALUES ($1::uuid, 'booked_by_voice_agent', 'Booked by the after-hours voice agent.');",
+        "options": {
+          "queryReplacement": "={{ $json.id }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "WJrBNk44uOAqNA1S",
+          "name": "Supabase Database"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "slack",
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1140,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "options": {
+          "timeout": 4000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const b = $('Merge Booking Result').first().json; const jobId = $json.id || null; return JSON.stringify({ channel: 'U0ABZDLENJ1', text: '\\ud83d\\udcde *Job booked by the voice agent*\\n' + '*Name:* ' + b.customerName + '\\n' + '*Phone:* ' + (b.customerPhone || 'unknown') + '\\n' + '*Address:* ' + b.serviceAddress + '\\n' + '*Service:* ' + b.serviceType + '\\n' + '*Price:* ' + (b.quotedPrice != null ? ('$' + b.quotedPrice) : 'not quoted') + '\\n' + '*When:* ' + b.spoken + '\\n' + '*SMS consent:* ' + (b.smsConsent ? 'YES' : 'no') + '\\n' + '*Notes:* ' + (b.notes || 'none') + '\\n' + (jobId ? '<https://www.drsqueegeeclt.com/crm/jobs/' + jobId + '|Open in CRM>' : '\\u26a0\\ufe0f *CRM job row did NOT save* — booking exists on Cal.com only (uid ' + (b.calBookingUid || '?') + ')') }); })() }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth"
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "28t8r7NccDmq8NVt",
+          "name": "Slack Bearer Token"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "sms",
+      "name": "Text Anthony",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1140,
+        460
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/REPLACE_ME_TWILIO_ACCOUNT_SID/Messages.json",
+        "options": {
+          "timeout": 4000
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "MessagingServiceSid",
+              "value": "REPLACE_ME_TWILIO_MESSAGING_SERVICE_SID"
+            },
+            {
+              "name": "To",
+              "value": "+19802428048"
+            },
+            {
+              "name": "Body",
+              "value": "={{ (() => { const b = $('Merge Booking Result').first().json; return 'New booking from the voice agent: ' + b.customerName + ' (' + (b.customerPhone || 'no number') + ') — ' + b.serviceType + ' at ' + b.serviceAddress + ', ' + b.spoken + ($json.id ? '' : '. CRM ROW DID NOT SAVE — check Cal.com.') + ' Reply STOP to opt out.'; })() }}"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth"
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Sm4NXmuBaNMtJ9WN",
+          "name": "Twilio API Key (Dr Squeegee AC1ee98)"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "gate",
+      "name": "Booking Confirmed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        810,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.calOk }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "failr",
+      "name": "Build Failure Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1030,
+        200
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// ---- Vapi tool-call parsing (defensive) --------------------------------\n// Vapi POSTs { message: { type:'tool-calls', toolCallList:[{id,name,arguments}], call:{...} } }\n// n8n nests the HTTP body under $json.body. `arguments` sometimes arrives as a\n// JSON *string* rather than an object, so parse it defensively.\nfunction parseVapi(item) {\n  const body = item.body || item;\n  const msg = body.message || {};\n  const list = msg.toolCallList || msg.toolCalls || [];\n  const tc = list[0] || {};\n  let args = tc.arguments ?? tc.function?.arguments ?? {};\n  if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }\n  const callerNumber = msg.call?.customer?.number || null;\n  return {\n    toolCallId: tc.id || tc.toolCallId || 'unknown',\n    name: tc.name || tc.function?.name || '',\n    args: args || {},\n    callerNumber,\n    callId: msg.call?.id || null,\n  };\n}\n\n// ---- Phone normalisation (mirrors lib/squeegee/sms.ts) -----------------\nfunction normalizePhone(raw) {\n  const digits = String(raw ?? '').replace(/[^0-9]/g, '');\n  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;\n  if (ten.length !== 10) return null;\n  return { phone10: ten, e164: '+1' + ten };\n}\n\n// ---- Spoken-form money -------------------------------------------------\n// TTS reads \"$475\" inconsistently; spelling it out is the documented fix.\nconst ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',\n  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];\nconst TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];\nfunction under1000(n) {\n  let out = [];\n  if (n >= 100) { out.push(ONES[Math.floor(n / 100)] + ' hundred'); n %= 100; }\n  if (n >= 20) { out.push(TENS[Math.floor(n / 10)] + (n % 10 ? '-' + ONES[n % 10] : '')); }\n  else if (n > 0) { out.push(ONES[n]); }\n  return out.join(' ');\n}\nfunction spellDollars(amount) {\n  const n = Math.round(Number(amount) || 0);\n  if (n === 0) return 'zero dollars';\n  const th = Math.floor(n / 1000), rest = n % 1000;\n  let s = '';\n  if (th) s += under1000(th) + ' thousand' + (rest ? ' ' : '');\n  if (rest) s += under1000(rest);\n  return s + ' dollars';\n}\n\n// ---- Spoken-form date/time (America/New_York) --------------------------\nfunction spokenSlot(iso) {\n  const d = new Date(iso);\n  const day = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(d);\n  const hourFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);\n  let [clock, ampm] = hourFmt.split(' ');\n  let [h, m] = clock.split(':');\n  const timePart = m === '00' ? h : h + ' ' + m;\n  const hh = Number(h);\n  // 12 PM..4:59 PM = afternoon, 5 PM+ = evening (noon used to fall into 'evening').\n  const partOfDay = ampm === 'AM' ? 'in the morning' : ((hh === 12 || hh < 5) ? 'in the afternoon' : 'in the evening');\n  return day + ' at ' + timePart + ' ' + partOfDay;\n}\n\n// ---- DST-correct Eastern ISO (mirrors lib/squeegee/calcom.ts) ----------\nfunction easternOffsetFor(dateStr) {\n  try {\n    const dt = new Date(dateStr + 'T12:00:00Z');\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'longOffset' }).formatToParts(dt);\n    const tz = parts.find(p => p.type === 'timeZoneName')?.value;\n    const m = tz && tz.match(/GMT([+-]\\d{2}:\\d{2})/);\n    return m ? m[1] : '-05:00';\n  } catch (e) { return '-05:00'; }\n}\n\n// ---- Always-200 Vapi envelope -----------------------------------------\nfunction vapiResult(toolCallId, text) {\n  return [{ json: { results: [{ toolCallId, result: text }] } }];\n}\n\n\n// Reached from two places: Request Valid? (false) with the Parse output, or\n// Booking Confirmed? (false) with the Merge output (which carries eventTypeId).\nconst ctx = $input.first().json || {};\nif (!ctx.valid) {\n  return vapiResult(ctx.toolCallId,\n    'I am missing something I need to book that — the name, the address, or a clear date and time. ' +\n    'Ask for whatever is missing, then call this again. Nothing has been booked.');\n}\nif (ctx.eventTypeId == null) {\n  // Cal.com itself was unreachable — do NOT send the model back into check_availability.\n  return vapiResult(ctx.toolCallId,\n    'The calendar could not be reached, so nothing was booked. Do not retry. Take their name, number and the time ' +\n    'they wanted, and call capture_lead with reason other so Anthony can confirm it personally.');\n}\nreturn vapiResult(ctx.toolCallId,\n  'That slot is no longer available. Apologise briefly, call check_availability again, and offer a different time. ' +\n  'Nothing has been booked and no record was created.');\n"
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "v1",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "request-valid",
+      "name": "Request Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Vapi Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Booking Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Booking Request": {
+      "main": [
+        [
+          {
+            "node": "Request Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Cal Event Types": {
+      "main": [
+        [
+          {
+            "node": "Resolve Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resolve Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Event Type": {
+      "main": [
+        [
+          {
+            "node": "Create Cal Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Cal Booking": {
+      "main": [
+        [
+          {
+            "node": "Merge Booking Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Booking Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Booking Result": {
+      "main": [
+        [
+          {
+            "node": "Booking Confirmed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Job": {
+      "main": [
+        [
+          {
+            "node": "Build Vapi Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Activity",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Text Anthony",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Vapi Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Text Anthony",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Vapi Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Vapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking Confirmed?": {
+      "main": [
+        [
+          {
+            "node": "Insert Job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Failure Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Failure Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Vapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Valid?": {
+      "main": [
+        [
+          {
+            "node": "Get Cal Event Types",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Failure Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
