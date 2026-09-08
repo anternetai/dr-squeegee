@@ -27,7 +27,7 @@
         20
       ],
       "parameters": {
-        "content": "## Env vars on the n8n service\\n`CAL_COM_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_MESSAGING_SERVICE_SID`, `OWNER_PHONE`.\\n\\nSelect your real **Twilio API Key** basic-auth credential on *Text Anthony*.\n\n**2026-09-08:** this n8n blocks `$env` inside nodes, so Cal.com auth is the *Cal.com API Key (drsqclt)* Header Auth credential (id 6N8Gw12AStkWa9P3) and the Twilio account SID and messaging-service SID are REPLACE_ME_* placeholders that deploy.py injects from env (TWILIO_ACCOUNT_SID / TWILIO_MESSAGING_SERVICE_SID) and the owner number is a constant. No Railway env vars are read.",
+        "content": "## Env vars on the n8n service\\n`CAL_COM_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_MESSAGING_SERVICE_SID`, `OWNER_PHONE`.\\n\\nSelect your real **Twilio API Key** basic-auth credential on *Text Anthony*.\n\n**2026-09-08:** this n8n blocks `$env` inside nodes, so Cal.com auth is the *Cal.com API Key (drsqclt)* Header Auth credential (id 6N8Gw12AStkWa9P3) and the Twilio account SID and messaging-service SID are placeholder values that deploy.py injects from env (TWILIO_ACCOUNT_SID / TWILIO_MESSAGING_SERVICE_SID) and the owner number is a constant. No Railway env vars are read.",
         "height": 200,
         "width": 460,
         "color": 4
