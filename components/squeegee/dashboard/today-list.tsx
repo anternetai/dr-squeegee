@@ -168,6 +168,15 @@ export function TodayList({
                         </>
                       )}
                     </button>
+                    {/* Decision 2: one-tap Done & Paid on any job row. Today's
+                        work settles the day it happens, not tomorrow when the
+                        appointment has passed and it drops into the tray. */}
+                    <Link
+                      href={`/crm/jobs/${j.id}?closeout=1`}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[var(--crm-accent)] px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[var(--crm-accent-hover)]"
+                    >
+                      Done &amp; paid
+                    </Link>
                   </div>
                 </div>
               </div>

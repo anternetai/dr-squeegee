@@ -82,18 +82,17 @@ export default async function SqueegeePortalPage() {
     settings,
     { data: crewRows },
     { count: views30 },
-    { count: views7 },
     { count: leads30 },
     { count: leads7 },
     { count: totalLeads },
     { data: sentPlans },
+    { data: remindedRows },
   ] = await Promise.all([
     loadSnapshot(supabase),
     // A bad settings row must never take the home screen down.
     loadSettings(supabase).catch(() => DEFAULT_SETTINGS),
     supabase.from("squeegee_employees").select("id, name").eq("status", "active").order("name"),
     supabase.from("squeegee_page_views").select("*", { count: "exact", head: true }).gte("created_at", d30),
-    supabase.from("squeegee_page_views").select("*", { count: "exact", head: true }).gte("created_at", d7),
     supabase.from("squeegee_leads").select("*", { count: "exact", head: true }).gte("created_at", d30),
     supabase.from("squeegee_leads").select("*", { count: "exact", head: true }).gte("created_at", d7),
     supabase.from("squeegee_leads").select("*", { count: "exact", head: true }),
@@ -102,6 +101,14 @@ export default async function SqueegeePortalPage() {
       .select("id, token, client_name, plan_name, total_price, created_at")
       .eq("status", "sent")
       .order("created_at", { ascending: true }),
+    // /api/cron/reminders texts tomorrow's jobs at 5pm ET and stamps
+    // reminder_sent_at. Without reading it back the Remind button comes up live
+    // again on the next page load and the customer gets a second text.
+    supabase
+      .from("squeegee_jobs")
+      .select("id")
+      .not("reminder_sent_at", "is", null)
+      .in("appointment_date", [today, tomorrow]),
   ])
 
   const idx = indexSnapshot(snap)
@@ -112,6 +119,7 @@ export default async function SqueegeePortalPage() {
   const crew: TodayCrew[] = ((crewRows ?? []) as { id: string; name: string }[]).map((c) => ({ id: c.id, name: c.name }))
 
   const live = states.filter((s) => s.state !== "excluded")
+  const remindedJobIds = new Set(((remindedRows ?? []) as { id: string }[]).map((r) => r.id))
 
   // Pipeline tabs: counts by the job's own status (the /crm/jobs tabs filter on it).
   const counts = STATUS_ORDER.reduce(
@@ -140,7 +148,7 @@ export default async function SqueegeePortalPage() {
       timeLabel: prettyTime(s.job.appointment_time),
       amount: s.closeOutAmount,
       assignedEmployeeId: s.job.assigned_employee_id,
-      reminded: false,
+      reminded: remindedJobIds.has(s.job.id),
       softScheduled: s.job.status !== "scheduled",
     }))
 

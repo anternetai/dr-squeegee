@@ -88,7 +88,10 @@ export function AgingQuotes({
         {items.length === 0 ? (
           <p className="px-6 pb-4 text-sm text-muted-foreground">
             Nothing in the last 45 days waiting on an answer.
-            {staleCount > 0 && ` (${staleCount} older pending quotes — probably dead.)`}
+            {/* The dollars matter even when the window is empty: on 2026-09-09
+                that is 20 quotes worth $8,218 shown as a bare count. */}
+            {staleCount > 0 &&
+              ` (${staleCount} older pending quotes, $${staleTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })} — probably dead.)`}
           </p>
         ) : (
           <div className="divide-y divide-border">
