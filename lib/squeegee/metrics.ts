@@ -17,7 +17,7 @@
 //   - excluded_at rows (test data) are invisible to every metric.
 
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { deriveJobServices, normalizeService, SERVICES, type Service } from "./services.ts"
+import { deriveJobServices, normalizeService, normalizeServices, SERVICES, type Service } from "./services.ts"
 import { addMonthsYmd, dateKeyET, daysBetweenET, isYmd, todayET } from "./dates.ts"
 
 /* ----------------------------------------------------------------------------
@@ -171,54 +171,92 @@ export function phone10Of(raw: string | null | undefined): string | null {
 
 const SMS_LOOKBACK_DAYS = 400
 
+/**
+ * PostgREST answers a plain select with at most `db-max-rows` (1000 on this
+ * project, measured 2026-09-09) and says NOTHING when it truncates — no error,
+ * no flag, just a short array. A `.limit(5000)` does not lift it. Every table
+ * here is therefore read in ordered pages until a short page comes back, so the
+ * snapshot can never quietly become a subset. sms_messages is the one that will
+ * cross 1000 first (T4 starts sending), and a truncated pitch history means
+ * offering a customer the same thing twice.
+ */
+const PAGE_SIZE = 1000
+
+type PagedQuery = {
+  range: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>
+}
+
+type Raw = Record<string, unknown>
+
+async function selectAll(label: string, build: () => PagedQuery): Promise<Raw[]> {
+  const out: Raw[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await build().range(from, from + PAGE_SIZE - 1)
+    if (error) throw new Error(`loadSnapshot(${label}): ${error.message}`)
+    const page = (data ?? []) as Raw[]
+    out.push(...page)
+    if (page.length < PAGE_SIZE) return out
+  }
+}
+
 /** One read of everything the CRM computes from. Throws on any query error. */
 export async function loadSnapshot(sb: SupabaseClient): Promise<CrmSnapshot> {
   const smsSince = new Date(Date.now() - SMS_LOOKBACK_DAYS * 86_400_000).toISOString()
+  // Ordered by the primary key: offset paging without an ORDER BY can repeat
+  // or skip rows between pages.
   const [clients, jobs, quotes, invoices, plans, expenses, outreach, sms] = await Promise.all([
-    sb.from("squeegee_clients").select("id, name, phone, email, address, notes, blacklisted, sms_consent, tags, lead_source, created_at"),
-    sb
-      .from("squeegee_jobs")
-      .select(
-        "id, client_id, client_name, client_phone, address, service_type, price, status, appointment_date, appointment_time, created_at, completed_at, assigned_employee_id, crew_pay, lead_source, excluded_at"
-      ),
-    sb
-      .from("squeegee_quotes")
-      .select(
-        "id, token, job_id, client_name, client_phone, services, total_price, subtotal, status, accepted_via, client_response_at, created_at, followup_count, last_followup_at, excluded_at"
-      ),
-    sb
-      .from("squeegee_invoices")
-      .select("id, job_id, client_id, quote_id, invoice_number, amount, tip_amount, status, paid_at, payment_method, created_at, due_date, sent_at"),
-    sb
-      .from("squeegee_plans")
-      .select("id, client_id, client_name, client_phone, status, total_price, annual_value, billing, monthly_price, term_start, term_end, signed_at"),
-    sb.from("squeegee_expenses").select("id, spent_on, amount, category, job_id").limit(5000),
-    sb.from("squeegee_outreach").select("phone10, channel, service_offered, created_at, client_name").limit(5000),
-    sb
-      .from("sms_messages")
-      .select("kind, phone10, related_type, related_id, status, created_at")
-      .eq("direction", "outbound")
-      .gte("created_at", smsSince)
-      .limit(5000),
+    selectAll("clients", () =>
+      sb
+        .from("squeegee_clients")
+        .select("id, name, phone, email, address, notes, blacklisted, sms_consent, tags, lead_source, created_at")
+        .order("id")
+    ),
+    selectAll("jobs", () =>
+      sb
+        .from("squeegee_jobs")
+        .select(
+          "id, client_id, client_name, client_phone, address, service_type, price, status, appointment_date, appointment_time, created_at, completed_at, assigned_employee_id, crew_pay, lead_source, excluded_at"
+        )
+        .order("id")
+    ),
+    selectAll("quotes", () =>
+      sb
+        .from("squeegee_quotes")
+        .select(
+          "id, token, job_id, client_name, client_phone, services, total_price, subtotal, status, accepted_via, client_response_at, created_at, followup_count, last_followup_at, excluded_at"
+        )
+        .order("id")
+    ),
+    selectAll("invoices", () =>
+      sb
+        .from("squeegee_invoices")
+        .select("id, job_id, client_id, quote_id, invoice_number, amount, tip_amount, status, paid_at, payment_method, created_at, due_date, sent_at")
+        .order("id")
+    ),
+    selectAll("plans", () =>
+      sb
+        .from("squeegee_plans")
+        .select("id, client_id, client_name, client_phone, status, total_price, annual_value, billing, monthly_price, term_start, term_end, signed_at")
+        .order("id")
+    ),
+    selectAll("expenses", () => sb.from("squeegee_expenses").select("id, spent_on, amount, category, job_id").order("id")),
+    selectAll("outreach", () =>
+      sb.from("squeegee_outreach").select("phone10, channel, service_offered, created_at, client_name").order("id")
+    ),
+    selectAll("sms", () =>
+      sb
+        .from("sms_messages")
+        .select("kind, phone10, related_type, related_id, status, created_at")
+        .eq("direction", "outbound")
+        .gte("created_at", smsSince)
+        .order("id")
+    ),
   ])
 
-  const fail = (name: string, err: { message: string } | null) => {
-    if (err) throw new Error(`loadSnapshot(${name}): ${err.message}`)
-  }
-  fail("clients", clients.error)
-  fail("jobs", jobs.error)
-  fail("quotes", quotes.error)
-  fail("invoices", invoices.error)
-  fail("plans", plans.error)
-  fail("expenses", expenses.error)
-  fail("outreach", outreach.error)
-  fail("sms", sms.error)
-
-  type Raw = Record<string, unknown>
-  const rows = <T>(r: { data: unknown }) => ((r.data ?? []) as Raw[]).map((x) => x as unknown as T)
+  const rows = <T>(data: Raw[]) => data.map((x) => x as unknown as T)
 
   return {
-    clients: ((clients.data ?? []) as Raw[]).map((c) => ({
+    clients: clients.map((c) => ({
       id: String(c.id),
       name: String(c.name ?? ""),
       phone: (c.phone as string | null) ?? null,
@@ -231,7 +269,7 @@ export async function loadSnapshot(sb: SupabaseClient): Promise<CrmSnapshot> {
       lead_source: (c.lead_source as string | null) ?? null,
       created_at: String(c.created_at),
     })),
-    jobs: ((jobs.data ?? []) as Raw[]).map((j) => ({
+    jobs: jobs.map((j) => ({
       id: String(j.id),
       client_id: (j.client_id as string | null) ?? null,
       client_name: String(j.client_name ?? ""),
@@ -249,7 +287,7 @@ export async function loadSnapshot(sb: SupabaseClient): Promise<CrmSnapshot> {
       lead_source: (j.lead_source as string | null) ?? null,
       excluded_at: (j.excluded_at as string | null) ?? null,
     })),
-    quotes: ((quotes.data ?? []) as Raw[]).map((q) => ({
+    quotes: quotes.map((q) => ({
       id: String(q.id),
       token: (q.token as string | null) ?? null,
       job_id: (q.job_id as string | null) ?? null,
@@ -266,7 +304,7 @@ export async function loadSnapshot(sb: SupabaseClient): Promise<CrmSnapshot> {
       last_followup_at: (q.last_followup_at as string | null) ?? null,
       excluded_at: (q.excluded_at as string | null) ?? null,
     })),
-    invoices: ((invoices.data ?? []) as Raw[]).map((i) => ({
+    invoices: invoices.map((i) => ({
       id: String(i.id),
       job_id: (i.job_id as string | null) ?? null,
       client_id: (i.client_id as string | null) ?? null,
@@ -281,7 +319,7 @@ export async function loadSnapshot(sb: SupabaseClient): Promise<CrmSnapshot> {
       due_date: (i.due_date as string | null) ?? null,
       sent_at: (i.sent_at as string | null) ?? null,
     })),
-    plans: ((plans.data ?? []) as Raw[]).map((p) => ({
+    plans: plans.map((p) => ({
       id: String(p.id),
       client_id: (p.client_id as string | null) ?? null,
       client_name: (p.client_name as string | null) ?? null,
@@ -295,7 +333,7 @@ export async function loadSnapshot(sb: SupabaseClient): Promise<CrmSnapshot> {
       term_end: (p.term_end as string | null) ?? null,
       signed_at: (p.signed_at as string | null) ?? null,
     })),
-    expenses: ((expenses.data ?? []) as Raw[]).map((e) => ({
+    expenses: expenses.map((e) => ({
       id: String(e.id),
       spent_on: String(e.spent_on),
       amount: num0(e.amount),
@@ -547,6 +585,25 @@ export function computeClientMetrics(snap: CrmSnapshot, idx: SnapshotIndex = ind
     if (s.job.client_id && s.state !== "excluded") push(statesByClient, s.job.client_id, s)
   }
 
+  // Open quotes with no job (6 in prod on 2026-09-09, 4 of them matching a
+  // client) still belong to somebody: match on phone10, the way
+  // buildPitchHistory does. Without this an orphan quote for a service would
+  // not suppress an offer for that same service, and the customer gets pitched
+  // something they are already holding a quote for.
+  const orphanQuoteServices = new Map<string, Set<Service>>()
+  for (const q of snap.quotes) {
+    if (q.job_id || !isLiveQuote(q) || !OPEN_QUOTE_STATUSES.has(q.status)) continue
+    const p = phone10Of(q.client_phone)
+    const cid = p ? idx.clientIdByPhone10.get(p) : undefined
+    if (!cid) continue
+    let set = orphanQuoteServices.get(cid)
+    if (!set) {
+      set = new Set()
+      orphanQuoteServices.set(cid, set)
+    }
+    for (const svc of normalizeServices(q.services)) set.add(svc)
+  }
+
   // Money by client, resolved through the job when the invoice has no client.
   const money = new Map<string, { value: number; tips: number; count: number; lastPaidAt: string | null; open: number; openCount: number; drafts: number }>()
   for (const inv of snap.invoices) {
@@ -579,7 +636,7 @@ export function computeClientMetrics(snap: CrmSnapshot, idx: SnapshotIndex = ind
     let awaiting = 0
     let firstJobAt: string | null = null
     let lastJobAt: string | null = null
-    const openQuoteServices = new Set<Service>()
+    const openQuoteServices = new Set<Service>(orphanQuoteServices.get(c.id) ?? [])
 
     for (const s of js) {
       if (s.state === "cancelled") continue

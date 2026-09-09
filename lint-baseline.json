@@ -1,9 +1,8 @@
 {
   "generated": "2026-09-09",
-  "total": 31,
+  "total": 29,
   "errors": {
     "app/bumblebread/onboarding/page.tsx": 1,
-    "app/crm/page.tsx": 2,
     "app/crm/team/[id]/employee-editor.tsx": 1,
     "app/crm/territories/[name]/page.tsx": 3,
     "app/crm/territories/page.tsx": 2,

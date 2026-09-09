@@ -8,6 +8,7 @@ import {
   derivePipelineState,
   indexSnapshot,
   jobStates,
+  loadSnapshot,
   paidDateKey,
   quoteWinRate,
   rangeForPreset,
@@ -243,6 +244,69 @@ test("client metrics resolve money through the job and track last service per se
   assert.deepEqual(m.openQuoteServices, ["driveway"])
   assert.equal(m.careClub, false)
   assert.equal(m.phone10, "7045550100")
+})
+
+test("an open quote with no job still suppresses through the client's phone", () => {
+  const c = client({ id: "c1", phone: "704-555-0100" })
+  const snap = snapshot({
+    clients: [c],
+    jobs: [job({ id: "j1", client_id: "c1", status: "complete", completed_at: "2026-03-10T15:00:00Z", service_type: "House Washing" })],
+    quotes: [
+      // orphan (job_id null), open, same phone in a different format
+      quote({ id: "qo", job_id: null, client_phone: "+1 (704) 555-0100", status: "pending", services: [{ name: "Window Cleaning", price: 250 }] }),
+      // orphan but already decided -> not an open quote
+      quote({ id: "qa", job_id: null, client_phone: "704-555-0100", status: "accepted", services: [{ name: "Driveway", price: 200 }] }),
+      // orphan for someone we do not have as a client
+      quote({ id: "qz", job_id: null, client_phone: "704-555-9999", status: "pending", services: [{ name: "Gutter Cleaning", price: 150 }] }),
+    ],
+  })
+  const m = computeClientMetrics(snap).get("c1")!
+  assert.deepEqual(m.openQuoteServices, ["windows"])
+})
+
+test("loadSnapshot pages past the PostgREST row cap instead of truncating", async () => {
+  // PostgREST caps a plain select at db-max-rows (1000 here) and does not say so.
+  const CAP = 1000
+  const jobRows = Array.from({ length: 1500 }, (_, i) => ({ id: `j${i}`, client_id: "c1", client_name: "C", status: "new", created_at: "2026-01-01T00:00:00Z", price: 1 }))
+  const tables: Record<string, Record<string, unknown>[]> = {
+    squeegee_clients: [{ id: "c1", name: "C", created_at: "2026-01-01T00:00:00Z" }],
+    squeegee_jobs: jobRows,
+    squeegee_quotes: [],
+    squeegee_invoices: [],
+    squeegee_plans: [],
+    squeegee_expenses: [],
+    squeegee_outreach: [],
+    sms_messages: [],
+  }
+  let calls = 0
+  const sb = {
+    from(name: string) {
+      const rows = tables[name] ?? []
+      const b: Record<string, unknown> = {}
+      for (const k of ["select", "eq", "gte", "order", "limit"]) b[k] = () => b
+      b.range = (from: number, to: number) => {
+        calls++
+        return Promise.resolve({ data: rows.slice(from, Math.min(to + 1, from + CAP)), error: null })
+      }
+      return b
+    },
+  }
+  const snap = await loadSnapshot(sb as never)
+  assert.equal(snap.jobs.length, 1500)
+  assert.equal(snap.jobs[1499].id, "j1499")
+  assert.equal(calls, 9) // 7 single-page tables + clients + 2 pages of jobs
+})
+
+test("loadSnapshot throws on a query error rather than returning a partial snapshot", async () => {
+  const sb = {
+    from() {
+      const b: Record<string, unknown> = {}
+      for (const k of ["select", "eq", "gte", "order", "limit"]) b[k] = () => b
+      b.range = () => Promise.resolve({ data: null, error: { message: "boom" } })
+      return b
+    },
+  }
+  await assert.rejects(() => loadSnapshot(sb as never), /loadSnapshot\(.*\): boom/)
 })
 
 test("excluded jobs are invisible", () => {
