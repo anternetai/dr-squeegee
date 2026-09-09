@@ -7,7 +7,8 @@
 //   plan       - two or more jobs with us -> pitch the Care Club
 //   seasonal   - a service they've had is in its season this month
 //
-// Suppression: blacklisted or "do-not-upsell" -> nothing. A service with an open
+// Suppression: blacklisted, "do-not-upsell", or no completed job yet -> nothing
+// (a client who never bought is a lead for the quote follow-ups). A service with an open
 // quote, or pitched in the last 90 days, is skipped. A job in the last 30 days
 // suppresses due/seasonal nags (never-had and plan still show: right after a
 // job is the best time for those).
@@ -111,6 +112,10 @@ function recentJob(m: ClientMetrics, today: string): boolean {
 
 export function computeOffers(m: ClientMetrics, ctx: OfferContext): Offer[] {
   if (m.blacklisted || hasTag(m.tags, "do-not-upsell")) return []
+  // Offers are for customers. A client who has never bought anything is a
+  // lead: they belong to the quote follow-up flow, not the offer list. Without
+  // this line 33 of 69 clients would each show "never had a house wash".
+  if (m.completedJobCount < 1) return []
   const offers: Offer[] = []
   const openQuote = new Set(m.openQuoteServices)
   const quietForNags = recentJob(m, ctx.today)

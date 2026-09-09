@@ -101,6 +101,8 @@ test("seasonal only in season, only for services they've had, and not right afte
 test("suppression rules", () => {
   assert.deepEqual(computeOffers(metrics({ blacklisted: true }), ctx()), [])
   assert.deepEqual(computeOffers(metrics({ tags: ["do-not-upsell"] }), ctx()), [])
+  // Never bought anything: a lead, not a customer. No cross-sells either.
+  assert.deepEqual(computeOffers(metrics({ completedJobCount: 0, servicesHad: [], lastServiceByService: {}, lastServiceAt: null }), ctx()), [])
   // open quote for the service
   const openQ = computeOffers(metrics({ openQuoteServices: ["house_wash"] }), ctx())
   assert.equal(openQ.some((o) => o.service === "house_wash"), false)
