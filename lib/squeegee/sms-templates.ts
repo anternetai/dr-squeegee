@@ -126,6 +126,16 @@ export const smsTemplates = {
     }
   },
 
+  // Fired when the crew taps "On my way" in /team. The customer notification is a
+  // free side effect of a tap the tech makes for their own reasons (it also starts
+  // their drive clock) — which is why it actually gets sent, unlike a separate
+  // "notify customer" button nobody remembers to press.
+  // Plain hyphen, no em dash: one em dash pushes the whole message to UCS-2 and
+  // splits it into 3 segments. See reference_sms_link_delivery.md (8/25).
+  crewOnMyWay(name: string | null, etaMinutes: number): string {
+    return `Dr. Squeegee: Hi ${first(name)}, we're on the way - about ${etaMinutes} minutes out. Questions? Call ${CALL}. Reply STOP to opt out.`
+  },
+
   // Win-back to a PAST customer who previously consented — never a cold number.
   reengage(name: string | null): string {
     return `Dr. Squeegee: Hi ${first(name)}, it's been a while! Ready to get your home looking sharp again? Reply here or call ${CALL} for a quick quote. Reply STOP to opt out.`

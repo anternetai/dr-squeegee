@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server"
 import {
   createSessionValue,
   CREW_COOKIE,
-  hashPassword,
+  hashPin,
+  isValidPin,
+  phoneKey,
   sessionCookieOptions,
 } from "@/lib/squeegee/employee-auth"
 
@@ -70,32 +72,56 @@ export async function POST(
       return NextResponse.json({ error: "This account is already set up. Please log in." }, { status: 409 })
     }
 
-    const email = (body.email ?? "").trim().toLowerCase()
-    const password = body.password ?? ""
-    if (!email || !/.+@.+\..+/.test(email)) {
-      return NextResponse.json({ error: "A valid email is required." }, { status: 400 })
+    // Phone + PIN is how the crew logs in, so the phone is the identifier and
+    // both are required. Email is optional — plenty of crew don't check one.
+    const phone = phoneKey(body.phone)
+    const pin = String(body.pin ?? "")
+    if (!phone) {
+      return NextResponse.json({ error: "A valid mobile number is required." }, { status: 400 })
     }
-    if (typeof password !== "string" || password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 })
+    if (!isValidPin(pin)) {
+      return NextResponse.json({ error: "Your PIN must be 4 digits." }, { status: 400 })
     }
 
-    // Email must be unique across crew (case-insensitive), excluding self.
-    const { data: clash } = await supabase
+    const email = (body.email ?? "").trim().toLowerCase()
+    if (email && !/.+@.+\..+/.test(email)) {
+      return NextResponse.json({ error: "That email doesn't look right." }, { status: 400 })
+    }
+
+    // The phone is the login key, so it has to be unique across the crew.
+    const { data: others } = await supabase
       .from("squeegee_employees")
-      .select("id")
-      .ilike("email", email)
+      .select("id, phone")
       .neq("id", emp.id)
-      .maybeSingle()
-    if (clash) {
-      return NextResponse.json({ error: "That email is already in use." }, { status: 409 })
+      .not("phone", "is", null)
+      .limit(200)
+    if ((others ?? []).some((o) => phoneKey(o.phone as string) === phone)) {
+      return NextResponse.json(
+        { error: "That number is already set up. Try logging in." },
+        { status: 409 }
+      )
+    }
+
+    if (email) {
+      const { data: clash } = await supabase
+        .from("squeegee_employees")
+        .select("id")
+        .ilike("email", email)
+        .neq("id", emp.id)
+        .maybeSingle()
+      if (clash) {
+        return NextResponse.json({ error: "That email is already in use." }, { status: 409 })
+      }
     }
 
     const sig = body.signature ?? null
     const update: Record<string, unknown> = {
-      email,
-      password_hash: await hashPassword(password),
+      email: email || null,
+      pin_hash: await hashPin(pin),
+      pin_attempts: 0,
+      pin_locked_until: null,
       legal_name: body.legal_name ? String(body.legal_name) : null,
-      phone: body.phone ? String(body.phone) : null,
+      phone,
       address: body.address ? String(body.address) : null,
       emergency_contact_name: body.emergency_contact_name ? String(body.emergency_contact_name) : null,
       emergency_contact_phone: body.emergency_contact_phone ? String(body.emergency_contact_phone) : null,

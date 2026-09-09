@@ -40,6 +40,16 @@ export interface ReceiptData {
 
   jobServiceType: string | null
   servicedOn: string | null
+
+  // Before/after shots the crew took, that Anthony approved for the customer.
+  // Served through a proxy route rather than signed URLs: a receipt gets texted
+  // and opened weeks later, long after any signed URL would have expired.
+  photos: ReceiptPhoto[]
+}
+
+export interface ReceiptPhoto {
+  id: string
+  kind: "before" | "after"
 }
 
 /** "Visa ending in 3084" / "Cash" / "Zelle" — how the receipt names the tender. */

@@ -4,6 +4,7 @@ import { verifyCrmAuth } from "@/lib/crm-auth-check"
 import { createJobBooking, cancelJobBooking, buildEasternISOString } from "@/lib/squeegee/calcom"
 import { smsAppointmentConfirmed } from "@/lib/squeegee/sms-events"
 import { formatApptLabel } from "@/lib/squeegee/sms-templates"
+import { notifyJobScheduled } from "@/lib/squeegee/push"
 
 function getAdmin() {
   return createClient(
@@ -111,6 +112,16 @@ export async function POST(
       service: (job.service_type as string) || "service",
       whenLabel: formatApptLabel(date, normalizedTime),
       jobId: id,
+    }).catch(() => {})
+
+    // Tell the crew. Unclaimed work goes to everyone as "on the board"; work
+    // someone already holds goes only to them as "your schedule changed".
+    await notifyJobScheduled({
+      id,
+      client_name: (updated.client_name as string) ?? null,
+      service_type: (updated.service_type as string) ?? null,
+      assigned_employee_id: (updated.assigned_employee_id as string | null) ?? null,
+      whenLabel: formatApptLabel(date, normalizedTime),
     }).catch(() => {})
 
     return NextResponse.json(updated)

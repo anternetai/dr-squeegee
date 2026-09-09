@@ -189,6 +189,12 @@ export function ReceiptView({ receipt }: { receipt: ReceiptData }) {
               </table>
             </div>
 
+            {/* The work itself. Every CRM in this category captures before/afters
+                and then strands them in an internal attachment silo — for exterior
+                cleaning the photos ARE the deliverable, so they go where the
+                customer actually looks. Only shots Anthony approved appear here. */}
+            <WorkPhotos token={receipt.receiptToken} photos={receipt.photos} />
+
             {/* Payment detail — what a bank statement can be matched against. */}
             <div className="rounded-xl border px-4 py-3 text-xs space-y-1" style={{ borderColor: `${TEAL}26` }}>
               <Row label="Payment method" value={paymentLabel(receipt)} />
@@ -229,6 +235,56 @@ export function ReceiptView({ receipt }: { receipt: ReceiptData }) {
         <p className="no-print text-center text-xs text-muted-foreground">
           Keep this link — your receipt stays here for your records.
         </p>
+      </div>
+    </div>
+  )
+}
+
+function WorkPhotos({
+  token,
+  photos,
+}: {
+  token: string
+  photos: { id: string; kind: "before" | "after" }[]
+}) {
+  if (!photos || photos.length === 0) return null
+  const before = photos.filter((p) => p.kind === "before")
+  const after = photos.filter((p) => p.kind === "after")
+
+  return (
+    <div className="print:hidden">
+      <p
+        className="text-xs font-bold uppercase tracking-wide mb-2 text-foreground"
+        style={{ fontFamily: FONTS.display }}
+      >
+        Your service
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label: "Before", set: before },
+          { label: "After", set: after },
+        ]
+          .filter((c) => c.set.length > 0)
+          .map((column) => (
+            <div key={column.label}>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
+                {column.label}
+              </p>
+              <div className="space-y-2">
+                {column.set.map((p) => (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    key={p.id}
+                    src={`/api/squeegee/receipts/${token}/photos/${p.id}`}
+                    alt={`${column.label} — your property`}
+                    loading="lazy"
+                    className="w-full rounded-xl border object-cover"
+                    style={{ borderColor: `${TEAL}26`, aspectRatio: "4 / 3" }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
       </div>
     </div>
   )

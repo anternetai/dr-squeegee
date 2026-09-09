@@ -41,6 +41,53 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return derived.length === expected.length && timingSafeEqual(derived, expected)
 }
 
+// ---- PIN ----
+//
+// The crew logs in with their phone number and a 4-digit PIN they choose during
+// onboarding. That is 10,000 combinations, which is only safe with a lockout, so
+// the lockout below is not optional — it IS the security of this scheme.
+// Same scrypt hashing as passwords; a PIN is just a short secret.
+
+export const PIN_LENGTH = 4
+export const MAX_PIN_ATTEMPTS = 5
+const LOCK_MINUTES = 15
+const LONG_LOCK_MINUTES = 60
+const LONG_LOCK_AFTER_LOCKOUTS = 3
+
+export function isValidPin(pin: string): boolean {
+  return new RegExp(`^\\d{${PIN_LENGTH}}$`).test(pin)
+}
+
+export async function hashPin(pin: string): Promise<string> {
+  return hashPassword(pin)
+}
+
+export async function verifyPin(pin: string, stored: string): Promise<boolean> {
+  return verifyPassword(pin, stored)
+}
+
+/** Digits only, US country code stripped — matches how phones are stored. */
+export function phoneKey(raw: string | null | undefined): string | null {
+  const digits = (raw ?? "").replace(/\D/g, "")
+  const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits
+  return ten.length === 10 ? ten : null
+}
+
+/**
+ * How long a failed employee is locked out. Escalates so a patient attacker gets
+ * slower, not just rate-limited: 5 wrong PINs buys 15 minutes, and once they've
+ * been locked out three times it's an hour.
+ */
+export function lockoutUntil(attempts: number): string {
+  const lockouts = Math.floor(attempts / MAX_PIN_ATTEMPTS)
+  const minutes = lockouts >= LONG_LOCK_AFTER_LOCKOUTS ? LONG_LOCK_MINUTES : LOCK_MINUTES
+  return new Date(Date.now() + minutes * 60_000).toISOString()
+}
+
+export function isLockedOut(lockedUntil: string | null): boolean {
+  return !!lockedUntil && new Date(lockedUntil).getTime() > Date.now()
+}
+
 // ---- session cookie: "<employeeId>.<expiresEpochMs>.<hmac>" ----
 
 async function hmacSign(message: string): Promise<string> {

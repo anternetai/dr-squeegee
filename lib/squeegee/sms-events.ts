@@ -102,6 +102,35 @@ export async function smsAppointmentConfirmed(args: {
 
 // Review ask after a completed job. Gated on GOOGLE_REVIEW_URL and de-duped so a
 // job completed by crew AND touched in the CRM only ever gets one review text.
+/**
+ * "On my way", sent once per job. Deduped the same way the review ask is: if the
+ * crew backs out of the status and taps it again, the customer doesn't get a
+ * second text telling them we're on the way again.
+ */
+export async function smsOnMyWayOnce(args: {
+  jobId: string
+  name: string
+  phone: string | null
+  etaMinutes: number
+}): Promise<SendResult | null> {
+  const supabase = getAdmin()
+  const { data: prior } = await supabase
+    .from("sms_messages")
+    .select("id")
+    .eq("kind", "on_my_way")
+    .eq("related_type", "job")
+    .eq("related_id", args.jobId)
+    .not("status", "eq", "blocked")
+    .limit(1)
+    .maybeSingle()
+  if (prior) return null
+
+  return dispatch(
+    { phone: args.phone, kind: "on_my_way", relatedType: "job", relatedId: args.jobId },
+    smsTemplates.crewOnMyWay(args.name, args.etaMinutes)
+  )
+}
+
 export async function smsReviewOnce(args: { jobId: string; name: string; phone: string | null }): Promise<SendResult | null> {
   const reviewUrl = process.env.GOOGLE_REVIEW_URL
   if (!reviewUrl) return null

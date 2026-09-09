@@ -108,6 +108,23 @@ async function assemble(inv: InvoiceJoin): Promise<ReceiptData | null> {
       : Promise.resolve({ data: null }),
   ])
 
+  // Only photos Anthony explicitly approved. Default is internal-only, so an
+  // unreviewed shot can never reach a customer.
+  const { data: photoRows } = inv.job_id
+    ? await supabase
+        .from("squeegee_job_photos")
+        .select("id, kind")
+        .eq("job_id", inv.job_id)
+        .eq("customer_visible", true)
+        .order("kind", { ascending: true })
+        .order("created_at", { ascending: true })
+    : { data: null }
+
+  const photos = ((photoRows ?? []) as { id: string; kind: string }[]).map((p) => ({
+    id: p.id,
+    kind: p.kind as "before" | "after",
+  }))
+
   const serviceTotal = Number(inv.amount) || 0
   const tip = Number(inv.tip_amount) || 0
 
@@ -180,6 +197,8 @@ async function assemble(inv: InvoiceJoin): Promise<ReceiptData | null> {
 
     jobServiceType: (job?.service_type as string) ?? null,
     servicedOn: (job?.completed_at as string) || (job?.appointment_date as string) || null,
+
+    photos,
   }
 }
 

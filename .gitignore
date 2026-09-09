@@ -46,3 +46,7 @@ next-env.d.ts
 .vercel
 .env*.local
 google-service-account.json
+
+# stray archives / editor backups
+*.bak
+*.tgz

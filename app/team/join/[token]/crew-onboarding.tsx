@@ -36,7 +36,7 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
     availability: prefill.availability,
     signature: "",
     agreed: false,
-    password: "",
+    pin: "",
     confirm: "",
   })
   const [busy, setBusy] = useState(false)
@@ -50,8 +50,8 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
 
   function next() {
     setError(null)
-    if (step === 3 && !form.email.trim()) {
-      setError("We need an email so you can log in.")
+    if (step === 3 && form.phone.replace(/\D/g, "").length !== 10) {
+      setError("We need your mobile number - it's how you log in.")
       return
     }
     if (step === 5) {
@@ -69,12 +69,12 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
 
   async function finish() {
     setError(null)
-    if (form.password.length < 8) {
-      setError("Password must be at least 8 characters.")
+    if (!/^\d{4}$/.test(form.pin)) {
+      setError("Your PIN must be 4 digits.")
       return
     }
-    if (form.password !== form.confirm) {
-      setError("Passwords don't match.")
+    if (form.pin !== form.confirm) {
+      setError("Those PINs don't match.")
       return
     }
     setBusy(true)
@@ -83,7 +83,7 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: form.email,
-        password: form.password,
+        pin: form.pin,
         legal_name: form.legal_name,
         phone: form.phone,
         address: form.address,
@@ -234,10 +234,28 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
         {/* 6 — Password */}
         {step === 6 && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold">Set your password</h2>
-            <p className="text-sm text-gray-400 -mt-2">You&apos;ll log in with your email and this password.</p>
-            <input className={inputCls} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Password (8+ characters)" autoComplete="new-password" />
-            <input className={inputCls} type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} placeholder="Confirm password" autoComplete="new-password" />
+            <h2 className="text-2xl font-bold">Pick a 4-digit PIN</h2>
+            <p className="text-sm text-gray-400 -mt-2">
+              You&apos;ll log in with your phone number and this PIN. Pick something you&apos;ll remember - not 1234.
+            </p>
+            <input
+              className={inputCls}
+              type="tel"
+              inputMode="numeric"
+              value={form.pin}
+              onChange={(e) => setForm({ ...form, pin: e.target.value.replace(/\D/g, "").slice(0, 4) })}
+              placeholder="4-digit PIN"
+              autoComplete="off"
+            />
+            <input
+              className={inputCls}
+              type="tel"
+              inputMode="numeric"
+              value={form.confirm}
+              onChange={(e) => setForm({ ...form, confirm: e.target.value.replace(/\D/g, "").slice(0, 4) })}
+              placeholder="Confirm PIN"
+              autoComplete="off"
+            />
           </div>
         )}
 

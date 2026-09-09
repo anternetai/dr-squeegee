@@ -5,6 +5,8 @@ import { JobDetailClient } from "@/components/squeegee/job-detail-client"
 import { JobInvoices } from "@/components/squeegee/job-invoices"
 import { JobActivity } from "@/components/squeegee/job-activity"
 import { JobAssign } from "@/components/squeegee/job-assign"
+import { JobCrewWork, type CrewPhoto } from "@/components/squeegee/job-crew-work"
+import { formatDuration, signPhotos, totalMs } from "@/lib/squeegee/crew"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
@@ -54,7 +56,7 @@ export default async function JobDetailPage({ params }: PageProps) {
     .eq("status", "active")
     .order("name")
 
-  const assignedEmployeeId = (job as { assigned_employee_id?: string | null }).assigned_employee_id ?? null
+  const assignedEmployeeId = job.assigned_employee_id ?? null
 
   // A finished job is a different screen than a live one. Once the work is done
   // and paid there is nothing left to quote, confirm, crew or delete — the only
@@ -71,6 +73,40 @@ export default async function JobDetailPage({ params }: PageProps) {
 
   const isPaid = Boolean(paidInvoice)
   const isDone = job.status === "complete" || isPaid
+
+  // What the crew did on this job: the clock (driven by their status taps) and
+  // the before/afters, each awaiting Anthony's call on customer visibility.
+  const [{ data: photoRows }, { data: segments }] = await Promise.all([
+    supabase
+      .from("squeegee_job_photos")
+      .select("id, kind, storage_path, customer_visible, created_at")
+      .eq("job_id", id)
+      .order("created_at", { ascending: true }),
+    supabase.from("squeegee_job_time").select("kind, started_at, ended_at").eq("job_id", id),
+  ])
+
+  const rows = (photoRows ?? []) as {
+    id: string
+    kind: string
+    storage_path: string
+    customer_visible: boolean
+  }[]
+  const signed = await signPhotos(supabase, rows.map((r) => r.storage_path))
+  const crewPhotos: CrewPhoto[] = rows.map((r) => ({
+    id: r.id,
+    kind: r.kind as "before" | "after",
+    url: signed[r.storage_path] ?? null,
+    customer_visible: r.customer_visible,
+  }))
+
+  const segs = (segments ?? []) as {
+    kind: "drive" | "work"
+    started_at: string
+    ended_at: string | null
+  }[]
+  const workMs = totalMs(segs, "work")
+  const driveMs = totalMs(segs, "drive")
+  const assignedName = (crew ?? []).find((c) => c.id === assignedEmployeeId)?.name ?? null
 
   // Server-only env — read here and pass down rather than exposing it publicly.
   const reviewUrl = process.env.GOOGLE_REVIEW_URL ?? null
@@ -104,6 +140,15 @@ export default async function JobDetailPage({ params }: PageProps) {
       />
       {/* Crew assignment is for work that still has to happen. */}
       {!isDone && <JobAssign jobId={job.id} employees={crew ?? []} current={assignedEmployeeId} />}
+      <JobCrewWork
+        crewName={assignedName}
+        fieldStatus={job.field_status ?? null}
+        claimedAt={job.claimed_at ?? null}
+        completedAt={job.completed_at ?? null}
+        driveLabel={driveMs > 0 ? formatDuration(driveMs) : null}
+        workLabel={workMs > 0 ? formatDuration(workMs) : null}
+        photos={crewPhotos}
+      />
       <JobInvoices job={job} quoteToken={latestQuote?.token ?? null} />
       <JobActivity jobId={job.id} />
     </div>

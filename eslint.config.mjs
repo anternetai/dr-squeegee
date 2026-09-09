@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // `.next/**` only matches the one at the repo root. Agent worktrees under
+    // .claude/ carry their own build output, and linting those minified chunks
+    // exhausts the V8 heap and kills `npm run lint` outright.
+    "**/.next/**",
+    ".claude/**",
   ]),
 ]);
 

@@ -7,6 +7,7 @@ import { statusClass, money } from "@/lib/crm/status"
 import { formatDistanceToNow } from "@/lib/squeegee/utils"
 import { AgingQuotes, type AgingItem } from "@/components/squeegee/aging-quotes"
 import { NeedsScheduling, type NeedsSchedulingItem } from "@/components/squeegee/needs-scheduling"
+import { UnclaimedJobs, type UnclaimedJobItem } from "@/components/squeegee/unclaimed-jobs"
 
 export const dynamic = "force-dynamic"
 
@@ -64,6 +65,31 @@ export default async function SqueegeePortalPage() {
     {} as Record<JobStatus, number>
   )
 
+  // Claim-pool safety net: scheduled work nobody has claimed, inside 24 hours.
+  // Anything further out is fine sitting on the board.
+  const unclaimedItems: UnclaimedJobItem[] = allJobs
+    .filter((j) => j.status === "scheduled" && !j.assigned_employee_id && j.appointment_date)
+    .map((j) => {
+      const at = new Date(`${j.appointment_date}T${(j.appointment_time ?? "08:00").slice(0, 5)}:00`)
+      const hoursOut = Math.round((at.getTime() - now.getTime()) / 3_600_000)
+      return {
+        id: j.id,
+        clientName: j.client_name,
+        serviceType: j.service_type,
+        whenLabel: at.toLocaleString(undefined, {
+          weekday: "short",
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+        hoursOut,
+      }
+    })
+    // Next 24 hours, and no more than a day overdue. Older unclaimed jobs are
+    // stale CRM rows, not an emergency, and mixing them in here would drown the
+    // one that actually starts this afternoon.
+    .filter((j) => j.hoursOut <= 24 && j.hoursOut >= -24)
+    .sort((a, b) => a.hoursOut - b.hoursOut)
+
   const totalRevenue = allJobs
     .filter((j) => j.status === "complete")
     .reduce((sum, j) => sum + (j.price || 0), 0)
@@ -115,9 +141,9 @@ export default async function SqueegeePortalPage() {
   // 45-day winnable window, biggest money first; older pending = probably dead, just counted.
   const WINNABLE_MS = 45 * 24 * 60 * 60 * 1000
   const agingItems = allAging
-    .filter((i) => Date.now() - new Date(i.createdAt).getTime() <= WINNABLE_MS)
+    .filter((i) => now.getTime() - new Date(i.createdAt).getTime() <= WINNABLE_MS)
     .sort((a, b) => b.amount - a.amount)
-  const staleItems = allAging.filter((i) => Date.now() - new Date(i.createdAt).getTime() > WINNABLE_MS)
+  const staleItems = allAging.filter((i) => now.getTime() - new Date(i.createdAt).getTime() > WINNABLE_MS)
   const staleTotal = staleItems.reduce((sum, i) => sum + i.amount, 0)
 
   const agingTotal = agingItems.reduce((sum, i) => sum + i.amount, 0)
@@ -175,6 +201,9 @@ export default async function SqueegeePortalPage() {
           href: `/crm/jobs?status=${status}`,
         }))}
       />
+
+      {/* Nobody is holding this job and it starts soon. Most urgent thing here. */}
+      <UnclaimedJobs items={unclaimedItems} />
 
       {/* Money waiting on a customer response */}
       <AgingQuotes items={agingItems} staleCount={staleItems.length} staleTotal={staleTotal} />

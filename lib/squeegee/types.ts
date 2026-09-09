@@ -16,6 +16,15 @@ export interface SqueegeeJob {
   client_id?: string | null
   google_calendar_event_id?: string | null
   cal_booking_uid?: string | null
+  completed_at?: string | null
+  completion_note?: string | null
+  reminder_sent_at?: string | null
+  // Crew fields. field_status is the crew's own axis and is independent of
+  // `status` above — see lib/squeegee/crew.ts.
+  assigned_employee_id?: string | null
+  field_status?: string | null
+  claimed_at?: string | null
+  crew_pay?: number | null
 }
 
 export const STATUS_ORDER: JobStatus[] = ["new", "quoted", "approved", "scheduled", "complete"]
