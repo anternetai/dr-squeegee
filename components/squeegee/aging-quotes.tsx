@@ -56,10 +56,13 @@ export function AgingQuotes({
   items,
   staleCount,
   staleTotal,
+  stuckCount = 0,
 }: {
   items: AgingItem[]
   staleCount: number
   staleTotal: number
+  /** Quotes still "pending" on jobs that already moved on — data, not leads. */
+  stuckCount?: number
 }) {
   const total = items.reduce((sum, i) => sum + (i.amount || 0), 0)
   const shown = items.slice(0, 8)
@@ -130,6 +133,14 @@ export function AgingQuotes({
               </p>
             )}
           </div>
+        )}
+        {stuckCount > 0 && (
+          <p className="border-t border-border px-6 py-2.5 text-xs text-muted-foreground">
+            {stuckCount} {stuckCount === 1 ? "quote is" : "quotes are"} still marked pending on jobs that already moved on —{" "}
+            <Link href="/crm/reconcile" className="text-[var(--crm-accent)] hover:underline">
+              Data health →
+            </Link>
+          </p>
         )}
       </CardContent>
     </Card>

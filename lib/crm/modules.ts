@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react"
 import {
-  LayoutDashboard, Gauge, Briefcase, Users, CalendarDays, HardHat,
+  LayoutDashboard, Briefcase, Users, CalendarDays, HardHat,
   MessageSquareHeart, FileText, CalendarRange, Sparkles, Receipt,
   MapPin, DoorOpen,
 } from "lucide-react"
@@ -127,8 +127,7 @@ export const ALL_MODULES: ModuleManifest[] = [CRM, QUOTING, DOORS]
 
 /** Nav that belongs to the shell itself and survives any module being removed. */
 export const CORE_NAV: NavEntry[] = [
-  { label: "Dashboard", href: "/crm", icon: LayoutDashboard },
-  { label: "Command", href: "/crm/ops", icon: Gauge, hint: "Today at a glance" },
+  { label: "Dashboard", href: "/crm", icon: LayoutDashboard, hint: "Today, money, who to call" },
 ]
 
 function installedIds(): ModuleId[] {

@@ -4,6 +4,7 @@ import { SqueegeeJob, JobStatus } from "@/lib/squeegee/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
 import { NeedsScheduling, type NeedsSchedulingItem } from "@/components/squeegee/needs-scheduling"
+import { loadSnapshot, jobStates } from "@/lib/squeegee/metrics"
 
 export const dynamic = "force-dynamic"
 
@@ -124,7 +125,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
 
   const supabase = getAdmin()
 
-  const [{ data: rangeJobs }, { data: weekJobsRaw }, { data: needsSchedJobs }] = await Promise.all([
+  const [{ data: rangeJobs }, { data: weekJobsRaw }, snap] = await Promise.all([
     supabase
       .from("squeegee_jobs")
       .select("*")
@@ -139,12 +140,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
       .lte("appointment_date", weekDays[6])
       .not("appointment_date", "is", null)
       .order("appointment_time", { ascending: true }),
-    supabase
-      .from("squeegee_jobs")
-      .select("id, client_name, service_type, price, created_at")
-      .eq("status", "approved")
-      .is("appointment_date", null)
-      .order("created_at", { ascending: true }),
+    loadSnapshot(supabase),
   ])
 
   const monthJobsByDate: Record<string, SqueegeeJob[]> = {}
@@ -159,13 +155,18 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     ;(weekJobsByDate[job.appointment_date] ||= []).push(job)
   }
 
-  const needsSchedulingItems: NeedsSchedulingItem[] = (needsSchedJobs || []).map((j) => ({
-    id: j.id as string,
-    clientName: j.client_name as string,
-    serviceType: j.service_type as string,
-    amount: j.price != null ? Number(j.price) : null,
-    createdAt: j.created_at as string,
-  }))
+  // Won, no date — derived the same way the dashboard derives it, so a job
+  // that was done and paid can never sit here because its status lagged.
+  const needsSchedulingItems: NeedsSchedulingItem[] = jobStates(snap)
+    .filter((s) => s.state === "needs_scheduling")
+    .sort((a, b) => (a.job.created_at < b.job.created_at ? -1 : 1))
+    .map((s) => ({
+      id: s.job.id,
+      clientName: s.job.client_name,
+      serviceType: s.job.service_type ?? "Service",
+      amount: s.closeOutAmount,
+      createdAt: s.job.created_at,
+    }))
 
   // Prev/next month, wrapping year correctly.
   const prevMonth = month === 1 ? 12 : month - 1

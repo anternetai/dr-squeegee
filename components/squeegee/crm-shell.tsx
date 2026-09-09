@@ -12,16 +12,18 @@ import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command"
 
-/* The four destinations that earn a thumb on the bottom bar. Anything else
-   lives behind More — the field phone is one-handed, not a nav directory. */
+/* The destinations that earn a thumb on the bottom bar. Anything else lives
+   behind More — the field phone is one-handed, not a nav directory. Clients
+   joined the bar in CRM v3: it is now the "who do I call" list, not a directory. */
 function mobilePrimary(): NavEntry[] {
   const groups = navGroups()
   const flat = groups.flatMap((g) => g.items)
   const wanted = [
     "/crm",
     "/crm/jobs",
-    isInstalled("doors") ? "/crm/field" : null,
+    "/crm/clients",
     isInstalled("quoting") ? "/crm/quotes/new" : null,
+    isInstalled("doors") ? "/crm/field" : null,
   ].filter(Boolean) as string[]
   return wanted
     .map((href) => flat.find((e) => e.href === href))
