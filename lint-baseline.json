@@ -1,0 +1,21 @@
+{
+  "generated": "2026-09-09",
+  "total": 31,
+  "errors": {
+    "app/bumblebread/onboarding/page.tsx": 1,
+    "app/crm/page.tsx": 2,
+    "app/crm/team/[id]/employee-editor.tsx": 1,
+    "app/crm/territories/[name]/page.tsx": 3,
+    "app/crm/territories/page.tsx": 2,
+    "app/get-quote/landing-content.tsx": 1,
+    "app/review/review-client.tsx": 6,
+    "components/portal/the-move/territory-map.tsx": 3,
+    "components/scroll-video-hero.tsx": 1,
+    "components/squeegee/clients-table.tsx": 4,
+    "components/squeegee/crm-shell.tsx": 2,
+    "components/squeegee/followups-board.tsx": 1,
+    "components/ui/sidebar.tsx": 1,
+    "lib/squeegee/calcom.ts": 1,
+    "voice-agent/n8n/test-nodes.js": 2
+  }
+}

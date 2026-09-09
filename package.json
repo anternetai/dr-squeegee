@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types scripts/test.mjs",
+    "verify": "npm run typecheck && npm run lint:gate && npm run test",
+    "verify:full": "npm run verify && npm run build",
+    "lint:gate": "node scripts/lint-gate.mjs"
   },
   "dependencies": {
     "@radix-ui/react-collapsible": "^1.1.12",

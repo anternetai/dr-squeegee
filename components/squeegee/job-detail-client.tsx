@@ -42,6 +42,7 @@ const STATUS_COLORS: Record<JobStatus, string> = {
   approved: "bg-[var(--crm-idle-bg)] text-[var(--crm-idle)] dark:bg-[var(--crm-idle-bg)] dark:text-[var(--crm-idle)] border-[var(--crm-idle-bg)] dark:border-[var(--crm-idle-bg)]",
   scheduled: "bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)] border-[var(--crm-accent-line)] dark:border-[var(--crm-accent-line)]",
   complete: "bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:bg-[var(--crm-accent-weak)] dark:text-[var(--crm-accent)] border-[var(--crm-accent-line)] dark:border-[var(--crm-accent-line)]",
+  cancelled: "bg-[var(--crm-dead-bg)] text-[var(--crm-dead)] dark:bg-[var(--crm-dead-bg)] dark:text-[var(--crm-dead)] border-[var(--crm-dead-bg)] dark:border-[var(--crm-dead-bg)]",
 }
 
 interface Props {

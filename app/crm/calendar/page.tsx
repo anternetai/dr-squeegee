@@ -23,6 +23,7 @@ const CHIP_COLORS: Record<JobStatus, string> = {
   approved: "bg-[var(--crm-idle-bg)] text-[var(--crm-idle)] dark:text-[var(--crm-idle)] border-[var(--crm-idle-bg)]",
   scheduled: "bg-[var(--crm-accent-weak)] text-[#1F6B54] dark:text-[#5FBFA0] border-[var(--crm-accent)]/25",
   complete: "bg-[var(--crm-accent-weak)] text-[var(--crm-accent)] dark:text-[var(--crm-accent)] border-[var(--crm-accent-weak)]",
+  cancelled: "bg-[var(--crm-dead-bg)] text-[var(--crm-dead)] dark:text-[var(--crm-dead)] border-[var(--crm-dead-bg)]",
 }
 
 const MONTH_NAMES = [

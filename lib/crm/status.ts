@@ -21,6 +21,7 @@ export const STATUS_TONE: Record<JobStatus, Tone> = {
   approved: "attention",  // won, but sitting with no date
   scheduled: "accent",    // on the calendar
   complete: "accent",     // earned
+  cancelled: "dead",      // lost; off the board
 }
 
 export const TONE_CLASS: Record<Tone, string> = {
