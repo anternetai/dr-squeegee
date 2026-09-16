@@ -174,7 +174,7 @@ export function CrewOnboarding({ token, prefill }: { token: string; prefill: Pre
             <Labeled label="Legal full name (for payroll)">
               <input className={inputCls} value={form.legal_name} onChange={(e) => setForm({ ...form, legal_name: e.target.value })} placeholder="As it appears on your ID" />
             </Labeled>
-            <Labeled label="Email (your login)">
+            <Labeled label="Email (optional)">
               <input className={inputCls} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@email.com" inputMode="email" />
             </Labeled>
             <Labeled label="Phone">

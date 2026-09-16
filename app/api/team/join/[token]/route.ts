@@ -8,6 +8,7 @@ import {
   phoneKey,
   sessionCookieOptions,
 } from "@/lib/squeegee/employee-auth"
+import { joinMode } from "@/lib/squeegee/employees"
 
 function getAdmin() {
   return createClient(
@@ -25,16 +26,22 @@ export async function GET(
   const supabase = getAdmin()
   const { data: emp } = await supabase
     .from("squeegee_employees")
-    .select("id, name, phone, email, role, status, address, emergency_contact_name, emergency_contact_phone, availability, onboarded_at")
+    .select("id, name, phone, email, role, status, address, emergency_contact_name, emergency_contact_phone, availability, onboarded_at, pin_hash")
     .eq("invite_token", token)
     .single()
 
   if (!emp) {
     return NextResponse.json({ error: "This invite link is invalid or expired." }, { status: 404 })
   }
-  if (emp.onboarded_at) {
+  const mode = joinMode(emp)
+  if (mode === "done") {
     // Already set up — send them to log in rather than redo onboarding.
     return NextResponse.json({ alreadyOnboarded: true, name: emp.name })
+  }
+  if (mode === "set_pin") {
+    // Set up, no PIN: the link only collects a PIN. Nothing else is prefilled
+    // because nothing else is asked.
+    return NextResponse.json({ setPin: true, name: emp.name })
   }
 
   return NextResponse.json({
@@ -61,21 +68,45 @@ export async function POST(
 
     const { data: emp } = await supabase
       .from("squeegee_employees")
-      .select("id, onboarded_at")
+      .select("id, onboarded_at, pin_hash")
       .eq("invite_token", token)
       .single()
 
     if (!emp) {
       return NextResponse.json({ error: "This invite link is invalid or expired." }, { status: 404 })
     }
-    if (emp.onboarded_at) {
+    const mode = joinMode(emp)
+    if (mode === "done") {
       return NextResponse.json({ error: "This account is already set up. Please log in." }, { status: 409 })
+    }
+
+    const pin = String(body.pin ?? "")
+
+    if (mode === "set_pin") {
+      // PIN only. The rest of the row — legal name, agreement, availability —
+      // was captured when they onboarded and is not up for rewrite from a
+      // link; the body is ignored beyond the PIN so a crafted request can't
+      // use a PIN-reset link to edit the employee record.
+      if (!isValidPin(pin)) {
+        return NextResponse.json({ error: "Your PIN must be 4 digits." }, { status: 400 })
+      }
+      const { error } = await supabase
+        .from("squeegee_employees")
+        .update({ pin_hash: await hashPin(pin), pin_attempts: 0, pin_locked_until: null })
+        .eq("id", emp.id)
+        .is("pin_hash", null) // two taps on Save can't race past the first
+      if (error) {
+        console.error("Crew set-PIN update error:", error)
+        return NextResponse.json({ error: "Could not save your PIN. Please try again." }, { status: 500 })
+      }
+      const response = NextResponse.json({ ok: true })
+      response.cookies.set(CREW_COOKIE, await createSessionValue(emp.id), sessionCookieOptions())
+      return response
     }
 
     // Phone + PIN is how the crew logs in, so the phone is the identifier and
     // both are required. Email is optional — plenty of crew don't check one.
     const phone = phoneKey(body.phone)
-    const pin = String(body.pin ?? "")
     if (!phone) {
       return NextResponse.json({ error: "A valid mobile number is required." }, { status: 400 })
     }

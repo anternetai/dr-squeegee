@@ -50,7 +50,15 @@ function joinLink(token: string): string {
   return `${origin}/team/join/${token}`
 }
 
-export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; jobs: AssignedJob[] }) {
+export function EmployeeEditor({
+  employee,
+  jobs,
+  hasPin,
+}: {
+  employee: EmployeeDetail
+  jobs: AssignedJob[]
+  hasPin: boolean
+}) {
   const router = useRouter()
   const [form, setForm] = useState({
     name: employee.name,
@@ -69,10 +77,21 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
   const [legalName, setLegalName] = useState(employee.legal_name ?? "")
   const [checklist, setChecklist] = useState<Record<string, boolean>>(employee.onboarding_checklist ?? {})
   const [token, setToken] = useState(employee.invite_token)
+  const [serverToken, setServerToken] = useState(employee.invite_token)
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Reset PIN lives in the health panel below and rotates invite_token, then
+  // calls router.refresh() -- which re-renders the server component but keeps
+  // this one's state, so `token` would still be the rotated-away one and the
+  // link block above would hand Anthony a dead link to text. When the server
+  // sends a different token, adopt it.
+  if (serverToken !== employee.invite_token) {
+    setServerToken(employee.invite_token)
+    setToken(employee.invite_token)
+  }
 
   function taskDone(key: string, auto?: boolean): boolean {
     if (auto) {
@@ -129,18 +148,21 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
     router.refresh()
   }
 
+  // A set-up crew member who just needs a PIN keeps their onboarding: rotating
+  // their link goes through reset_pin, which only reissues the token. regen_invite
+  // would wipe onboarded_at and send them back through the whole 7-step flow.
   async function regenInvite() {
     setBusy(true)
     const res = await fetch(`/api/crm/employees/${employee.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "regen_invite" }),
+      body: JSON.stringify({ action: needsPin ? "reset_pin" : "regen_invite" }),
     })
     const d = await res.json()
     setBusy(false)
     if (res.ok && d.invite_token) {
       setToken(d.invite_token)
-      setForm((f) => ({ ...f, status: "invited" }))
+      if (!needsPin) setForm((f) => ({ ...f, status: "invited" }))
     }
   }
 
@@ -156,6 +178,10 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
   }
 
   const pending = form.status === "invited" || form.status === "onboarding"
+  // Set up but no PIN: the same join link, but it only asks them for a PIN.
+  // This is every pre-v2 crew row and every PIN reset until they tap it.
+  const needsPin = !pending && !hasPin && !!employee.onboarded_at
+  const first = (form.name || "there").trim().split(/\s+/)[0]
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -172,20 +198,28 @@ export function EmployeeEditor({ employee, jobs }: { employee: EmployeeDetail; j
         </div>
       </div>
 
-      {/* Invite link for un-onboarded crew */}
-      {pending && token && (
+      {/* Invite link for un-onboarded crew, or a PIN link for set-up crew with no PIN */}
+      {(pending || needsPin) && token && (
         <div className="rounded-xl border border-[var(--crm-attention-bg)] bg-[var(--crm-attention-bg)] p-4 space-y-3">
-          <p className="text-sm font-medium">Setup pending — send them their invite link:</p>
+          <p className="text-sm font-medium">
+            {needsPin
+              ? "No PIN — they can't log in until they pick one. Send them this link:"
+              : "Setup pending — send them their invite link:"}
+          </p>
           <div className="rounded-lg bg-background border border-border px-3 py-2 text-xs break-all">{joinLink(token)}</div>
           <div className="flex flex-wrap gap-2">
             {form.phone && (
               <SendTextButton
                 phone={form.phone}
-                body={`Hey ${(form.name || "there").trim().split(/\s+/)[0]}, welcome to the Dr. Squeegee crew! Set up your crew account at the link below (takes 2 min).`}
+                body={
+                  needsPin
+                    ? `Hey ${first}, tap the link below to pick your 4-digit PIN for the Dr. Squeegee crew app. You'll log in with your phone number and that PIN.`
+                    : `Hey ${first}, welcome to the Dr. Squeegee crew! Set up your crew account at the link below (takes 2 min).`
+                }
                 link={joinLink(token)}
                 kind="crew_invite"
-                label="Send invite"
-                sentLabel="Invite sent"
+                label={needsPin ? "Send PIN link" : "Send invite"}
+                sentLabel="Sent"
                 variant="default"
                 className="bg-[var(--crm-accent)] hover:bg-[#1F6B54]"
               />

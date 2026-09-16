@@ -121,7 +121,7 @@ export default async function EmployeeDetailPage({
 
   return (
     <div className="space-y-5">
-      <EmployeeEditor employee={employeeSafe as EmployeeDetail} jobs={(jobs ?? []) as AssignedJob[]} />
+      <EmployeeEditor employee={employeeSafe as EmployeeDetail} jobs={(jobs ?? []) as AssignedJob[]} hasPin={!!pin_hash} />
       <CrewHealth
         employeeId={id}
         weekWorkLabel={formatDuration(totalMs(segs, "work"))}

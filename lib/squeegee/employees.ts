@@ -54,3 +54,21 @@ export function payLabel(payType: string, rate: number | null): string {
 export function generateInviteToken(): string {
   return randomBytes(8).toString("hex")
 }
+
+// What a /team/join/[token] link should do for the row it resolves to.
+//
+//   onboard — never set up: the full welcome → info → agreement → PIN flow.
+//   set_pin — set up, but no PIN on file. Either they onboarded under the old
+//             email+password portal, or Anthony reset a forgotten PIN. They pick
+//             a PIN and nothing else; the agreement they signed stands.
+//   done    — set up and has a PIN: the link is spent, send them to log in.
+//
+// Kept pure (no Supabase, no Next) so it can be unit-tested; both the page and
+// the API route call this so they can never disagree about which screen to show.
+export type JoinMode = "onboard" | "set_pin" | "done"
+
+export function joinMode(emp: { onboarded_at: string | null; pin_hash: string | null }): JoinMode {
+  if (!emp.onboarded_at) return "onboard"
+  if (!emp.pin_hash) return "set_pin"
+  return "done"
+}

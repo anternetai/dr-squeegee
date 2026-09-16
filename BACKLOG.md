@@ -1,0 +1,50 @@
+# Backlog
+
+
+## Crew Portal v2 — deferred at ship (2026-09-08)
+
+Shipped in `5c3ad25`. These were found in review and deliberately not fixed.
+
+- **Offline photo-upload queue.** `app/team/jobs/[id]/job-view.tsx` `PhotoRail.upload()`
+  is a plain `fetch`; a failed upload surfaces an inline error rather than retrying.
+  Nothing is silently lost, but there is no IndexedDB queue, and SPEC §6 step 4 called
+  one load-bearing — a crew member on a bad-signal driveway is the normal case, not the
+  exotic one. **Anthony's call: ship without it.** Adding an untested IndexedDB layer at
+  review time was the bigger risk. Build it before a second crew member is hired.
+- **PIN lockout is distinguishable from an unknown phone.** After 5 wrong PINs a real
+  phone gets `429` + "Too many tries…"; an unknown phone always gets `401` + the generic
+  failure. SPEC §4 asked for these to be indistinguishable. The leak is "given a phone
+  number, learn whether that person works here" — self-limiting against a roster of one,
+  since triggering it locks the real user out. **Anthony's call: leave as is.** Hiding it
+  costs the crew a real explanation on a driveway; revisit if the roster grows.
+- **Login scans up to 200 employees in JS.** `app/api/team/auth/login/route.ts` loads the
+  roster and matches a normalized `phoneKey` in application code instead of querying a
+  normalized phone column. Correct and fast at crew size 1–10; wrong shape at 50.
+- **`openSegment()` ignores its insert error.** `lib/squeegee/crew.ts`. A double-tap that
+  races the `squeegee_job_time_one_open_per_employee` unique partial index drops the
+  segment silently — the index does stop the bad write, but the crew member gets no
+  feedback that their timer did not start.
+- **`POST /api/team/push/subscribe` accepts any `endpoint` string.** A logged-in crew
+  member could point web-push at an arbitrary URL. Standard web-push SSRF surface, and
+  the payload is encrypted, so the impact is low. Host-allowlisting is the hardening.
+- **Doc drift: the service worker.** Served at `/team-sw.js` (from `public/team-sw.js`),
+  not the `/team/sw.js` the spec names. Registration passes `{ scope: "/team" }`, which
+  is legal because the script directory `/` covers `/team`. No code fix needed — fix the
+  spec text.
+- **`npm run lint` exits 1 on a pre-existing baseline: 29 errors / 42 warnings**, none of
+  them in a file Crew Portal v2 touched (verified by intersecting the changeset with the
+  eslint JSON report). Worst offenders: `app/review/review-client.tsx` (6),
+  `components/squeegee/clients-table.tsx` (4), `components/ui/sidebar.tsx` (shadcn
+  boilerplate calling `Math.random` in render). Vercel does not run eslint during
+  `next build`, so this never blocks a deploy — which is exactly why it has been allowed
+  to accumulate. Worth a lint-baseline gate like the one the anthill repo has.
+
+## Crew PIN set/reset — deferred (2026-09-16)
+
+- **/crm/team list has no "no PIN" badge.** An onboarded crew member with no PIN shows as
+  plain Active in the list; the link only appears on their detail page. Add a badge on the
+  card when the roster grows past one.
+- **PIN reset does not revoke existing crew sessions.** `crew_session` is a stateless HMAC
+  cookie (30 days); reset_pin wipes the PIN but a phone already logged in stays logged in.
+  Fine for a forgotten PIN, wrong for a lost phone — add a session-version column if that
+  case ever matters.

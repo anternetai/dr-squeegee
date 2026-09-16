@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js"
 import Link from "next/link"
 import { CrewOnboarding } from "./crew-onboarding"
+import { CrewSetPin } from "./crew-set-pin"
+import { joinMode } from "@/lib/squeegee/employees"
 
 export const dynamic = "force-dynamic"
 
@@ -17,9 +19,11 @@ export default async function CrewJoinPage({
   params: Promise<{ token: string }>
 }) {
   const { token } = await params
+  // pin_hash is read only to decide which screen to show. It is never passed to
+  // a client component: CrewSetPin gets the token and a name, nothing else.
   const { data: emp } = await getAdmin()
     .from("squeegee_employees")
-    .select("name, phone, email, role, address, emergency_contact_name, emergency_contact_phone, availability, onboarded_at")
+    .select("name, phone, email, role, address, emergency_contact_name, emergency_contact_phone, availability, onboarded_at, pin_hash")
     .eq("invite_token", token)
     .single()
 
@@ -32,7 +36,13 @@ export default async function CrewJoinPage({
     )
   }
 
-  if (emp.onboarded_at) {
+  const mode = joinMode(emp)
+
+  if (mode === "set_pin") {
+    return <CrewSetPin token={token} name={emp.name} />
+  }
+
+  if (mode === "done") {
     return (
       <Centered>
         <p className="text-lg font-semibold">You&apos;re already set up, {emp.name.split(" ")[0]}.</p>

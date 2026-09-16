@@ -50,6 +50,15 @@ export async function PATCH(
     update.invite_token = generateInviteToken()
     update.status = "invited"
     update.onboarded_at = null
+  } else if (body.action === "reset_pin") {
+    // Forgotten PIN, or a crew member from the email+password era who never had
+    // one. Wipe the PIN and hand out a fresh join link; /team/join/[token] sees
+    // "onboarded, no PIN" and asks for a PIN only. Anthony never picks it —
+    // the employee does (SPEC §4). The signed agreement and status stand.
+    update.invite_token = generateInviteToken()
+    update.pin_hash = null
+    update.pin_attempts = 0
+    update.pin_locked_until = null
   } else {
     if (typeof body.name === "string" && body.name.trim()) update.name = body.name.trim()
     if ("phone" in body) update.phone = body.phone ? String(body.phone) : null

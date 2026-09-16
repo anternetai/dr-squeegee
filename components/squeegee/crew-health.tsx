@@ -48,6 +48,20 @@ export function CrewHealth({
     router.refresh()
   }
 
+  // Wipes their PIN and issues a fresh join link that asks for a new one. The
+  // link appears at the top of this page after the refresh; Anthony sends it.
+  async function resetPin() {
+    if (!window.confirm("Reset their PIN? They can't log in until they pick a new one from the link.")) return
+    setBusy(true)
+    await fetch(`/api/crm/employees/${employeeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "reset_pin" }),
+    })
+    setBusy(false)
+    router.refresh()
+  }
+
   return (
     <div className="rounded-xl border border-[var(--crm-border)] bg-[var(--crm-panel)] p-4 space-y-3">
       <h2 className="font-semibold">This week</h2>
@@ -105,20 +119,31 @@ export function CrewHealth({
         <span className="inline-flex items-center gap-2 text-muted-foreground">
           <KeyRound className="h-4 w-4" />
           {!hasPin
-            ? "No PIN set — they can't log in yet."
+            ? "No PIN set — they can't log in yet. Their link is at the top of this page."
             : locked
               ? "Locked out from too many wrong PINs."
               : "PIN set."}
         </span>
-        {locked && (
-          <button
-            onClick={unlock}
-            disabled={busy}
-            className="shrink-0 rounded-md border border-[var(--crm-border)] px-2.5 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60"
-          >
-            Unlock now
-          </button>
-        )}
+        <span className="flex shrink-0 gap-2">
+          {locked && (
+            <button
+              onClick={unlock}
+              disabled={busy}
+              className="rounded-md border border-[var(--crm-border)] px-2.5 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60"
+            >
+              Unlock now
+            </button>
+          )}
+          {hasPin && (
+            <button
+              onClick={resetPin}
+              disabled={busy}
+              className="rounded-md border border-[var(--crm-border)] px-2.5 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60"
+            >
+              Reset PIN
+            </button>
+          )}
+        </span>
       </div>
     </div>
   )
