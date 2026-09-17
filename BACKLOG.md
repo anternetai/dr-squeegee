@@ -88,3 +88,9 @@ Shipped in `5c3ad25`. These were found in review and deliberately not fixed.
   one rule in two places, keep them in step.
 - **Tips split across a two-person crew** — one assignee per job today; when a job has two techs the
   tip needs a split rule.
+- **Cancelling a job leaves the crew clock running** (PATCH status → cancelled). Same class as the
+  completion fix; the pay call (is a cancelled drive paid to the cancel moment?) is Anthony's.
+- **`closeJobClock` / `closeOpenSegment` swallow errors silently** — a failed close means pay keeps
+  accruing with nothing in the logs. Add a `console.error`.
+- **Finishing a scheduled job from the CRM cancels its Cal.com booking** (`leaveScheduled` runs for
+  `complete` too, despite the comment saying it's exempt). Pre-existing, unrelated to pay.
