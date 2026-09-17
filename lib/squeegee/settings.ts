@@ -97,10 +97,24 @@ export async function loadSettings(sb: SupabaseClient): Promise<CrmSettings> {
   return parseSettings((data ?? []) as { key: string; value: unknown }[])
 }
 
-/** Write one key. Callers validate the shape first (see the settings route). */
+/**
+ * Write one key. Callers validate the shape first (see the settings route).
+ *
+ * `null` CLEARS the setting by deleting the row: squeegee_settings.value is
+ * `jsonb not null`, so an upsert of null violates the constraint. "Unset" is the
+ * absence of a row, and parseSettings already falls back to the default for one
+ * that isn't there.
+ */
 export async function saveSetting(sb: SupabaseClient, key: SettingsKey, value: unknown): Promise<void> {
+  if (value === null) return clearSetting(sb, key)
   const { error } = await sb
     .from("squeegee_settings")
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" })
   if (error) throw new Error(`saveSetting(${key}): ${error.message}`)
+}
+
+/** Remove a key so it falls back to its default. */
+export async function clearSetting(sb: SupabaseClient, key: SettingsKey): Promise<void> {
+  const { error } = await sb.from("squeegee_settings").delete().eq("key", key)
+  if (error) throw new Error(`clearSetting(${key}): ${error.message}`)
 }

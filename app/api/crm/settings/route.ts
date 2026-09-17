@@ -80,14 +80,20 @@ export async function PATCH(request: NextRequest) {
   const supabase = getAdmin()
   const written: SettingsKey[] = []
 
-  for (const key of SETTINGS_KEYS) {
-    if (!(key in body)) continue
-    const value = coerce(key, (body as Record<string, unknown>)[key])
-    if (value === undefined) {
-      return NextResponse.json({ error: `That ${key.replace(/_/g, " ")} value isn't valid.` }, { status: 400 })
+  try {
+    for (const key of SETTINGS_KEYS) {
+      if (!(key in body)) continue
+      const value = coerce(key, (body as Record<string, unknown>)[key])
+      if (value === undefined) {
+        return NextResponse.json({ error: `That ${key.replace(/_/g, " ")} value isn't valid.` }, { status: 400 })
+      }
+      // saveSetting treats null as "clear it" — the value column is NOT NULL.
+      await saveSetting(supabase, key, value)
+      written.push(key)
     }
-    await saveSetting(supabase, key, value)
-    written.push(key)
+  } catch (err) {
+    console.error("Settings save error:", err)
+    return NextResponse.json({ error: "Could not save that setting." }, { status: 500 })
   }
 
   if (written.length === 0) {
