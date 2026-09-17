@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation"
 import { getSessionEmployee } from "@/lib/squeegee/employee-auth"
-import { getCrewAdmin, signPhotos, totalMs } from "@/lib/squeegee/crew"
+import { getCrewAdmin, serviceList, signPhotos, totalMs } from "@/lib/squeegee/crew"
 import { JobView, type JobPhoto, type CrewJobDetail } from "./job-view"
 
 export const dynamic = "force-dynamic"
@@ -31,7 +31,7 @@ export default async function CrewJobPage({ params }: { params: Promise<{ id: st
   const [{ data: photoRows }, { data: segments }] = await Promise.all([
     supabase
       .from("squeegee_job_photos")
-      .select("id, kind, storage_path, created_at")
+      .select("id, kind, service, storage_path, created_at")
       .eq("job_id", id)
       .order("created_at", { ascending: true }),
     supabase
@@ -43,6 +43,7 @@ export default async function CrewJobPage({ params }: { params: Promise<{ id: st
   const rows = (photoRows ?? []) as {
     id: string
     kind: string
+    service: string | null
     storage_path: string
   }[]
   const urls = await signPhotos(
@@ -53,6 +54,7 @@ export default async function CrewJobPage({ params }: { params: Promise<{ id: st
   const photos: JobPhoto[] = rows.map((r) => ({
     id: r.id,
     kind: r.kind as "before" | "after",
+    service: r.service ?? null,
     url: urls[r.storage_path] ?? null,
   }))
 
@@ -66,6 +68,7 @@ export default async function CrewJobPage({ params }: { params: Promise<{ id: st
     <JobView
       job={job as unknown as CrewJobDetail}
       photos={photos}
+      services={serviceList(job.service_type)}
       workedMs={totalMs(segs, "work")}
       driveMs={totalMs(segs, "drive")}
       running={segs.some((s) => !s.ended_at)}

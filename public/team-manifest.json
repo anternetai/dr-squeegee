@@ -1,0 +1,29 @@
+{
+  "name": "Dr. Squeegee Crew",
+  "short_name": "Squeegee Crew",
+  "description": "Dr. Squeegee crew portal — your jobs, your schedule, your hours.",
+  "start_url": "/team",
+  "scope": "/team",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

@@ -7,7 +7,9 @@ export const metadata: Metadata = {
   title: "Dr. Squeegee | Crew",
   description: "Dr. Squeegee crew portal — your jobs, your schedule.",
   robots: { index: false, follow: false },
-  manifest: "/crm-manifest.json",
+  // NOT crm-manifest.json: its start_url is /crm, so an installed crew app used
+  // to open the CRM login instead of the crew board.
+  manifest: "/team-manifest.json",
   appleWebApp: {
     capable: true,
     title: "Squeegee Crew",

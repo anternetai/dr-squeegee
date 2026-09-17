@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -19,9 +19,11 @@ import {
   formatDuration,
   nextStep,
   photoGateReason,
+  stepReached,
   type FieldStepKey,
 } from "@/lib/squeegee/crew"
 import { arrivalWindow } from "../../team-view"
+import { CameraSheet } from "./camera-sheet"
 
 export interface CrewJobDetail {
   id: string
@@ -40,47 +42,36 @@ export interface CrewJobDetail {
 export interface JobPhoto {
   id: string
   kind: "before" | "after"
+  /** Which service this covers. null = taken before the rule existed (wildcard). */
+  service: string | null
   url: string | null
 }
 
 const ETA_PRESETS = [5, 10, 15, 30, 45, 60]
-const MAX_EDGE = 1600
-const QUALITY = 0.8
 
-/**
- * Shrink before upload. A raw phone photo is 3-4MB; this lands around 250KB.
- * Not an optimisation — at full size the storage tier is gone in a few months.
- */
-async function compress(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" })
-  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height))
-  const w = Math.round(bitmap.width * scale)
-  const h = Math.round(bitmap.height * scale)
-  const canvas = document.createElement("canvas")
-  canvas.width = w
-  canvas.height = h
-  const ctx = canvas.getContext("2d")
-  if (!ctx) throw new Error("no canvas")
-  ctx.drawImage(bitmap, 0, 0, w, h)
-  bitmap.close()
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("Could not process that photo."))),
-      "image/jpeg",
-      QUALITY
-    )
-  })
+/** Which camera is open, and which service it opened on. */
+interface SheetState {
+  kind: "before" | "after"
+  service?: string
+}
+
+/** The "Did you take pictures?" modal: asking, or listing what's still missing. */
+interface AskState {
+  kind: "before" | "after"
+  stage: "ask" | "missing"
 }
 
 export function JobView({
   job: initial,
   photos: initialPhotos,
+  services,
   workedMs,
   driveMs,
   running,
 }: {
   job: CrewJobDetail
   photos: JobPhoto[]
+  services: string[]
   workedMs: number
   driveMs: number
   running: boolean
@@ -93,6 +84,8 @@ export function JobView({
   const [askEta, setAskEta] = useState(false)
   const [note, setNote] = useState("")
   const [confirming, setConfirming] = useState(false)
+  const [ask, setAsk] = useState<AskState | null>(null)
+  const [sheet, setSheet] = useState<SheetState | null>(null)
 
   // Live-ticking work timer. Only counts while a segment is actually open.
   const [tick, setTick] = useState(0)
@@ -103,17 +96,13 @@ export function JobView({
   }, [running, job.status])
 
   const step = nextStep(job)
-  // Interim: until photos carry a service, treat every photo as a wildcard so the
-  // gate reduces to "at least one after photo". Builder A replaces this.
-  const gate = photoGateReason(
-    "after",
-    ["Job"],
-    photos.map((p) => ({ kind: p.kind, service: null }))
-  )
+  const beforeGate = photoGateReason("before", services, photos)
+  const afterGate = photoGateReason("after", services, photos)
   const sentence = fieldStateSentence(job)
   const phone = job.client_phone?.replace(/[^0-9]/g, "")
   const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(job.address)}`
   const liveWorkedMs = workedMs + (running && job.field_status === "in_progress" ? tick * 30_000 : 0)
+  const first = job.client_name.trim().split(/\s+/)[0]
 
   async function advance(to: FieldStepKey, etaMinutes?: number) {
     setBusy(true)
@@ -154,6 +143,28 @@ export function JobView({
     router.refresh()
   }
 
+  /**
+   * "Yes, I took them" — believe them only as far as the photos do. With the gate
+   * clear this is the tap that starts the job; without it the modal turns into the
+   * shortest possible list of what's missing and one button to go shoot it.
+   */
+  function answeredYes() {
+    if (!ask) return
+    const gate = ask.kind === "before" ? beforeGate : afterGate
+    if (gate) {
+      setAsk({ ...ask, stage: "missing" })
+      return
+    }
+    setAsk(null)
+    if (ask.kind === "before") void advance("in_progress")
+    else setConfirming(true)
+  }
+
+  function openCamera(kind: "before" | "after", service?: string) {
+    setAsk(null)
+    setSheet({ kind, service })
+  }
+
   return (
     <div className="mx-auto max-w-lg px-4 pb-24">
       <header className="flex items-center gap-2 py-4">
@@ -182,6 +193,8 @@ export function JobView({
       {job.status !== "complete" && (
         <>
           <div className="mt-5 flex items-center gap-3">
+            {/* Only rendered when the server handed over a number — an employee
+                who may not contact customers never gets one. */}
             {phone && (
               <>
                 <CircleAction href={`tel:${phone}`} label="Call">
@@ -230,19 +243,19 @@ export function JobView({
       )}
 
       <PhotoRail
-        jobId={job.id}
         kind="before"
-        photos={photos.filter((p) => p.kind === "before")}
+        services={services}
+        photos={photos}
         locked={job.status === "complete"}
-        onAdd={(p) => setPhotos((prev) => [...prev, p])}
+        onOpen={(service) => openCamera("before", service)}
         onRemove={(pid) => setPhotos((prev) => prev.filter((x) => x.id !== pid))}
       />
       <PhotoRail
-        jobId={job.id}
         kind="after"
-        photos={photos.filter((p) => p.kind === "after")}
+        services={services}
+        photos={photos}
         locked={job.status === "complete"}
-        onAdd={(p) => setPhotos((prev) => [...prev, p])}
+        onOpen={(service) => openCamera("after", service)}
         onRemove={(pid) => setPhotos((prev) => prev.filter((x) => x.id !== pid))}
       />
 
@@ -281,7 +294,7 @@ export function JobView({
                   Cancel
                 </button>
                 <p className="mt-1 text-center text-xs text-gray-500">
-                  We&apos;ll text {job.client_name.split(" ")[0]} that you&apos;re on the way.
+                  We&apos;ll text {first} that you&apos;re on the way.
                 </p>
               </div>
             ) : confirming ? (
@@ -310,15 +323,19 @@ export function JobView({
                 </div>
               </div>
             ) : step === "complete" ? (
-              <button
-                onClick={() => setConfirming(true)}
-                disabled={busy || !!gate}
-                className="w-full rounded-xl bg-[#2D8C6F] py-4 text-base font-semibold text-white hover:bg-[#1F6B54] disabled:bg-[#1A1A1A] disabled:text-gray-500"
-              >
-                {/* The reason lives ON the button. A tech on a bright driveway will
-                    never see a toast. */}
-                {gate ?? "Done"}
-              </button>
+              <PrimaryStep
+                busy={busy}
+                gate={afterGate}
+                litLabel="Done — photos done ✓"
+                onTap={() => setAsk({ kind: "after", stage: "ask" })}
+              />
+            ) : step === "in_progress" ? (
+              <PrimaryStep
+                busy={busy}
+                gate={beforeGate}
+                litLabel="Start job — photos done ✓"
+                onTap={() => setAsk({ kind: "before", stage: "ask" })}
+              />
             ) : step ? (
               <button
                 onClick={() => (step === "on_my_way" ? setAskEta(true) : advance(step))}
@@ -331,23 +348,138 @@ export function JobView({
           </div>
         </div>
       )}
+
+      {ask && (
+        <PhotoAskModal
+          kind={ask.kind}
+          stage={ask.stage}
+          gate={ask.kind === "before" ? beforeGate : afterGate}
+          onYes={answeredYes}
+          onShoot={() => openCamera(ask.kind)}
+          onClose={() => setAsk(null)}
+        />
+      )}
+
+      {sheet && (
+        <CameraSheet
+          jobId={job.id}
+          kind={sheet.kind}
+          services={services}
+          photos={photos}
+          startService={sheet.service}
+          onAdded={(p) => setPhotos((prev) => [...prev, p])}
+          onRemoved={(pid) => setPhotos((prev) => prev.filter((x) => x.id !== pid))}
+          onClose={() => {
+            setSheet(null)
+            router.refresh()
+          }}
+        />
+      )}
     </div>
   )
 }
 
-/** Three segments, current one partially filled. Our lifecycle is exactly three. */
+/**
+ * The one big button at the bottom, in two states. Unlit it carries the gate
+ * reason as its label — a tech on a bright driveway will never see a toast — and
+ * still taps through to the modal, which is the road to the camera. Lit it is
+ * unmistakable: solid teal, pulsing ring, and the tick that says photos are done.
+ */
+function PrimaryStep({
+  busy,
+  gate,
+  litLabel,
+  onTap,
+}: {
+  busy: boolean
+  gate: string | null
+  litLabel: string
+  onTap: () => void
+}) {
+  return (
+    <button
+      onClick={onTap}
+      disabled={busy}
+      className={
+        gate
+          ? "w-full rounded-xl border border-[#E0A458]/40 bg-[#1A1A1A] py-4 text-base font-semibold text-[#E0A458] disabled:opacity-60"
+          : "w-full rounded-xl bg-[#2D8C6F] py-4 text-base font-semibold text-white ring-2 ring-[#2D8C6F]/60 ring-offset-2 ring-offset-[#0A0A0A] animate-pulse hover:bg-[#1F6B54] disabled:opacity-60"
+      }
+    >
+      {busy ? "…" : (gate ?? litLabel)}
+    </button>
+  )
+}
+
+/** "Did you take BEFORE pictures?" Big type, two answers, no ceremony. */
+function PhotoAskModal({
+  kind,
+  stage,
+  gate,
+  onYes,
+  onShoot,
+  onClose,
+}: {
+  kind: "before" | "after"
+  stage: "ask" | "missing"
+  gate: string | null
+  onYes: () => void
+  onShoot: () => void
+  onClose: () => void
+}) {
+  const word = kind === "before" ? "BEFORE" : "AFTER"
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">
+      <button aria-label="Close" onClick={onClose} className="absolute inset-0 cursor-default" />
+      <div className="relative w-full max-w-sm rounded-2xl border border-[#242424] bg-[#111111] p-6 text-center">
+        {stage === "ask" ? (
+          <>
+            <h2 className="text-2xl font-bold leading-snug">
+              Did you take {word} pictures?
+            </h2>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={onShoot}
+                className="flex-1 rounded-xl border border-[#242424] bg-[#0A0A0A] py-4 text-lg font-semibold text-gray-200"
+              >
+                No
+              </button>
+              <button
+                onClick={onYes}
+                className="flex-1 rounded-xl bg-[#2D8C6F] py-4 text-lg font-semibold text-white hover:bg-[#1F6B54]"
+              >
+                Yes
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="text-xl font-bold leading-snug text-[#E0A458]">
+              {gate ?? `Still need ${kind} photos`}
+            </h2>
+            <button
+              onClick={onShoot}
+              className="mt-6 w-full rounded-xl bg-[#2D8C6F] py-4 text-lg font-semibold text-white hover:bg-[#1F6B54]"
+            >
+              Take them now
+            </button>
+            <button onClick={onClose} className="mt-2 w-full py-2 text-sm text-gray-500">
+              Not yet
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Four segments: on the way, arrived, working, complete. */
 function StepBar({ job }: { job: CrewJobDetail }) {
-  const reached = (key: string) => {
-    if (job.status === "complete") return true
-    if (key === "on_my_way") return !!job.field_status
-    if (key === "in_progress") return job.field_status === "in_progress"
-    return false
-  }
   const current = nextStep(job)
   return (
-    <div className="mt-4 grid grid-cols-3 gap-2">
+    <div className="mt-4 grid grid-cols-4 gap-2">
       {FIELD_STEPS.map((s) => {
-        const isDone = reached(s.key)
+        const isDone = stepReached(job, s.key)
         const isCurrent = current === s.key
         return (
           <div key={s.key}>
@@ -393,117 +525,130 @@ function CircleAction({
   )
 }
 
+/**
+ * Photos, grouped the way the gate thinks: one row per service. A crew member
+ * looking at "Before · Windows — Required" knows exactly what's missing without
+ * counting thumbnails. Legacy photos with no service get their own row and count
+ * for everything, so an in-flight job can never be bricked by this change.
+ */
 function PhotoRail({
-  jobId,
   kind,
+  services,
   photos,
   locked,
-  onAdd,
+  onOpen,
   onRemove,
 }: {
-  jobId: string
   kind: "before" | "after"
+  services: string[]
   photos: JobPhoto[]
   locked: boolean
-  onAdd: (p: JobPhoto) => void
+  onOpen: (service: string) => void
   onRemove: (id: string) => void
 }) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function upload(files: FileList | null) {
-    if (!files || files.length === 0) return
-    setBusy(true)
-    setError(null)
-    for (const file of Array.from(files)) {
-      try {
-        const blob = await compress(file)
-        const form = new FormData()
-        form.append("file", new File([blob], "photo.jpg", { type: "image/jpeg" }))
-        form.append("kind", kind)
-        const res = await fetch(`/api/team/jobs/${jobId}/photos`, { method: "POST", body: form })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) {
-          setError(data.error ?? "Upload failed.")
-          break
-        }
-        onAdd(data.photo as JobPhoto)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not add that photo.")
-        break
-      }
-    }
-    setBusy(false)
-    if (inputRef.current) inputRef.current.value = ""
-  }
+  const ofKind = photos.filter((p) => p.kind === kind)
+  const wildcards = ofKind.filter((p) => p.service == null)
+  const label = kind === "before" ? "Before" : "After"
 
   async function remove(id: string) {
     const res = await fetch(`/api/team/photos/${id}`, { method: "DELETE" })
     if (res.ok) onRemove(id)
   }
 
+  const groups = services.map((service) => ({
+    service,
+    photos: ofKind.filter((p) => (p.service ?? "").toLowerCase() === service.toLowerCase()),
+  }))
+
   return (
-    <div className="mt-5">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-          {kind === "before" ? "Before" : "After"}
-          {photos.length > 0 && <span className="text-gray-600"> · {photos.length}</span>}
-        </h2>
-        {!locked && photos.length === 0 && (
-          <span className="text-[11px] text-[#E0A458]">Required</span>
-        )}
-      </div>
+    <div className="mt-6">
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {label}
+        {ofKind.length > 0 && <span className="text-gray-600"> · {ofKind.length}</span>}
+      </h2>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {photos.map((p) => (
-          <div key={p.id} className="relative shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={p.url ?? ""}
-              alt={`${kind} photo`}
-              className="h-24 w-24 rounded-xl object-cover border border-[#242424]"
+      <div className="space-y-4">
+        {groups.map((g) => {
+          const required = !locked && g.photos.length === 0 && wildcards.length === 0
+          return (
+            <div key={g.service}>
+              <div className="mb-1.5 flex items-center justify-between">
+                <p className="text-[13px] font-medium text-gray-300">
+                  {label} · {g.service}
+                </p>
+                {required && <span className="text-[11px] text-[#E0A458]">Required</span>}
+              </div>
+              <Strip
+                photos={g.photos}
+                kind={kind}
+                locked={locked}
+                onAdd={() => onOpen(g.service)}
+                onRemove={remove}
+              />
+            </div>
+          )
+        })}
+
+        {wildcards.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-[13px] font-medium text-gray-300">{label} · Earlier photos</p>
+            <Strip
+              photos={wildcards}
+              kind={kind}
+              locked={locked}
+              onAdd={null}
+              onRemove={remove}
             />
-            {!locked && (
-              <button
-                onClick={() => remove(p.id)}
-                aria-label="Remove photo"
-                className="absolute -top-1.5 -right-1.5 h-6 w-6 rounded-full bg-[#0A0A0A] border border-[#242424] flex items-center justify-center text-gray-400 hover:text-[#E5776B]"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            )}
           </div>
-        ))}
-
-        {!locked && (
-          <button
-            onClick={() => inputRef.current?.click()}
-            disabled={busy}
-            className="h-24 w-24 shrink-0 rounded-xl border border-dashed border-[#2D8C6F]/50 bg-[#2D8C6F]/[0.05] flex flex-col items-center justify-center gap-1 text-[#2D8C6F] disabled:opacity-60"
-          >
-            <Camera className="h-6 w-6" />
-            <span className="text-[11px] font-medium">{busy ? "Saving…" : "Add"}</span>
-          </button>
         )}
       </div>
+    </div>
+  )
+}
 
-      {/* capture="environment" opens the rear camera straight from the page — no
-          app install, works on iPhone and Android. */}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        multiple
-        onChange={(e) => upload(e.target.files)}
-        className="hidden"
-      />
+function Strip({
+  photos,
+  kind,
+  locked,
+  onAdd,
+  onRemove,
+}: {
+  photos: JobPhoto[]
+  kind: "before" | "after"
+  locked: boolean
+  onAdd: (() => void) | null
+  onRemove: (id: string) => void
+}) {
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1">
+      {photos.map((p) => (
+        <div key={p.id} className="relative shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={p.url ?? ""}
+            alt={`${kind} photo`}
+            className="h-24 w-24 rounded-xl object-cover border border-[#242424]"
+          />
+          {!locked && (
+            <button
+              onClick={() => onRemove(p.id)}
+              aria-label="Remove photo"
+              className="absolute -top-1.5 -right-1.5 h-6 w-6 rounded-full bg-[#0A0A0A] border border-[#242424] flex items-center justify-center text-gray-400 hover:text-[#E5776B]"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      ))}
 
-      {error && (
-        <p className="mt-1.5 text-xs text-[#E5776B]" role="alert">
-          {error}
-        </p>
+      {!locked && onAdd && (
+        <button
+          onClick={onAdd}
+          className="h-24 w-24 shrink-0 rounded-xl border border-dashed border-[#2D8C6F]/50 bg-[#2D8C6F]/[0.05] flex flex-col items-center justify-center gap-1 text-[#2D8C6F]"
+        >
+          <Camera className="h-6 w-6" />
+          <span className="text-[11px] font-medium">Add</span>
+        </button>
       )}
     </div>
   )

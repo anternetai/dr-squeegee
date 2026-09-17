@@ -14,6 +14,7 @@ import {
   User,
 } from "lucide-react"
 import { formatDuration } from "@/lib/squeegee/crew"
+import { InstallSheet } from "./install-sheet"
 
 export interface CrewJob {
   id: string
@@ -64,6 +65,7 @@ export function arrivalWindow(t: string | null): string | null {
 
 const CHIP: Record<string, { label: string; className: string }> = {
   on_my_way: { label: "On the way", className: "bg-[#2D8C6F]/15 text-[#4FC49E]" },
+  arrived: { label: "Arrived", className: "bg-[#2D8C6F]/15 text-[#4FC49E]" },
   in_progress: { label: "Working", className: "bg-[#2D8C6F]/15 text-[#4FC49E]" },
 }
 
@@ -198,6 +200,8 @@ export function TeamView({
           ))}
         </Section>
       )}
+
+      <InstallSheet />
     </div>
   )
 }
