@@ -11,7 +11,7 @@ function getAdmin() {
 }
 
 const DETAIL_COLS =
-  "id, created_at, name, phone, email, role, status, pay_type, pay_rate, availability, address, emergency_contact_name, emergency_contact_phone, invite_token, agreement_signed_at, onboarded_at, last_login_at, notes"
+  "id, created_at, name, phone, email, role, status, pay_type, pay_rate, availability, address, emergency_contact_name, emergency_contact_phone, invite_token, agreement_signed_at, onboarded_at, last_login_at, notes, can_contact_customers"
 
 export async function GET(
   _req: NextRequest,
@@ -74,6 +74,7 @@ export async function PATCH(
     if ("legal_name" in body) update.legal_name = body.legal_name ? String(body.legal_name) : null
     if ("onboarding_checklist" in body && body.onboarding_checklist && typeof body.onboarding_checklist === "object") update.onboarding_checklist = body.onboarding_checklist
     if ("notes" in body) update.notes = body.notes ? String(body.notes) : null
+    if (typeof body.can_contact_customers === "boolean") update.can_contact_customers = body.can_contact_customers
   }
 
   if (Object.keys(update).length === 0) {

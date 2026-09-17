@@ -64,11 +64,19 @@ export default async function CrewJobPage({ params }: { params: Promise<{ id: st
     ended_at: string | null
   }[]
 
+  // The contact switch is enforced HERE, not in the UI: when it is off the
+  // number never reaches the browser, so there is nothing to un-hide with dev
+  // tools and nothing to leak in the HTML payload.
+  const jobForCrew = {
+    ...job,
+    client_phone: employee.can_contact_customers ? job.client_phone : null,
+  }
+
   return (
     <JobView
-      job={job as unknown as CrewJobDetail}
+      job={jobForCrew as unknown as CrewJobDetail}
       photos={photos}
-      services={serviceList(job.service_type)}
+      services={serviceList(job.service_type as string | null)}
       workedMs={totalMs(segs, "work")}
       driveMs={totalMs(segs, "drive")}
       running={segs.some((s) => !s.ended_at)}

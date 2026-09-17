@@ -103,21 +103,28 @@ export async function smsAppointmentConfirmed(args: {
 // Review ask after a completed job. Gated on GOOGLE_REVIEW_URL and de-duped so a
 // job completed by crew AND touched in the CRM only ever gets one review text.
 /**
- * "On my way", sent once per job. Deduped the same way the review ask is: if the
- * crew backs out of the status and taps it again, the customer doesn't get a
- * second text telling them we're on the way again.
+ * The customer-facing half of a crew status tap — "on the way" or "arrived".
+ *
+ * This is NOT called by the crew's tap. The tap texts Anthony (see the status
+ * route); this fires only when he replies YES, so the customer never hears from
+ * the business on a crew member's say-so alone.
+ *
+ * Deduped per (job, kind) the same way the review ask is: a second YES, or a
+ * crew member backing out of a status and tapping it again, does not produce a
+ * second "we're on the way" text. null = already sent, nothing more to do.
  */
-export async function smsOnMyWayOnce(args: {
+export async function smsCrewEventOnce(args: {
   jobId: string
+  kind: "on_my_way" | "arrived"
   name: string
   phone: string | null
-  etaMinutes: number
+  etaMinutes?: number
 }): Promise<SendResult | null> {
   const supabase = getAdmin()
   const { data: prior } = await supabase
     .from("sms_messages")
     .select("id")
-    .eq("kind", "on_my_way")
+    .eq("kind", args.kind)
     .eq("related_type", "job")
     .eq("related_id", args.jobId)
     .not("status", "eq", "blocked")
@@ -125,9 +132,14 @@ export async function smsOnMyWayOnce(args: {
     .maybeSingle()
   if (prior) return null
 
+  const msg =
+    args.kind === "on_my_way"
+      ? smsTemplates.crewOnMyWay(args.name, args.etaMinutes ?? 15)
+      : smsTemplates.crewArrived(args.name)
+
   return dispatch(
-    { phone: args.phone, kind: "on_my_way", relatedType: "job", relatedId: args.jobId },
-    smsTemplates.crewOnMyWay(args.name, args.etaMinutes)
+    { phone: args.phone, kind: args.kind, relatedType: "job", relatedId: args.jobId },
+    msg
   )
 }
 

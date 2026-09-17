@@ -4,6 +4,7 @@ import {
   closeOpenSegment,
   getCrewAdmin,
   jobPhotos,
+  missingServices,
   photoGateReason,
   serviceList,
 } from "@/lib/squeegee/crew"
@@ -44,7 +45,7 @@ export async function POST(
   const blocked = photoGateReason("after", services, photos)
   if (blocked) {
     return NextResponse.json(
-      { error: blocked, missing: services.filter((s) => !photos.some((p) => p.kind === "after" && (p.service == null || p.service.toLowerCase() === s.toLowerCase()))) },
+      { error: blocked, missing: missingServices("after", services, photos) },
       { status: 400 }
     )
   }

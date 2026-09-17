@@ -2,7 +2,9 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import {
   FIELD_STEPS,
+  crewProfit,
   crewReplyKeyword,
+  crewVerdict,
   fieldStateSentence,
   missingServices,
   nextStep,
@@ -68,4 +70,48 @@ test("crewReplyKeyword reads Anthony's YES/NO loosely", () => {
   assert.equal(crewReplyKeyword("n"), "no")
   assert.equal(crewReplyKeyword("SEND"), null)
   assert.equal(crewReplyKeyword("yes please text them"), null)
+})
+
+test("crewProfit sums revenue and pay, and refuses to divide by zero hours", () => {
+  const jobs = [
+    { price: 525, crew_pay: 150 },
+    { price: 300, crew_pay: null },
+    { price: 175, crew_pay: 50 },
+  ]
+  const p = crewProfit(jobs, 4 * 3_600_000)
+  assert.equal(p.jobs, 3)
+  assert.equal(p.revenue, 1000)
+  assert.equal(p.crewPay, 200)
+  assert.equal(p.crewPayJobs, 2)
+  assert.equal(p.hours, 4)
+  assert.equal(p.revenuePerHour, 250)
+  assert.equal(p.netPerHour, 200)
+  assert.equal(p.crewShare, 0.2)
+
+  const none = crewProfit(jobs, 0)
+  assert.equal(none.hours, 0)
+  assert.equal(none.revenuePerHour, null)
+  assert.equal(none.netPerHour, null)
+
+  const empty = crewProfit([], 3_600_000)
+  assert.equal(empty.revenue, 0)
+  assert.equal(empty.crewShare, null)
+})
+
+test("crewVerdict says making / costing / nothing to compare", () => {
+  assert.equal(crewVerdict("Marcus", 200, null).tone, "idle")
+  assert.match(crewVerdict("Marcus", 200, null).text, /pays for themselves/)
+
+  const good = crewVerdict("Marcus", 200, 131.25)
+  assert.equal(good.tone, "accent")
+  assert.match(good.text, /\$200\/hr after pay vs your solo \$131\/hr/)
+  assert.match(good.text, /making you \$69\/hr/)
+
+  const bad = crewVerdict("Marcus", 90, 131.25)
+  assert.equal(bad.tone, "attention")
+  assert.match(bad.text, /costing you \$41\/hr/)
+
+  const noHours = crewVerdict("Marcus", null, 131.25)
+  assert.equal(noHours.tone, "idle")
+  assert.match(noHours.text, /No hours logged/)
 })

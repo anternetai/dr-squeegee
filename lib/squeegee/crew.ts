@@ -22,7 +22,9 @@ export function getCrewAdmin(): SupabaseClient {
 // of these names from ./crew keeps working.
 export {
   FIELD_STEPS,
+  crewProfit,
   crewReplyKeyword,
+  crewVerdict,
   fieldStateSentence,
   missingServices,
   nextStep,
@@ -30,7 +32,15 @@ export {
   serviceList,
   stepReached,
 } from "./field"
-export type { FieldStatus, FieldStepKey, PhotoKind, ServicePhoto } from "./field"
+export type {
+  CrewJobRow,
+  CrewProfit,
+  CrewVerdict,
+  FieldStatus,
+  FieldStepKey,
+  PhotoKind,
+  ServicePhoto,
+} from "./field"
 
 /**
  * A scheduled job whose day has passed without completion. Derived, never stored

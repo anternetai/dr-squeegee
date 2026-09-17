@@ -6,6 +6,9 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { parseJobText, summarize, executeDraft, type ParsedJob } from "./parser"
+import { crewReplyKeyword } from "./field"
+import { smsCrewEventOnce } from "./sms-events"
+import type { SendResult } from "./sms"
 
 export const ANTHONY_CELL10 = "9802428048"
 
@@ -36,12 +39,104 @@ export async function replyToAnthony(text: string): Promise<void> {
   }
 }
 
+// The crew-alert half of Anthony's inbound texts. Returns false when there is
+// nothing pending for him to answer, so the caller can keep parsing.
+//
+// "Newest pending in the last 12 hours, regardless of job": he answers the
+// question he was just asked. Anything older has aged out — the crew is long
+// past that moment and a customer text about it would be wrong.
+const ALERT_WINDOW_MS = 12 * 60 * 60 * 1000
+
+async function handleCrewAlertReply(
+  supabase: ReturnType<typeof getAdmin>,
+  reply: "yes" | "no"
+): Promise<boolean> {
+  const since = new Date(Date.now() - ALERT_WINDOW_MS).toISOString()
+  const { data: alert } = await supabase
+    .from("squeegee_crew_alerts")
+    .select("id, job_id, kind, eta_minutes")
+    .eq("status", "pending")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!alert) return false
+
+  const actedAt = new Date().toISOString()
+
+  if (reply === "no") {
+    await supabase
+      .from("squeegee_crew_alerts")
+      .update({ status: "declined", acted_at: actedAt })
+      .eq("id", alert.id)
+    await replyToAnthony("Skipped.")
+    return true
+  }
+
+  // Claim the alert BEFORE texting the customer. If the send throws, the alert
+  // is already spent — better a missed courtesy text than a duplicate one every
+  // time he taps YES twice on a flaky signal.
+  await supabase
+    .from("squeegee_crew_alerts")
+    .update({ status: "confirmed", acted_at: actedAt })
+    .eq("id", alert.id)
+
+  const { data: job } = await supabase
+    .from("squeegee_jobs")
+    .select("client_name, client_phone")
+    .eq("id", alert.job_id as string)
+    .single()
+
+  const name = (job?.client_name as string | undefined) ?? ""
+  const custFirst = (name || "them").trim().split(/\s+/)[0]
+
+  const result = await smsCrewEventOnce({
+    jobId: alert.job_id as string,
+    kind: alert.kind as "on_my_way" | "arrived",
+    name,
+    phone: (job?.client_phone as string | null | undefined) ?? null,
+    etaMinutes: (alert.eta_minutes as number | null) ?? undefined,
+  }).catch((err): SendResult => {
+    console.error("[crew-alert] customer text failed:", err)
+    return { sent: false, test: false, reason: "send error" }
+  })
+
+  if (result === null) {
+    await replyToAnthony(`Already texted ${custFirst}.`)
+    return true
+  }
+
+  if (result.id) {
+    await supabase
+      .from("squeegee_crew_alerts")
+      .update({ customer_sms_id: result.id })
+      .eq("id", alert.id)
+  }
+
+  await replyToAnthony(
+    result.sent ? `Sent to ${custFirst}.` : `Couldn't text ${custFirst}: ${result.reason ?? "send failed"}.`
+  )
+  return true
+}
+
 // Returns true if the message was a text-to-CRM command we handled.
 export async function handleParserMessage(fromPhone10: string, body: string): Promise<boolean> {
   if (fromPhone10 !== ANTHONY_CELL10) return false
 
   const supabase = getAdmin()
   const keyword = body.trim().toUpperCase().replace(/[^A-Z]/g, "")
+
+  // YES/NO answers the newest crew alert (on the way / arrived). Checked BEFORE
+  // the draft branch because a crew alert is the more time-sensitive question,
+  // and "YES" can never be a SEND/CANCEL. With no live alert this returns false
+  // rather than swallowing the message, so a stray YES falls through to the
+  // opt-in path harmlessly.
+  const reply = crewReplyKeyword(body)
+  if (reply) {
+    const handled = await handleCrewAlertReply(supabase, reply)
+    if (handled) return true
+  }
 
   if (keyword === "SEND" || keyword === "CANCEL") {
     const { data: draft } = await supabase

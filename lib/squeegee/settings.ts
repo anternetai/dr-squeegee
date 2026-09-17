@@ -24,9 +24,21 @@ export interface CrmSettings {
   rebookDailyCap: number
   /** ET hours; sends allowed from start (inclusive) to end (exclusive). */
   quietHours: { start: number; end: number }
+  /**
+   * What Anthony makes per hour working a job ALONE. The baseline the crew
+   * profitability panel measures a crew member against. null = never entered,
+   * and the panel says so rather than inventing one.
+   */
+  soloRevenuePerHour: number | null
 }
 
-export const SETTINGS_KEYS = ["cadence_months", "automations", "rebook_daily_cap", "quiet_hours"] as const
+export const SETTINGS_KEYS = [
+  "cadence_months",
+  "automations",
+  "rebook_daily_cap",
+  "quiet_hours",
+  "solo_revenue_per_hour",
+] as const
 export type SettingsKey = (typeof SETTINGS_KEYS)[number]
 
 export const DEFAULT_SETTINGS: CrmSettings = {
@@ -34,10 +46,18 @@ export const DEFAULT_SETTINGS: CrmSettings = {
   automations: { followups: true, rebooks: true, missedCall: true, digest: true },
   rebookDailyCap: 3,
   quietHours: { start: 9, end: 20 },
+  soloRevenuePerHour: null,
 }
 
 function bool(v: unknown, fallback: boolean): boolean {
   return typeof v === "boolean" ? v : fallback
+}
+
+/** A stored dollars-per-hour: a finite number > 0, or null. Never a guess. */
+export function positiveMoney(v: unknown): number | null {
+  const n = typeof v === "string" ? Number(v) : v
+  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null
+  return Math.round(n * 100) / 100
 }
 
 function int(v: unknown, fallback: number, min: number, max: number): number {
@@ -65,6 +85,7 @@ export function parseSettings(rows: { key: string; value: unknown }[] | null | u
     },
     rebookDailyCap: int(byKey.get("rebook_daily_cap"), DEFAULT_SETTINGS.rebookDailyCap, 0, 50),
     quietHours: end > start ? { start, end } : { ...DEFAULT_SETTINGS.quietHours },
+    soloRevenuePerHour: positiveMoney(byKey.get("solo_revenue_per_hour")),
   }
 }
 
@@ -76,10 +97,24 @@ export async function loadSettings(sb: SupabaseClient): Promise<CrmSettings> {
   return parseSettings((data ?? []) as { key: string; value: unknown }[])
 }
 
-/** Write one key. Callers validate the shape first (see the settings route). */
+/**
+ * Write one key. Callers validate the shape first (see the settings route).
+ *
+ * `null` CLEARS the setting by deleting the row: squeegee_settings.value is
+ * `jsonb not null`, so an upsert of null violates the constraint. "Unset" is the
+ * absence of a row, and parseSettings already falls back to the default for one
+ * that isn't there.
+ */
 export async function saveSetting(sb: SupabaseClient, key: SettingsKey, value: unknown): Promise<void> {
+  if (value === null) return clearSetting(sb, key)
   const { error } = await sb
     .from("squeegee_settings")
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" })
   if (error) throw new Error(`saveSetting(${key}): ${error.message}`)
+}
+
+/** Remove a key so it falls back to its default. */
+export async function clearSetting(sb: SupabaseClient, key: SettingsKey): Promise<void> {
+  const { error } = await sb.from("squeegee_settings").delete().eq("key", key)
+  if (error) throw new Error(`clearSetting(${key}): ${error.message}`)
 }

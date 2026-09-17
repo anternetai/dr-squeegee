@@ -1,13 +1,23 @@
 "use client"
 
 import { useState } from "react"
-import { Camera, Check, Clock, Eye, EyeOff, MapPin, Play, Truck } from "lucide-react"
+import { Camera, Check, Clock, Eye, EyeOff, MapPin, MessageSquare, Play, Truck } from "lucide-react"
 
 export interface CrewPhoto {
   id: string
   kind: "before" | "after"
   url: string | null
   customer_visible: boolean
+}
+
+/** A crew status tap that texted Anthony and is waiting on (or has had) his call. */
+export interface CrewAlert {
+  id: string
+  kind: "on_my_way" | "arrived"
+  status: "pending" | "confirmed" | "declined" | "expired"
+  eta_minutes: number | null
+  created_at: string
+  acted_at: string | null
 }
 
 export interface CrewWorkProps {
@@ -18,6 +28,12 @@ export interface CrewWorkProps {
   driveLabel: string | null
   workLabel: string | null
   photos: CrewPhoto[]
+  alerts: CrewAlert[]
+}
+
+function timeOnly(ts: string | null): string {
+  if (!ts) return ""
+  return new Date(ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
 }
 
 function when(ts: string | null): string {
@@ -43,11 +59,12 @@ export function JobCrewWork({
   driveLabel,
   workLabel,
   photos: initial,
+  alerts,
 }: CrewWorkProps) {
   const [photos, setPhotos] = useState(initial)
   const [busy, setBusy] = useState<string | null>(null)
 
-  if (!crewName && photos.length === 0 && !claimedAt) return null
+  if (!crewName && photos.length === 0 && !claimedAt && alerts.length === 0) return null
 
   async function toggle(id: string, visible: boolean) {
     setBusy(id)
@@ -67,6 +84,7 @@ export function JobCrewWork({
   const timeline = [
     claimedAt && { icon: Check, label: `${crewName ?? "Crew"} claimed it`, at: claimedAt },
     fieldStatus === "on_my_way" && { icon: Truck, label: "On the way", at: null },
+    fieldStatus === "arrived" && { icon: MapPin, label: "Arrived", at: null },
     fieldStatus === "in_progress" && { icon: Play, label: "Working now", at: null },
     completedAt && { icon: MapPin, label: "Finished", at: completedAt },
   ].filter(Boolean) as { icon: typeof Check; label: string; at: string | null }[]
@@ -85,7 +103,7 @@ export function JobCrewWork({
       </div>
 
       {timeline.length > 0 && (
-        <ul className="space-y-1.5 mb-4">
+        <ul className="space-y-1.5 mb-3">
           {timeline.map((t, i) => (
             <li key={i} className="flex items-center gap-2 text-sm">
               <t.icon className="h-3.5 w-3.5 text-[var(--crm-accent,#2D8C6F)]" />
@@ -93,6 +111,42 @@ export function JobCrewWork({
               {t.at && <span className="text-xs text-muted-foreground">{when(t.at)}</span>}
             </li>
           ))}
+        </ul>
+      )}
+
+      {/* Every status tap texted Anthony and stopped there. This is the record of
+          what he did with each one — the customer only heard from us on a YES. */}
+      {alerts.length > 0 && (
+        <ul className="space-y-1.5 mb-4">
+          {alerts.map((a) => {
+            const label = a.kind === "on_my_way" ? "On the way" : "Arrived"
+            const eta = a.kind === "on_my_way" && a.eta_minutes ? ` (~${a.eta_minutes} min)` : ""
+            const tone =
+              a.status === "pending"
+                ? "text-[var(--crm-attention)]"
+                : a.status === "confirmed"
+                  ? "text-[var(--crm-accent)]"
+                  : "text-[var(--crm-text-faint)]"
+            const outcome =
+              a.status === "pending"
+                ? "waiting on your YES"
+                : a.status === "confirmed"
+                  ? `you confirmed ${timeOnly(a.acted_at)}`
+                  : a.status === "declined"
+                    ? "skipped"
+                    : "expired"
+            return (
+              <li key={a.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+                <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${tone}`} />
+                <span>
+                  {label}
+                  {eta}
+                </span>
+                <span className={`text-xs ${tone}`}>· {outcome}</span>
+                <span className="text-xs text-muted-foreground">{when(a.created_at)}</span>
+              </li>
+            )
+          })}
         </ul>
       )}
 

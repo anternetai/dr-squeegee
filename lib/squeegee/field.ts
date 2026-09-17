@@ -127,3 +127,103 @@ export function crewReplyKeyword(body: string): "yes" | "no" | null {
   if (k === "NO" || k === "N") return "no"
   return null
 }
+
+// ---- is this crew member worth it? ----
+//
+// Anthony's question, in his words: "$525 driveway, 4 hours solo; with him it
+// would have taken the same 4 hours." So the comparison is revenue per hour of
+// THEIR clock, net of what he pays them, against what he makes per hour alone.
+// Pure so the arithmetic is testable; the page does the reading.
+
+export interface CrewJobRow {
+  price: number | null
+  crew_pay: number | null
+}
+
+export interface CrewProfit {
+  /** Completed jobs in the window. */
+  jobs: number
+  revenue: number
+  crewPay: number
+  /** How many of those jobs actually have a crew_pay set — the rest count as 0. */
+  crewPayJobs: number
+  /** This employee's own work hours on those jobs, 2 dp. */
+  hours: number
+  /** null whenever hours is 0: a rate per zero hours is a lie, not a big number. */
+  revenuePerHour: number | null
+  netPerHour: number | null
+  /** Share of revenue that goes to them, 0-1. null when revenue is 0. */
+  crewShare: number | null
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100
+}
+
+export function crewProfit(jobs: CrewJobRow[], workedMs: number): CrewProfit {
+  let revenue = 0
+  let crewPay = 0
+  let crewPayJobs = 0
+  for (const j of jobs) {
+    revenue += Number(j.price ?? 0)
+    if (j.crew_pay != null) {
+      crewPay += Number(j.crew_pay)
+      crewPayJobs += 1
+    }
+  }
+  revenue = round2(revenue)
+  crewPay = round2(crewPay)
+  const hours = round2(Math.max(0, workedMs) / 3_600_000)
+
+  return {
+    jobs: jobs.length,
+    revenue,
+    crewPay,
+    crewPayJobs,
+    hours,
+    revenuePerHour: hours > 0 ? round2(revenue / hours) : null,
+    netPerHour: hours > 0 ? round2((revenue - crewPay) / hours) : null,
+    crewShare: revenue > 0 ? round2(crewPay / revenue) : null,
+  }
+}
+
+export interface CrewVerdict {
+  text: string
+  tone: "accent" | "attention" | "idle"
+}
+
+/**
+ * The one line Anthony reads. Whole dollars — the cents belong in the table, not
+ * in the sentence that decides whether someone keeps their job.
+ */
+export function crewVerdict(
+  firstName: string,
+  netPerHour: number | null,
+  soloPerHour: number | null
+): CrewVerdict {
+  if (soloPerHour == null) {
+    return {
+      text: `Enter what you make per hour working alone to see if ${firstName} pays for themselves.`,
+      tone: "idle",
+    }
+  }
+  if (netPerHour == null) {
+    return {
+      text: `No hours logged for ${firstName} yet, so there is nothing to compare to your solo $${Math.round(soloPerHour)}/hr.`,
+      tone: "idle",
+    }
+  }
+  const diff = Math.round(netPerHour - soloPerHour)
+  const net = Math.round(netPerHour)
+  const solo = Math.round(soloPerHour)
+  if (diff >= 0) {
+    return {
+      text: `With ${firstName}: $${net}/hr after pay vs your solo $${solo}/hr → making you $${diff}/hr`,
+      tone: "accent",
+    }
+  }
+  return {
+    text: `With ${firstName}: $${net}/hr after pay vs your solo $${solo}/hr → costing you $${Math.abs(diff)}/hr`,
+    tone: "attention",
+  }
+}
