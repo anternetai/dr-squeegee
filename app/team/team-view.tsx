@@ -7,11 +7,9 @@ import {
   MapPin,
   CheckCircle2,
   CalendarDays,
-  BookOpen,
   Circle,
   ChevronRight,
   Hand,
-  User,
 } from "lucide-react"
 import { formatDuration } from "@/lib/squeegee/crew"
 import { InstallSheet } from "./install-sheet"
@@ -115,33 +113,18 @@ export function TeamView({
   const nothingAtAll = mine.length === 0 && board.length === 0
 
   return (
-    <div className="mx-auto max-w-lg px-4 pb-16">
-      <header className="flex items-center justify-between py-5">
+    <div className="mx-auto max-w-lg px-4 pb-4">
+      <header className="flex items-end justify-between py-5">
         <div>
           <p className="text-xs uppercase tracking-widest text-[#2D8C6F] font-semibold">
             Dr. Squeegee Crew
           </p>
           <h1 className="text-2xl font-bold">Hey, {first}</h1>
         </div>
-        <div className="flex items-center gap-1">
-          <Link
-            href="/team/standards"
-            className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5"
-            aria-label="Standards"
-          >
-            <BookOpen className="h-5 w-5" />
-          </Link>
-          <Link
-            href="/team/me"
-            className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5"
-            aria-label="My hours"
-          >
-            <User className="h-5 w-5" />
-          </Link>
-        </div>
+        <p className="pb-1 text-sm text-gray-500">{prettyDate(today)}</p>
       </header>
 
-      {setupRemaining > 0 && <SetupChecklist checklist={checklist} onToggle={toggleTask} />}
+      <WeekStrip jobs={mine} today={today} />
 
       {weekMs > 0 && (
         <Link
@@ -174,6 +157,8 @@ export function TeamView({
         </Section>
       )}
 
+      {setupRemaining > 0 && <SetupChecklist checklist={checklist} onToggle={toggleTask} />}
+
       {board.length > 0 && (
         <Section label={`Open board · ${board.length}`}>
           <p className="-mt-1 mb-1 text-xs text-gray-500">
@@ -202,6 +187,52 @@ export function TeamView({
       )}
 
       <InstallSheet />
+    </div>
+  )
+}
+
+/**
+ * Mon–Sun at a glance: which days this week have work on them. Today is the
+ * lit one. Built only from the props (no clock in render) so it hydrates clean.
+ */
+function WeekStrip({ jobs, today }: { jobs: CrewJob[]; today: string }) {
+  const days = useMemo(() => {
+    const base = new Date(today + "T00:00:00")
+    const monday = new Date(base)
+    monday.setDate(base.getDate() - ((base.getDay() + 6) % 7))
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday)
+      d.setDate(monday.getDate() + i)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      const count = jobs.filter((j) => j.status !== "complete" && j.appointment_date === key).length
+      return { key, letter: "MTWTFSS"[i], num: d.getDate(), count, isToday: key === today }
+    })
+  }, [jobs, today])
+
+  return (
+    <div className="mb-6 grid grid-cols-7 gap-1" aria-label="This week">
+      {days.map((d) => (
+        <div key={d.key} className="flex flex-col items-center gap-1">
+          <span className={`text-[10px] font-semibold ${d.isToday ? "text-[#4FC49E]" : "text-gray-600"}`}>
+            {d.letter}
+          </span>
+          <span
+            className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold ${
+              d.isToday
+                ? "bg-[#2D8C6F] text-white"
+                : d.count > 0
+                  ? "bg-[#111111] border border-[#2D8C6F]/40 text-gray-200"
+                  : "text-gray-500"
+            }`}
+          >
+            {d.num}
+          </span>
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${d.count > 0 ? "bg-[#4FC49E]" : "bg-transparent"}`}
+            aria-label={d.count > 0 ? `${d.count} job${d.count === 1 ? "" : "s"}` : undefined}
+          />
+        </div>
+      ))}
     </div>
   )
 }
@@ -240,8 +271,8 @@ function CardShell({
           <p className="text-sm text-[#2D8C6F] font-medium">{job.service_type}</p>
         </div>
         <div className="text-right text-xs text-gray-400 shrink-0">
-          <div>{prettyDate(job.appointment_date)}</div>
-          {window && <div className="mt-0.5">{window}</div>}
+          {!highlight && <div>{prettyDate(job.appointment_date)}</div>}
+          {window && <div className={highlight ? "text-sm font-medium text-gray-200" : "mt-0.5"}>{window}</div>}
         </div>
       </div>
 

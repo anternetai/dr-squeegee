@@ -1,6 +1,5 @@
-import Link from "next/link"
 import { redirect } from "next/navigation"
-import { ArrowLeft, Check } from "lucide-react"
+import { Check } from "lucide-react"
 import { getSessionEmployee } from "@/lib/squeegee/employee-auth"
 import { MISSION, VALUES, EXPECTATIONS } from "@/lib/squeegee/company"
 
@@ -11,11 +10,10 @@ export default async function StandardsPage() {
   if (!employee) redirect("/team/login")
 
   return (
-    <div className="mx-auto max-w-lg px-4 pb-16">
+    <div className="mx-auto max-w-lg px-4 pb-4">
       <header className="py-5">
-        <Link href="/team" className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white">
-          <ArrowLeft className="h-4 w-4" /> Back to jobs
-        </Link>
+        <p className="text-xs uppercase tracking-widest text-[#2D8C6F] font-semibold">Standards</p>
+        <h1 className="text-2xl font-bold">How we work</h1>
       </header>
 
       <section className="mb-8">

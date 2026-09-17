@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next"
+import { TeamNav } from "./team-nav"
 
 // Crew field portal — standalone dark mobile app, no CRM shell. Techs install it
 // to their home screen and work jobs from it. Always dark (brand), regardless of
@@ -31,6 +32,7 @@ export default function TeamLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white" style={{ colorScheme: "dark" }}>
       {children}
+      <TeamNav />
     </div>
   )
 }

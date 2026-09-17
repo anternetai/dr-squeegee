@@ -1,9 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Bell, BellRing, Check, LogOut, Share, Plus } from "lucide-react"
+import { Bell, BellRing, Check, LogOut, Share, Plus } from "lucide-react"
 import { formatDuration, hoursFrom, money } from "@/lib/squeegee/crew"
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
@@ -41,16 +40,10 @@ export function MeView({
   }
 
   return (
-    <div className="mx-auto max-w-lg px-4 pb-16">
-      <header className="flex items-center gap-2 py-4">
-        <Link
-          href="/team"
-          className="p-2 -ml-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
-          aria-label="Back"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="text-xl font-bold">{first}&apos;s week</h1>
+    <div className="mx-auto max-w-lg px-4 pb-4">
+      <header className="py-5">
+        <p className="text-xs uppercase tracking-widest text-[#2D8C6F] font-semibold">My week</p>
+        <h1 className="text-2xl font-bold">{first}&apos;s hours</h1>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
@@ -74,13 +67,7 @@ export function MeView({
 
       <PushCard registered={pushRegistered} vapidPublicKey={vapidPublicKey} />
 
-      <div className="mt-6 space-y-1">
-        <Link
-          href="/team/standards"
-          className="block rounded-xl border border-[#242424] bg-[#111111] px-4 py-3.5 text-sm font-medium hover:border-[#2D8C6F]/40"
-        >
-          Our standards
-        </Link>
+      <div className="mt-6">
         <button
           onClick={logout}
           className="w-full flex items-center gap-2 rounded-xl border border-[#242424] px-4 py-3.5 text-sm font-medium text-gray-400 hover:text-white"
