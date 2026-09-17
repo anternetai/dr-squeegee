@@ -157,6 +157,24 @@ export function jobBasePay(
   return null
 }
 
+/**
+ * Base pay for one COMPLETED job on the Worth-it panel. Same rule as
+ * jobBasePay, with one thing it must not do: derive $0.
+ *
+ * An hourly job nobody clocked is missing data, not free labour. Deriving $0
+ * there would count it as "base pay known", and the footer's "known on N of M"
+ * warning would read N of N on a window that is half-timed — exactly when
+ * net/hr is most wrong. Unknown stays unknown; a typed number (even 0) wins.
+ */
+export function worthJobPay(
+  employee: { pay_type: string; pay_rate: number | null },
+  jobMs: number,
+  override: number | null | undefined
+): number | null {
+  if (override == null && jobMs <= 0) return null
+  return jobBasePay(employee, jobMs, override)
+}
+
 export interface CrewJobRow {
   price: number | null
   crew_pay: number | null

@@ -32,6 +32,7 @@ export {
   photoGateReason,
   serviceList,
   stepReached,
+  worthJobPay,
 } from "./field"
 export type {
   CrewJobRow,

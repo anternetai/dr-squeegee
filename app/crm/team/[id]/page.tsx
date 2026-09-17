@@ -7,11 +7,11 @@ import { CrewWorth, type WorthWindow } from "@/components/squeegee/crew-worth"
 import {
   crewProfit,
   crewVerdict,
-  jobBasePay,
   formatDuration,
   lockActive,
   relativeLabel,
   totalMs,
+  worthJobPay,
 } from "@/lib/squeegee/crew"
 import { loadSettings, DEFAULT_SETTINGS } from "@/lib/squeegee/settings"
 
@@ -140,8 +140,14 @@ export default async function EmployeeDetailPage({
   const profit = crewProfit(
     completed.map((j) => ({
       price: j.price,
-      // Base pay per job: typed override, else hours x rate for hourly crew.
-      crew_pay: jobBasePay(payEmp, totalMs(worthSegRows.filter((s) => s.job_id === j.id)), j.crew_pay),
+      // Base pay per job: typed override, else hours x rate for hourly crew —
+      // and null, not $0, for a job nobody clocked, so the footer's "known on
+      // N of M" still warns when the window is only half-timed.
+      crew_pay: worthJobPay(
+        payEmp,
+        totalMs(worthSegRows.filter((s) => s.job_id === j.id)),
+        j.crew_pay
+      ),
     })),
     totalMs(worthSegRows, "work")
   )

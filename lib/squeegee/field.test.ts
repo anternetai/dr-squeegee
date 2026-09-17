@@ -12,6 +12,7 @@ import {
   photoGateReason,
   serviceList,
   stepReached,
+  worthJobPay,
 } from "./field.ts"
 
 test("nextStep walks on_my_way → arrived → in_progress → complete", () => {
@@ -127,4 +128,25 @@ test("jobBasePay derives hourly pay from the clock and lets an override win", ()
   assert.equal(jobBasePay({ pay_type: "per_job", pay_rate: null }, 3_600_000, null), null)
   assert.equal(jobBasePay({ pay_type: "per_job", pay_rate: null }, 3_600_000, 150), 150)
   assert.equal(jobBasePay({ pay_type: "day_rate", pay_rate: 200 }, 3_600_000, null), null)
+})
+
+test("worthJobPay leaves an untimed hourly job unknown, not $0", () => {
+  const eric = { pay_type: "hourly", pay_rate: 20 }
+  // Clocked job: derived like anywhere else.
+  assert.equal(worthJobPay(eric, 3 * 3_600_000, null), 60)
+  // Never clocked and nothing typed: unknown. A derived $0 reads as free labour.
+  assert.equal(worthJobPay(eric, 0, null), null)
+  // A typed number always wins, including a deliberate zero.
+  assert.equal(worthJobPay(eric, 0, 0), 0)
+  assert.equal(worthJobPay(eric, 0, 95), 95)
+  // So the Worth-it footer still warns when the window is half-timed.
+  const profit = crewProfit(
+    [
+      { price: 500, crew_pay: worthJobPay(eric, 3 * 3_600_000, null) },
+      { price: 400, crew_pay: worthJobPay(eric, 0, null) },
+    ],
+    3 * 3_600_000
+  )
+  assert.equal(profit.crewPayJobs, 1)
+  assert.equal(profit.crewPay, 60)
 })
