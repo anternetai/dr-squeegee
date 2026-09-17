@@ -103,11 +103,13 @@ export function JobView({
   }, [running, job.status])
 
   const step = nextStep(job)
-  const counts = {
-    before: photos.filter((p) => p.kind === "before").length,
-    after: photos.filter((p) => p.kind === "after").length,
-  }
-  const gate = photoGateReason(counts)
+  // Interim: until photos carry a service, treat every photo as a wildcard so the
+  // gate reduces to "at least one after photo". Builder A replaces this.
+  const gate = photoGateReason(
+    "after",
+    ["Job"],
+    photos.map((p) => ({ kind: p.kind, service: null }))
+  )
   const sentence = fieldStateSentence(job)
   const phone = job.client_phone?.replace(/[^0-9]/g, "")
   const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(job.address)}`

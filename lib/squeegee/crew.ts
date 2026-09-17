@@ -7,6 +7,7 @@
 // ever describes what the crew is doing right now.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
+import type { ServicePhoto } from "./field"
 
 export function getCrewAdmin(): SupabaseClient {
   return createClient(
@@ -16,37 +17,20 @@ export function getCrewAdmin(): SupabaseClient {
 }
 
 // ---- field lifecycle ----
-
-export type FieldStatus = "on_my_way" | "in_progress"
-
-// Three states the crew moves through, in order. Only the next legal one is ever
-// shown as a button — a tech should never have to pick from a menu on a wet phone.
-export const FIELD_STEPS = [
-  { key: "on_my_way", label: "On my way", done: "On the way" },
-  { key: "in_progress", label: "Start job", done: "Working" },
-  { key: "complete", label: "Done", done: "Complete" },
-] as const
-
-export type FieldStepKey = (typeof FIELD_STEPS)[number]["key"]
-
-/** The one action a crew member can legally take next, or null when finished. */
-export function nextStep(job: { status: string; field_status: string | null }): FieldStepKey | null {
-  if (job.status === "complete") return null
-  if (!job.field_status) return "on_my_way"
-  if (job.field_status === "on_my_way") return "in_progress"
-  return "complete"
-}
-
-/** Plain sentence for the current state. Only the changing verb is emphasised. */
-export function fieldStateSentence(job: {
-  status: string
-  field_status: string | null
-}): { prefix: string; verb: string; suffix: string } {
-  if (job.status === "complete") return { prefix: "This job is ", verb: "complete", suffix: "." }
-  if (job.field_status === "in_progress") return { prefix: "You are ", verb: "working", suffix: " this job." }
-  if (job.field_status === "on_my_way") return { prefix: "You are ", verb: "on the way", suffix: "." }
-  return { prefix: "You haven't ", verb: "started", suffix: " yet." }
-}
+//
+// Lives in ./field.ts (pure, unit-tested). Re-exported so every existing import
+// of these names from ./crew keeps working.
+export {
+  FIELD_STEPS,
+  crewReplyKeyword,
+  fieldStateSentence,
+  missingServices,
+  nextStep,
+  photoGateReason,
+  serviceList,
+  stepReached,
+} from "./field"
+export type { FieldStatus, FieldStepKey, PhotoKind, ServicePhoto } from "./field"
 
 /**
  * A scheduled job whose day has passed without completion. Derived, never stored
@@ -160,34 +144,16 @@ export function hoursFrom(ms: number): number {
 }
 
 // ---- photo gate ----
+//
+// The rule itself is photoGateReason() in ./field.ts (per service). This is just
+// the loader: the (kind, service) rows the gate needs, for one job.
 
-export interface PhotoCounts {
-  before: number
-  after: number
-}
-
-export async function photoCounts(supabase: SupabaseClient, jobId: string): Promise<PhotoCounts> {
+export async function jobPhotos(supabase: SupabaseClient, jobId: string): Promise<ServicePhoto[]> {
   const { data } = await supabase
     .from("squeegee_job_photos")
-    .select("kind")
+    .select("kind, service")
     .eq("job_id", jobId)
-  const rows = (data ?? []) as { kind: string }[]
-  return {
-    before: rows.filter((r) => r.kind === "before").length,
-    after: rows.filter((r) => r.kind === "after").length,
-  }
-}
-
-/**
- * Why a job can't be completed yet, or null when it can. The reason is written to
- * be shown on the disabled button itself — never buried in a toast the crew will
- * miss on a bright driveway.
- */
-export function photoGateReason(counts: PhotoCounts): string | null {
-  if (counts.before === 0 && counts.after === 0) return "Add a before and after photo first"
-  if (counts.before === 0) return "Add a before photo first"
-  if (counts.after === 0) return "Add an after photo first"
-  return null
+  return (data ?? []) as ServicePhoto[]
 }
 
 export const PHOTO_BUCKET = "job-photos"

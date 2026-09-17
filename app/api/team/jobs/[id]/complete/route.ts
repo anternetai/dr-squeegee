@@ -3,8 +3,9 @@ import { getSessionEmployee } from "@/lib/squeegee/employee-auth"
 import {
   closeOpenSegment,
   getCrewAdmin,
-  photoCounts,
+  jobPhotos,
   photoGateReason,
+  serviceList,
 } from "@/lib/squeegee/crew"
 import { smsReviewOnce } from "@/lib/squeegee/sms-events"
 
@@ -26,7 +27,7 @@ export async function POST(
   const supabase = getCrewAdmin()
   const { data: job } = await supabase
     .from("squeegee_jobs")
-    .select("id, assigned_employee_id, status, client_name, client_phone")
+    .select("id, assigned_employee_id, status, client_name, client_phone, service_type")
     .eq("id", id)
     .single()
 
@@ -36,11 +37,16 @@ export async function POST(
 
   // The photo gate, enforced HERE and not only in the UI. A disabled button is a
   // courtesy; this is the rule. Without it "take before/after photos on every job"
-  // stays a line in the standards doc that nothing checks.
-  const counts = await photoCounts(supabase, id)
-  const blocked = photoGateReason(counts)
+  // stays a line in the standards doc that nothing checks. Per service: every
+  // service on the job needs an after photo before it can be called done.
+  const services = serviceList(job.service_type as string | null)
+  const photos = await jobPhotos(supabase, id)
+  const blocked = photoGateReason("after", services, photos)
   if (blocked) {
-    return NextResponse.json({ error: blocked, photos: counts }, { status: 400 })
+    return NextResponse.json(
+      { error: blocked, missing: services.filter((s) => !photos.some((p) => p.kind === "after" && (p.service == null || p.service.toLowerCase() === s.toLowerCase()))) },
+      { status: 400 }
+    )
   }
 
   const { error } = await supabase
