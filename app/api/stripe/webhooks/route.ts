@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { closeJobClock } from '@/lib/squeegee/crew'
 import Stripe from 'stripe'
 import { sendReceiptForInvoice } from '@/lib/squeegee/send-receipt'
 import { smsReviewOnce } from '@/lib/squeegee/sms-events'
@@ -103,6 +104,8 @@ async function markInvoicePaid(
     // empty — if crew already marked it done, that timestamp is the true one
     // and payment may be days later. The receipt reads this for "Serviced on".
     await supabase.from('squeegee_jobs').update({ status: 'complete' }).eq('id', invoice.job_id)
+    // A paid job is a finished job: stop any crew clock still running on it.
+    await closeJobClock(supabase, invoice.job_id)
     await supabase
       .from('squeegee_jobs')
       .update({ completed_at: new Date().toISOString() })

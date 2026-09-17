@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { closeJobClock } from '@/lib/squeegee/crew'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyCrmAuth } from '@/lib/crm-auth-check'
 import { sendReceiptForInvoice } from '@/lib/squeegee/send-receipt'
@@ -64,6 +65,8 @@ export async function POST(
         console.error('Job status update error:', jobError)
         // Non-fatal — continue and still return the invoice
       }
+      // A paid job is a finished job: stop any crew clock still running on it.
+      await closeJobClock(supabase, invoice.job_id)
 
       await supabase
         .from('squeegee_jobs')

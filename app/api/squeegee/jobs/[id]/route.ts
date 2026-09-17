@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import { closeJobClock } from "@/lib/squeegee/crew"
 import { NextRequest, NextResponse } from "next/server"
 import { verifyCrmAuth } from "@/lib/crm-auth-check"
 
@@ -88,6 +89,10 @@ export async function PATCH(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    // Finishing a job from here must also stop the crew's clock, or an hourly
+    // crew member's derived pay keeps growing until their next tap.
+    if (updates.status === "complete") await closeJobClock(supabase, id)
 
     return NextResponse.json(data)
   } catch (err) {

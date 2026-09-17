@@ -109,6 +109,25 @@ export async function openSegment(
   })
 }
 
+/**
+ * Stop every clock still running on a job. The crew's own Done tap closes
+ * their segment; this is for the OTHER ways a job gets finished — Anthony
+ * marking it complete in the CRM, a payment landing — so an hourly crew
+ * member's base pay (derived from this clock) can't keep accruing against
+ * wall time until their next tap.
+ */
+export async function closeJobClock(
+  supabase: SupabaseClient,
+  jobId: string,
+  at: string = new Date().toISOString()
+): Promise<void> {
+  await supabase
+    .from("squeegee_job_time")
+    .update({ ended_at: at })
+    .eq("job_id", jobId)
+    .is("ended_at", null)
+}
+
 export interface TimeSegment {
   kind: TimeKind
   started_at: string
