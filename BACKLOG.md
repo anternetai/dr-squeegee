@@ -48,3 +48,22 @@ Shipped in `5c3ad25`. These were found in review and deliberately not fixed.
   cookie (30 days); reset_pin wipes the PIN but a phone already logged in stays logged in.
   Fine for a forgotten PIN, wrong for a lost phone — add a session-version column if that
   case ever matters.
+
+## Crew field flow v3 — deferred at ship (2026-09-16)
+
+- **Owner alerts obey the opt-out list.** They go through `sendSms` (kind `crew_alert_owner`), so if Anthony
+  ever texts STOP to the business line his own crew alerts go silently dead. Exempt the owner number for
+  that kind, or surface "blocked" on the CRM job page.
+- **Two crews tapping within seconds:** a YES confirms the newest pending alert regardless of job; the reply
+  names the customer, which is the only tell. Add the job to the ack, or a per-job keyword, before crew #2.
+- **Crew alert rows are never pruned** — a busy week leaves a long list on the job page. Fold older ones.
+- **Worth-it panel passes every completed job id into one PostgREST `.in()`** — fine at 70 jobs, a long URL
+  at hundreds. A view or rpc is the durable shape.
+- **`/team/me` PushCard and `install-sheet.tsx` both detect standalone mode**; one shared hook.
+- **`/portal` still points at `crm-manifest.json`** — confirm that's intended (its start_url is /crm).
+- **Camera-sheet fallback leaves an empty viewfinder area** — a real phone never sees it; could collapse.
+- **Hydration error #418 seen twice** in the browser pane during the 9/16 walk-through, never reproduced on
+  any fresh load of /team, /team/jobs, /team/login, /crm/team/[id] or /crm/jobs/[id]. Likely a stale
+  httpOnly `crew_session` on localhost during the redirect dance (see the builder rules). Watch prod.
+- **Builder-rules note:** a stale httpOnly `crew_session` on localhost silently breaks crew-UI verification
+  until you POST `/api/team/auth/logout` first.

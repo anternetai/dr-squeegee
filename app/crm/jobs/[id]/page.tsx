@@ -145,13 +145,16 @@ export default async function JobDetailPage({ params }: PageProps) {
         reviewUrl={reviewUrl}
         receiptToken={paidInvoice?.receipt_token ?? null}
       />
-      {/* Crew assignment is for work that still has to happen. */}
-      {!isDone && (
+      {/* Crew assignment is for work that still has to happen; crew PAY is usually
+          entered after it happened. So the card stays on a finished job with the
+          assignee locked and only the pay field live. */}
+      {(!isDone || assignedEmployeeId) && (
         <JobAssign
           jobId={job.id}
           employees={crew ?? []}
           current={assignedEmployeeId}
           crewPay={job.crew_pay ?? null}
+          assignLocked={isDone}
         />
       )}
       <JobCrewWork

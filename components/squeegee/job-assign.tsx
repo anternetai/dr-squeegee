@@ -14,11 +14,14 @@ export function JobAssign({
   employees,
   current,
   crewPay,
+  assignLocked = false,
 }: {
   jobId: string
   employees: CrewOption[]
   current: string | null
   crewPay: number | null
+  /** Finished job: who did it is history, what they were paid is still editable. */
+  assignLocked?: boolean
 }) {
   const router = useRouter()
   const [value, setValue] = useState(current ?? "")
@@ -92,7 +95,7 @@ export function JobAssign({
             <span className="text-xs font-medium text-muted-foreground">Crew member</span>
             <select
               value={value}
-              disabled={busy}
+              disabled={busy || assignLocked}
               onChange={(e) => assign(e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-[var(--crm-accent)] focus:ring-1 focus:ring-[var(--crm-accent)]"
             >
