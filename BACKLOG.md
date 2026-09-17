@@ -78,3 +78,13 @@ Shipped in `5c3ad25`. These were found in review and deliberately not fixed.
   On my way / Arrived / Done. Pad that bar first, then flip cover on the `/team` layout.
 - A Today job with no `appointment_time` renders an empty right column on the highlighted card.
 - Tabs rely on the browser default focus outline (no `focus-visible` ring).
+
+## Crew pay — deferred at ship (2026-09-17)
+
+- **Tips have no customer-side capture.** `crew_tip` is typed by Anthony on the CRM job. If tips ever get
+  added to the invoice / Stripe checkout, the webhook should write `crew_tip` itself.
+- **Hourly pay counts drive time** (`crewPayFor` on /team/me and the per-job derivation both use drive +
+  on-site). If Anthony wants site-time only, change `jobBasePay`'s callers to pass work segments only —
+  one rule in two places, keep them in step.
+- **Tips split across a two-person crew** — one assignee per job today; when a job has two techs the
+  tip needs a split rule.
