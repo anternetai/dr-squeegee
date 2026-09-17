@@ -5,7 +5,7 @@ import { JobDetailClient } from "@/components/squeegee/job-detail-client"
 import { JobInvoices } from "@/components/squeegee/job-invoices"
 import { JobActivity } from "@/components/squeegee/job-activity"
 import { JobAssign } from "@/components/squeegee/job-assign"
-import { JobCrewWork, type CrewPhoto } from "@/components/squeegee/job-crew-work"
+import { JobCrewWork, type CrewAlert, type CrewPhoto } from "@/components/squeegee/job-crew-work"
 import { formatDuration, signPhotos, totalMs } from "@/lib/squeegee/crew"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
@@ -76,13 +76,20 @@ export default async function JobDetailPage({ params }: PageProps) {
 
   // What the crew did on this job: the clock (driven by their status taps) and
   // the before/afters, each awaiting Anthony's call on customer visibility.
-  const [{ data: photoRows }, { data: segments }] = await Promise.all([
+  const [{ data: photoRows }, { data: segments }, { data: alertRows }] = await Promise.all([
     supabase
       .from("squeegee_job_photos")
       .select("id, kind, storage_path, customer_visible, created_at")
       .eq("job_id", id)
       .order("created_at", { ascending: true }),
     supabase.from("squeegee_job_time").select("kind, started_at, ended_at").eq("job_id", id),
+    // The crew's status taps text Anthony, not the customer. These rows are the
+    // record of what he answered — service-role, like everything else here.
+    supabase
+      .from("squeegee_crew_alerts")
+      .select("id, kind, status, eta_minutes, created_at, acted_at")
+      .eq("job_id", id)
+      .order("created_at", { ascending: true }),
   ])
 
   const rows = (photoRows ?? []) as {
@@ -139,7 +146,14 @@ export default async function JobDetailPage({ params }: PageProps) {
         receiptToken={paidInvoice?.receipt_token ?? null}
       />
       {/* Crew assignment is for work that still has to happen. */}
-      {!isDone && <JobAssign jobId={job.id} employees={crew ?? []} current={assignedEmployeeId} />}
+      {!isDone && (
+        <JobAssign
+          jobId={job.id}
+          employees={crew ?? []}
+          current={assignedEmployeeId}
+          crewPay={job.crew_pay ?? null}
+        />
+      )}
       <JobCrewWork
         crewName={assignedName}
         fieldStatus={job.field_status ?? null}
@@ -148,6 +162,7 @@ export default async function JobDetailPage({ params }: PageProps) {
         driveLabel={driveMs > 0 ? formatDuration(driveMs) : null}
         workLabel={workMs > 0 ? formatDuration(workMs) : null}
         photos={crewPhotos}
+        alerts={(alertRows ?? []) as CrewAlert[]}
       />
       <JobInvoices job={job} quoteToken={latestQuote?.token ?? null} />
       <JobActivity jobId={job.id} />

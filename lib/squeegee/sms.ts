@@ -99,6 +99,13 @@ export interface SendResult {
   test: boolean
   reason?: string
   sid?: string
+  /**
+   * The sms_messages row this send logged. Callers that have to point back at a
+   * specific message later (squeegee_crew_alerts.owner_sms_id / customer_sms_id)
+   * need it; undefined only when the audit insert itself failed, which logging
+   * deliberately swallows.
+   */
+  id?: string
 }
 
 export async function sendSms(args: SendArgs): Promise<SendResult> {
@@ -107,37 +114,46 @@ export async function sendSms(args: SendArgs): Promise<SendResult> {
   const requireConsent = args.requireConsent !== false
   const live = process.env.SMS_LIVE === "true"
 
-  async function log(status: string, extra: Partial<{ to_phone: string; twilio_sid: string; error: string; was_test: boolean }>) {
+  async function log(
+    status: string,
+    extra: Partial<{ to_phone: string; twilio_sid: string; error: string; was_test: boolean }>
+  ): Promise<string | undefined> {
     try {
-      await supabase.from("sms_messages").insert({
-        direction: "outbound",
-        phone10: norm?.phone10 ?? "0000000000",
-        body: args.body,
-        kind: args.kind,
-        status,
-        related_type: args.relatedType ?? null,
-        related_id: args.relatedId ?? null,
-        was_test: extra.was_test ?? false,
-        to_phone: extra.to_phone ?? null,
-        twilio_sid: extra.twilio_sid ?? null,
-        error: extra.error ?? null,
-      })
+      const { data } = await supabase
+        .from("sms_messages")
+        .insert({
+          direction: "outbound",
+          phone10: norm?.phone10 ?? "0000000000",
+          body: args.body,
+          kind: args.kind,
+          status,
+          related_type: args.relatedType ?? null,
+          related_id: args.relatedId ?? null,
+          was_test: extra.was_test ?? false,
+          to_phone: extra.to_phone ?? null,
+          twilio_sid: extra.twilio_sid ?? null,
+          error: extra.error ?? null,
+        })
+        .select("id")
+        .single()
+      return (data as { id: string } | null)?.id
     } catch {
       /* logging must never break a send */
+      return undefined
     }
   }
 
   if (!norm) {
-    await log("failed", { error: "invalid phone" })
-    return { sent: false, test: !live, reason: "invalid phone" }
+    const id = await log("failed", { error: "invalid phone" })
+    return { sent: false, test: !live, reason: "invalid phone", id }
   }
   if (await isOptedOut(norm.phone10)) {
-    await log("blocked", { error: "opted out" })
-    return { sent: false, test: !live, reason: "opted out" }
+    const id = await log("blocked", { error: "opted out" })
+    return { sent: false, test: !live, reason: "opted out", id }
   }
   if (requireConsent && !args.force && !(await hasConsent(norm.phone10))) {
-    await log("blocked", { error: "no consent" })
-    return { sent: false, test: !live, reason: "no consent" }
+    const id = await log("blocked", { error: "no consent" })
+    return { sent: false, test: !live, reason: "no consent", id }
   }
 
   // Smart punctuation is transliterated to GSM-7 on EVERY outbound body. One em
@@ -152,8 +168,8 @@ export async function sendSms(args: SendArgs): Promise<SendResult> {
   const finalBody = live || args.bare ? body : `[TEST → ${norm.e164}] ${body}`
 
   if (!to) {
-    await log("failed", { error: "no recipient (SMS_TEST_TO unset)" })
-    return { sent: false, test: true, reason: "no test recipient configured" }
+    const id = await log("failed", { error: "no recipient (SMS_TEST_TO unset)" })
+    return { sent: false, test: true, reason: "no test recipient configured", id }
   }
 
   const accountSid = process.env.TWILIO_ACCOUNT_SID
@@ -164,8 +180,8 @@ export async function sendSms(args: SendArgs): Promise<SendResult> {
   // explicitly so this product's texts always come from the Dr. Squeegee line.
   const fromNumber = process.env.SMS_FROM_NUMBER
   if (!accountSid || !keySid || !keySecret || !fromNumber) {
-    await log("failed", { error: "twilio env missing", was_test: !live, to_phone: to })
-    return { sent: false, test: !live, reason: "twilio not configured" }
+    const id = await log("failed", { error: "twilio env missing", was_test: !live, to_phone: to })
+    return { sent: false, test: !live, reason: "twilio not configured", id }
   }
 
   try {
@@ -180,14 +196,14 @@ export async function sendSms(args: SendArgs): Promise<SendResult> {
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
-      await log("failed", { error: data?.message ?? `HTTP ${res.status}`, was_test: !live, to_phone: to })
-      return { sent: false, test: !live, reason: data?.message ?? "send failed" }
+      const id = await log("failed", { error: data?.message ?? `HTTP ${res.status}`, was_test: !live, to_phone: to })
+      return { sent: false, test: !live, reason: data?.message ?? "send failed", id }
     }
-    await log(live ? "sent" : "test", { twilio_sid: data?.sid, was_test: !live, to_phone: to })
-    return { sent: true, test: !live, sid: data?.sid }
+    const id = await log(live ? "sent" : "test", { twilio_sid: data?.sid, was_test: !live, to_phone: to })
+    return { sent: true, test: !live, sid: data?.sid, id }
   } catch (err) {
-    await log("failed", { error: String(err), was_test: !live, to_phone: to })
-    return { sent: false, test: !live, reason: "send error" }
+    const id = await log("failed", { error: String(err), was_test: !live, to_phone: to })
+    return { sent: false, test: !live, reason: "send error", id }
   }
 }
 

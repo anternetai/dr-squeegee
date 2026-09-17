@@ -160,10 +160,12 @@ export interface SqueegeeEmployee {
   emergency_contact_phone: string | null
   onboarded_at: string | null
   last_login_at: string | null
+  /** May this crew member call or text the customer from the job screen? */
+  can_contact_customers: boolean
 }
 
 const EMPLOYEE_COLS =
-  "id, created_at, name, phone, email, role, status, pay_type, pay_rate, availability, address, emergency_contact_name, emergency_contact_phone, onboarded_at, last_login_at"
+  "id, created_at, name, phone, email, role, status, pay_type, pay_rate, availability, address, emergency_contact_name, emergency_contact_phone, onboarded_at, last_login_at, can_contact_customers"
 
 // Server-component helper: current crew member from the session cookie, or null.
 // Only active/onboarding employees resolve — a deactivated login goes dead.

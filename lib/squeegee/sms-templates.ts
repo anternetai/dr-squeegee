@@ -136,6 +136,13 @@ export const smsTemplates = {
     return `Dr. Squeegee: Hi ${first(name)}, we're on the way - about ${etaMinutes} minutes out. Questions? Call ${CALL}. Reply STOP to opt out.`
   },
 
+  // Fired only after Anthony replies YES to the crew's "arrived" alert. He is the
+  // gate: the crew tapping Arrived tells HIM, and the customer hears from the
+  // business only once he says so. Same plain-hyphen GSM-7 discipline as above.
+  crewArrived(name: string | null): string {
+    return `Dr. Squeegee: Hi ${first(name)}, we've arrived and are getting started. Questions? Call ${CALL}. Reply STOP to opt out.`
+  },
+
   // Win-back to a PAST customer who previously consented — never a cold number.
   reengage(name: string | null): string {
     return `Dr. Squeegee: Hi ${first(name)}, it's been a while! Ready to get your home looking sharp again? Reply here or call ${CALL} for a quick quote. Reply STOP to opt out.`

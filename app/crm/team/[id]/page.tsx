@@ -3,7 +3,16 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { EmployeeEditor, type EmployeeDetail, type AssignedJob } from "./employee-editor"
 import { CrewHealth } from "@/components/squeegee/crew-health"
-import { formatDuration, lockActive, relativeLabel, totalMs } from "@/lib/squeegee/crew"
+import { CrewWorth, type WorthWindow } from "@/components/squeegee/crew-worth"
+import {
+  crewProfit,
+  crewVerdict,
+  formatDuration,
+  lockActive,
+  relativeLabel,
+  totalMs,
+} from "@/lib/squeegee/crew"
+import { loadSettings, DEFAULT_SETTINGS } from "@/lib/squeegee/settings"
 
 export const dynamic = "force-dynamic"
 
@@ -14,19 +23,30 @@ function getAdmin() {
   )
 }
 
+function windowStart(window: WorthWindow): string | null {
+  if (window === "all") return null
+  const days = window === "30" ? 30 : 90
+  return new Date(Date.now() - days * 864e5).toISOString()
+}
+
 export default async function EmployeeDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ window?: string }>
 }) {
   const { id } = await params
+  const { window: windowParam } = await searchParams
+  const worthWindow: WorthWindow =
+    windowParam === "30" || windowParam === "90" ? windowParam : "all"
   const supabase = getAdmin()
 
   const [{ data: employee }, { data: jobs }] = await Promise.all([
     supabase
       .from("squeegee_employees")
       .select(
-        "id, created_at, name, legal_name, phone, email, role, status, pay_type, pay_rate, availability, address, emergency_contact_name, emergency_contact_phone, invite_token, agreement_signed_at, onboarded_at, last_login_at, notes, onboarding_checklist, pin_hash, pin_locked_until"
+        "id, created_at, name, legal_name, phone, email, role, status, pay_type, pay_rate, availability, address, emergency_contact_name, emergency_contact_phone, invite_token, agreement_signed_at, onboarded_at, last_login_at, notes, onboarding_checklist, can_contact_customers, pin_hash, pin_locked_until"
       )
       .eq("id", id)
       .single(),
@@ -72,6 +92,46 @@ export default async function EmployeeDetailPage({
   const openJob = open
     ? (jobs ?? []).find((j) => (j as AssignedJob).id === open.job_id)
     : undefined
+
+  // "Worth it?" — completed jobs in the window, and THEIR clock on those jobs.
+  // This is the owner's surface, so it reads price; nothing here may ever be
+  // selected under /team.
+  const since = windowStart(worthWindow)
+  let completedQuery = supabase
+    .from("squeegee_jobs")
+    .select("id, price, crew_pay")
+    .eq("assigned_employee_id", id)
+    .eq("status", "complete")
+    .not("completed_at", "is", null)
+  if (since) completedQuery = completedQuery.gte("completed_at", since)
+  const { data: completedJobs } = await completedQuery
+
+  const completed = (completedJobs ?? []) as {
+    id: string
+    price: number | null
+    crew_pay: number | null
+  }[]
+
+  // Their work segments on exactly those jobs — not the week-to-date clock above,
+  // which counts drive time and jobs outside the window.
+  const { data: worthSegs } =
+    completed.length > 0
+      ? await supabase
+          .from("squeegee_job_time")
+          .select("kind, started_at, ended_at")
+          .eq("employee_id", id)
+          .eq("kind", "work")
+          .in("job_id", completed.map((j) => j.id))
+      : { data: [] as null | [] }
+
+  const settings = await loadSettings(supabase).catch(() => DEFAULT_SETTINGS)
+  const profit = crewProfit(
+    completed.map((j) => ({ price: j.price, crew_pay: j.crew_pay })),
+    totalMs(
+      (worthSegs ?? []) as { kind: "drive" | "work"; started_at: string; ended_at: string | null }[],
+      "work"
+    )
+  )
 
   const subRows = (subs ?? []) as { last_success_at: string | null; failure_count: number }[]
   const lastSuccess = subRows
@@ -122,6 +182,18 @@ export default async function EmployeeDetailPage({
   return (
     <div className="space-y-5">
       <EmployeeEditor employee={employeeSafe as EmployeeDetail} jobs={(jobs ?? []) as AssignedJob[]} hasPin={!!pin_hash} />
+      <CrewWorth
+        employeeId={id}
+        firstName={(emp.name || "they").trim().split(/\s+/)[0]}
+        window={worthWindow}
+        profit={profit}
+        verdict={crewVerdict(
+          (emp.name || "they").trim().split(/\s+/)[0],
+          profit.netPerHour,
+          settings.soloRevenuePerHour
+        )}
+        soloPerHour={settings.soloRevenuePerHour}
+      />
       <CrewHealth
         employeeId={id}
         weekWorkLabel={formatDuration(totalMs(segs, "work"))}

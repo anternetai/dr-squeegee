@@ -23,6 +23,7 @@ const JOB_EDITABLE = [
   "appointment_date",
   "appointment_time",
   "status",
+  "crew_pay",
 ] as const
 
 export async function PATCH(
@@ -43,6 +44,22 @@ export async function PATCH(
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "No editable fields supplied" }, { status: 400 })
+    }
+
+    // What the crew costs on this job. It feeds margin, the crew-profitability
+    // panel and /team/me "earned this week", so it is coerced here rather than
+    // trusted: a blank clears it, anything else must be a real number >= 0.
+    if ("crew_pay" in updates) {
+      const raw = updates.crew_pay
+      if (raw === null || raw === "") {
+        updates.crew_pay = null
+      } else {
+        const n = Number(raw)
+        if (!Number.isFinite(n) || n < 0) {
+          return NextResponse.json({ error: "Crew pay must be a number, or blank." }, { status: 400 })
+        }
+        updates.crew_pay = Math.round(n * 100) / 100
+      }
     }
 
     // A job only reaches 'scheduled' by booking a slot through the schedule

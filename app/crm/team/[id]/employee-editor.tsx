@@ -30,6 +30,7 @@ export interface EmployeeDetail {
   last_login_at: string | null
   notes: string | null
   onboarding_checklist: Record<string, boolean> | null
+  can_contact_customers: boolean
 }
 
 export interface AssignedJob {
@@ -75,6 +76,7 @@ export function EmployeeEditor({
     availability: employee.availability ?? {},
   })
   const [legalName, setLegalName] = useState(employee.legal_name ?? "")
+  const [canContact, setCanContact] = useState(employee.can_contact_customers !== false)
   const [checklist, setChecklist] = useState<Record<string, boolean>>(employee.onboarding_checklist ?? {})
   const [token, setToken] = useState(employee.invite_token)
   const [serverToken, setServerToken] = useState(employee.invite_token)
@@ -135,6 +137,7 @@ export function EmployeeEditor({
         emergency_contact_phone: form.emergency_contact_phone,
         notes: form.notes,
         availability: form.availability,
+        can_contact_customers: canContact,
       }),
     })
     setBusy(false)
@@ -300,6 +303,33 @@ export function EmployeeEditor({
         <Field label="Pay rate">
           <input className={inputCls} value={form.pay_rate} onChange={(e) => setForm({ ...form, pay_rate: e.target.value.replace(/[^0-9.]/g, "") })} inputMode="decimal" />
         </Field>
+
+        {/* When this is off the server never puts the customer's number in the
+            job page at all — there is no Call or Text button to hide. */}
+        <button
+          type="button"
+          onClick={() => setCanContact((v) => !v)}
+          aria-pressed={canContact}
+          className={`w-full rounded-xl border px-3.5 py-3 text-left transition-colors ${
+            canContact
+              ? "border-[var(--crm-attention-bg)] bg-[var(--crm-attention-bg)]"
+              : "border-border bg-background hover:border-[var(--crm-attention-bg)]"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <span className={`text-sm font-semibold ${canContact ? "text-[var(--crm-attention)]" : ""}`}>
+              Can call/text customers
+            </span>
+            <span className={`text-xs font-medium ${canContact ? "text-[var(--crm-attention)]" : "text-muted-foreground"}`}>
+              {canContact ? "On" : "Off"}
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {canContact
+              ? `${first} sees the customer's number on the job screen.`
+              : `The customer's number never reaches ${first}'s phone.`}
+          </p>
+        </button>
       </Card>
 
       <Card title="Availability">

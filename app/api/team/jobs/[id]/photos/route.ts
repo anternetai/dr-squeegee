@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { randomUUID } from "node:crypto"
 import { getSessionEmployee } from "@/lib/squeegee/employee-auth"
-import { getCrewAdmin, PHOTO_BUCKET } from "@/lib/squeegee/crew"
+import { getCrewAdmin, PHOTO_BUCKET, serviceList } from "@/lib/squeegee/crew"
 
 // The client resizes to ~1600px/q0.8 before upload (~250KB). This ceiling is the
 // backstop for a client that didn't, not the expected size — without the resize
@@ -24,7 +24,7 @@ export async function POST(
 
   const { data: job } = await supabase
     .from("squeegee_jobs")
-    .select("id, assigned_employee_id, status")
+    .select("id, assigned_employee_id, status, service_type")
     .eq("id", id)
     .single()
 
@@ -38,9 +38,24 @@ export async function POST(
   const form = await request.formData().catch(() => null)
   const file = form?.get("file")
   const kind = String(form?.get("kind") ?? "")
+  const requestedService = String(form?.get("service") ?? "").trim()
 
   if (kind !== "before" && kind !== "after") {
     return NextResponse.json({ error: "Photo must be before or after." }, { status: 400 })
+  }
+
+  // Which service this shot proves. Required: the gate is per service, and a
+  // photo with no service is a wildcard that would satisfy every one of them —
+  // that escape hatch exists for legacy rows only, never for new uploads.
+  // Matched case-insensitively, stored with the job's own spelling so the gate
+  // and the rail group on the same string.
+  const services = serviceList(job.service_type as string | null)
+  const service = services.find((s) => s.toLowerCase() === requestedService.toLowerCase())
+  if (!service) {
+    return NextResponse.json(
+      { error: "Pick which service this photo is for.", services },
+      { status: 400 }
+    )
   }
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "No photo received." }, { status: 400 })
@@ -73,9 +88,10 @@ export async function POST(
       job_id: id,
       employee_id: employee.id,
       kind,
+      service,
       storage_path: storagePath,
     })
-    .select("id, kind, storage_path")
+    .select("id, kind, service, storage_path")
     .single()
 
   if (insertError) {
@@ -91,6 +107,6 @@ export async function POST(
 
   return NextResponse.json({
     ok: true,
-    photo: { id: row.id, kind: row.kind, url: signed?.signedUrl ?? null },
+    photo: { id: row.id, kind: row.kind, service: row.service, url: signed?.signedUrl ?? null },
   })
 }

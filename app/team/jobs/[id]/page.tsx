@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation"
 import { getSessionEmployee } from "@/lib/squeegee/employee-auth"
-import { getCrewAdmin, signPhotos, totalMs } from "@/lib/squeegee/crew"
+import { getCrewAdmin, serviceList, signPhotos, totalMs } from "@/lib/squeegee/crew"
 import { JobView, type JobPhoto, type CrewJobDetail } from "./job-view"
 
 export const dynamic = "force-dynamic"
@@ -31,7 +31,7 @@ export default async function CrewJobPage({ params }: { params: Promise<{ id: st
   const [{ data: photoRows }, { data: segments }] = await Promise.all([
     supabase
       .from("squeegee_job_photos")
-      .select("id, kind, storage_path, created_at")
+      .select("id, kind, service, storage_path, created_at")
       .eq("job_id", id)
       .order("created_at", { ascending: true }),
     supabase
@@ -43,6 +43,7 @@ export default async function CrewJobPage({ params }: { params: Promise<{ id: st
   const rows = (photoRows ?? []) as {
     id: string
     kind: string
+    service: string | null
     storage_path: string
   }[]
   const urls = await signPhotos(
@@ -53,6 +54,7 @@ export default async function CrewJobPage({ params }: { params: Promise<{ id: st
   const photos: JobPhoto[] = rows.map((r) => ({
     id: r.id,
     kind: r.kind as "before" | "after",
+    service: r.service,
     url: urls[r.storage_path] ?? null,
   }))
 
@@ -62,9 +64,18 @@ export default async function CrewJobPage({ params }: { params: Promise<{ id: st
     ended_at: string | null
   }[]
 
+  // The contact switch is enforced HERE, not in the UI: when it is off the
+  // number never reaches the browser, so there is nothing to un-hide with dev
+  // tools and nothing to leak in the HTML payload.
+  const jobForCrew = {
+    ...job,
+    client_phone: employee.can_contact_customers ? job.client_phone : null,
+  }
+
   return (
     <JobView
-      job={job as unknown as CrewJobDetail}
+      job={jobForCrew as unknown as CrewJobDetail}
+      services={serviceList(job.service_type as string | null)}
       photos={photos}
       workedMs={totalMs(segs, "work")}
       driveMs={totalMs(segs, "drive")}
