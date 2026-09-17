@@ -201,7 +201,9 @@ export function CameraSheet({
     try {
       enqueue(await captureFrame(video), service)
     } catch {
-      setMode("fallback")
+      // One bad frame (the stream hadn't produced a size yet) is not a reason
+      // to abandon the live camera. The next tap will work; a dead stream
+      // would have already put us in fallback from the effect above.
     }
   }
 
