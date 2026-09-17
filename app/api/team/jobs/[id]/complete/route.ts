@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSessionEmployee } from "@/lib/squeegee/employee-auth"
 import {
+  closeJobClock,
   closeOpenSegment,
   getCrewAdmin,
   jobPhotos,
@@ -66,8 +67,12 @@ export async function POST(
   }
 
   // Stop the clock. Done before the SMS so a texting failure can't leave a timer
-  // running all night.
+  // running all night. closeOpenSegment covers this tech (including a segment
+  // left open on some other job); closeJobClock covers the job, because a
+  // reassignment mid-job leaves the PREVIOUS tech's segment open on it and
+  // nothing else would ever close it.
   await closeOpenSegment(supabase, employee.id)
+  await closeJobClock(supabase, id)
 
   // Ask for a Google review (consent-gated, deduped, test-mode inside sendSms).
   await smsReviewOnce({
