@@ -67,3 +67,14 @@ Shipped in `5c3ad25`. These were found in review and deliberately not fixed.
   httpOnly `crew_session` on localhost during the redirect dance (see the builder rules). Watch prod.
 - **Builder-rules note:** a stale httpOnly `crew_session` on localhost silently breaks crew-UI verification
   until you POST `/api/team/auth/logout` first.
+
+## Crew tab bar — deferred at ship (2026-09-17)
+
+- **`prettyDate` uses the client locale** (`toLocaleDateString(undefined, …)`) against the server's en-US — a
+  latent hydration mismatch on a non-en-US phone. Pre-existing on every job card; the header now uses it too.
+  Product call: hard-code en-US or keep localization.
+- **Edge-to-edge iOS (`viewportFit: "cover"`)** was deliberately NOT enabled: the job screen's fixed action bar
+  (`job-view.tsx`) has no `env(safe-area-inset-bottom)` padding, so cover would put the home indicator over
+  On my way / Arrived / Done. Pad that bar first, then flip cover on the `/team` layout.
+- A Today job with no `appointment_time` renders an empty right column on the highlighted card.
+- Tabs rely on the browser default focus outline (no `focus-visible` ring).
