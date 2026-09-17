@@ -26,6 +26,7 @@ export {
   crewReplyKeyword,
   crewVerdict,
   fieldStateSentence,
+  jobBasePay,
   missingServices,
   nextStep,
   photoGateReason,

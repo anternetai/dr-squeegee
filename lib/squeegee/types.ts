@@ -25,6 +25,8 @@ export interface SqueegeeJob {
   field_status?: string | null
   claimed_at?: string | null
   crew_pay?: number | null
+  /** Tip the crew received on this job. Customer money, never a cost. */
+  crew_tip?: number | null
   // CRM v3 (2026-09-08). lead_source: how THIS job arrived ("repeat" is derived,
   // see lib/squeegee/lead-source.ts). excluded_at: test/junk rows are excluded
   // from every metric rather than deleted — a delete cascades paid invoices.

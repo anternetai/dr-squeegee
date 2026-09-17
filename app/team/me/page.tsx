@@ -29,7 +29,7 @@ export default async function CrewMePage() {
       .gte("started_at", start.toISOString()),
     supabase
       .from("squeegee_jobs")
-      .select("id, crew_pay")
+      .select("id, crew_pay, crew_tip")
       .eq("assigned_employee_id", employee.id)
       .eq("status", "complete")
       .gte("completed_at", start.toISOString()),
@@ -53,6 +53,11 @@ export default async function CrewMePage() {
     0
   )
 
+  const tips = (doneJobs ?? []).reduce(
+    (sum, j) => sum + Number((j as { crew_tip: number | null }).crew_tip ?? 0),
+    0
+  )
+
   // Their pay, never the customer's price.
   const pay = crewPayFor(employee, {
     workedMs: workedMs + driveMs,
@@ -67,6 +72,7 @@ export default async function CrewMePage() {
       driveMs={driveMs}
       jobsDone={(doneJobs ?? []).length}
       pay={pay}
+      tips={Math.round(tips * 100) / 100}
       pushRegistered={(subs ?? []).length > 0}
       vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null}
     />

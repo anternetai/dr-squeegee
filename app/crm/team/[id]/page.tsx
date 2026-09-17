@@ -7,6 +7,7 @@ import { CrewWorth, type WorthWindow } from "@/components/squeegee/crew-worth"
 import {
   crewProfit,
   crewVerdict,
+  jobBasePay,
   formatDuration,
   lockActive,
   relativeLabel,
@@ -99,7 +100,7 @@ export default async function EmployeeDetailPage({
   const since = windowStart(worthWindow)
   let completedQuery = supabase
     .from("squeegee_jobs")
-    .select("id, price, crew_pay")
+    .select("id, price, crew_pay, crew_tip")
     .eq("assigned_employee_id", id)
     .eq("status", "complete")
     .not("completed_at", "is", null)
@@ -110,28 +111,41 @@ export default async function EmployeeDetailPage({
     id: string
     price: number | null
     crew_pay: number | null
+    crew_tip: number | null
   }[]
 
-  // Their work segments on exactly those jobs — not the week-to-date clock above,
-  // which counts drive time and jobs outside the window.
+  // Their clock on exactly those jobs — not the week-to-date clock above, which
+  // includes jobs outside the window. Work segments are "their hours"; drive +
+  // work together are what an hourly crew member is paid for (same as /team/me).
   const { data: worthSegs } =
     completed.length > 0
       ? await supabase
           .from("squeegee_job_time")
-          .select("kind, started_at, ended_at")
+          .select("job_id, kind, started_at, ended_at")
           .eq("employee_id", id)
-          .eq("kind", "work")
           .in("job_id", completed.map((j) => j.id))
       : { data: [] as null | [] }
+  const worthSegRows = (worthSegs ?? []) as {
+    job_id: string
+    kind: "drive" | "work"
+    started_at: string
+    ended_at: string | null
+  }[]
 
   const settings = await loadSettings(supabase).catch(() => DEFAULT_SETTINGS)
+  // (employee may still be null here; the not-found guard is below. A null row
+  // just yields no base pay, which is what the panel shows for an unknown rate.)
+  const payRow = employee as { pay_type?: string; pay_rate?: number | null } | null
+  const payEmp = { pay_type: payRow?.pay_type ?? "", pay_rate: payRow?.pay_rate ?? null }
   const profit = crewProfit(
-    completed.map((j) => ({ price: j.price, crew_pay: j.crew_pay })),
-    totalMs(
-      (worthSegs ?? []) as { kind: "drive" | "work"; started_at: string; ended_at: string | null }[],
-      "work"
-    )
+    completed.map((j) => ({
+      price: j.price,
+      // Base pay per job: typed override, else hours x rate for hourly crew.
+      crew_pay: jobBasePay(payEmp, totalMs(worthSegRows.filter((s) => s.job_id === j.id)), j.crew_pay),
+    })),
+    totalMs(worthSegRows, "work")
   )
+  const tips = Math.round(completed.reduce((sum, j) => sum + Number(j.crew_tip ?? 0), 0) * 100) / 100
 
   const subRows = (subs ?? []) as { last_success_at: string | null; failure_count: number }[]
   const lastSuccess = subRows
@@ -193,6 +207,7 @@ export default async function EmployeeDetailPage({
           settings.soloRevenuePerHour
         )}
         soloPerHour={settings.soloRevenuePerHour}
+        tips={tips}
       />
       <CrewHealth
         employeeId={id}

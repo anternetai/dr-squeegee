@@ -135,6 +135,28 @@ export function crewReplyKeyword(body: string): "yes" | "no" | null {
 // THEIR clock, net of what he pays them, against what he makes per hour alone.
 // Pure so the arithmetic is testable; the page does the reading.
 
+/**
+ * What one job costs Anthony in base pay — BEFORE tips, which are the
+ * customer's money and never a cost.
+ *
+ *   hourly   -> their clock on the job x their rate, unless he typed an override
+ *   per_job  -> whatever he typed (there is nothing to derive it from)
+ *   day_rate -> null: settled off-app, a guess would be worse than a blank
+ */
+export function jobBasePay(
+  employee: { pay_type: string; pay_rate: number | null },
+  jobMs: number,
+  override: number | null | undefined
+): number | null {
+  if (override != null) return round2(Number(override))
+  if (employee.pay_type === "hourly") {
+    if (employee.pay_rate == null) return null
+    const hours = round2(Math.max(0, jobMs) / 3_600_000)
+    return round2(hours * Number(employee.pay_rate))
+  }
+  return null
+}
+
 export interface CrewJobRow {
   price: number | null
   crew_pay: number | null

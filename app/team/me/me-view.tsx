@@ -18,6 +18,7 @@ export function MeView({
   driveMs,
   jobsDone,
   pay,
+  tips,
   pushRegistered,
   vapidPublicKey,
 }: {
@@ -27,6 +28,8 @@ export function MeView({
   driveMs: number
   jobsDone: number
   pay: number | null
+  /** Tips on jobs finished this week — theirs, on top of pay. */
+  tips: number
   pushRegistered: boolean
   vapidPublicKey: string | null
 }) {
@@ -63,6 +66,11 @@ export function MeView({
             ? "Anthony settles your pay directly."
             : `${jobsDone} job${jobsDone === 1 ? "" : "s"} finished`}
         </p>
+        {tips > 0 && (
+          <p className="mt-2 inline-flex items-baseline gap-1.5 rounded-lg bg-[#2D8C6F]/10 px-2.5 py-1 text-sm text-[#4FC49E]">
+            <span className="font-semibold">+ {money(tips)}</span> in tips
+          </p>
+        )}
       </div>
 
       <PushCard registered={pushRegistered} vapidPublicKey={vapidPublicKey} />

@@ -6,6 +6,7 @@ import {
   crewReplyKeyword,
   crewVerdict,
   fieldStateSentence,
+  jobBasePay,
   missingServices,
   nextStep,
   photoGateReason,
@@ -114,4 +115,16 @@ test("crewVerdict says making / costing / nothing to compare", () => {
   const noHours = crewVerdict("Marcus", null, 131.25)
   assert.equal(noHours.tone, "idle")
   assert.match(noHours.text, /No hours logged/)
+})
+
+test("jobBasePay derives hourly pay from the clock and lets an override win", () => {
+  const eric = { pay_type: "hourly", pay_rate: 20 }
+  assert.equal(jobBasePay(eric, 4 * 3_600_000, null), 80)
+  assert.equal(jobBasePay(eric, 2.5 * 3_600_000, null), 50)
+  assert.equal(jobBasePay(eric, 0, null), 0)
+  assert.equal(jobBasePay(eric, 4 * 3_600_000, 95), 95)
+  assert.equal(jobBasePay({ pay_type: "hourly", pay_rate: null }, 3_600_000, null), null)
+  assert.equal(jobBasePay({ pay_type: "per_job", pay_rate: null }, 3_600_000, null), null)
+  assert.equal(jobBasePay({ pay_type: "per_job", pay_rate: null }, 3_600_000, 150), 150)
+  assert.equal(jobBasePay({ pay_type: "day_rate", pay_rate: 200 }, 3_600_000, null), null)
 })

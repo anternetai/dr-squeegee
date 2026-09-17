@@ -6,7 +6,7 @@ import { JobInvoices } from "@/components/squeegee/job-invoices"
 import { JobActivity } from "@/components/squeegee/job-activity"
 import { JobAssign } from "@/components/squeegee/job-assign"
 import { JobCrewWork, type CrewAlert, type CrewPhoto } from "@/components/squeegee/job-crew-work"
-import { formatDuration, signPhotos, totalMs } from "@/lib/squeegee/crew"
+import { formatDuration, jobBasePay, signPhotos, totalMs } from "@/lib/squeegee/crew"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
@@ -52,7 +52,7 @@ export default async function JobDetailPage({ params }: PageProps) {
 
   const { data: crew } = await supabase
     .from("squeegee_employees")
-    .select("id, name")
+    .select("id, name, pay_type, pay_rate")
     .eq("status", "active")
     .order("name")
 
@@ -82,7 +82,7 @@ export default async function JobDetailPage({ params }: PageProps) {
       .select("id, kind, storage_path, customer_visible, created_at")
       .eq("job_id", id)
       .order("created_at", { ascending: true }),
-    supabase.from("squeegee_job_time").select("kind, started_at, ended_at").eq("job_id", id),
+    supabase.from("squeegee_job_time").select("kind, started_at, ended_at, employee_id").eq("job_id", id),
     // The crew's status taps text Anthony, not the customer. These rows are the
     // record of what he answered — service-role, like everything else here.
     supabase
@@ -110,10 +110,27 @@ export default async function JobDetailPage({ params }: PageProps) {
     kind: "drive" | "work"
     started_at: string
     ended_at: string | null
+    employee_id: string | null
   }[]
   const workMs = totalMs(segs, "work")
   const driveMs = totalMs(segs, "drive")
-  const assignedName = (crew ?? []).find((c) => c.id === assignedEmployeeId)?.name ?? null
+  const assigned = (crew ?? []).find((c) => c.id === assignedEmployeeId) ?? null
+  const assignedName = assigned?.name ?? null
+
+  // Base pay fills itself in for an hourly crew member: THEIR clock on this job
+  // (drive + on-site, same as /team/me) times their rate. Anthony only types a
+  // number to override it, or for per-job pay.
+  const theirMs = assignedEmployeeId
+    ? totalMs(segs.filter((s) => s.employee_id === assignedEmployeeId))
+    : 0
+  const autoBase =
+    assigned && assigned.pay_type === "hourly" && assigned.pay_rate != null
+      ? {
+          amount: jobBasePay(assigned, theirMs, null) ?? 0,
+          hours: Math.round((theirMs / 3_600_000) * 100) / 100,
+          rate: Number(assigned.pay_rate),
+        }
+      : null
 
   // Server-only env — read here and pass down rather than exposing it publicly.
   const reviewUrl = process.env.GOOGLE_REVIEW_URL ?? null
@@ -154,6 +171,8 @@ export default async function JobDetailPage({ params }: PageProps) {
           employees={crew ?? []}
           current={assignedEmployeeId}
           crewPay={job.crew_pay ?? null}
+          crewTip={job.crew_tip ?? null}
+          autoBase={autoBase}
           assignLocked={isDone}
         />
       )}

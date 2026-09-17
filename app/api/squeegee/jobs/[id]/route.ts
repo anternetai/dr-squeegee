@@ -24,6 +24,7 @@ const JOB_EDITABLE = [
   "appointment_time",
   "status",
   "crew_pay",
+  "crew_tip",
 ] as const
 
 export async function PATCH(
@@ -49,16 +50,20 @@ export async function PATCH(
     // What the crew costs on this job. It feeds margin, the crew-profitability
     // panel and /team/me "earned this week", so it is coerced here rather than
     // trusted: a blank clears it, anything else must be a real number >= 0.
-    if ("crew_pay" in updates) {
-      const raw = updates.crew_pay
+    for (const key of ["crew_pay", "crew_tip"] as const) {
+      if (!(key in updates)) continue
+      const raw = updates[key]
       if (raw === null || raw === "") {
-        updates.crew_pay = null
+        updates[key] = null
       } else {
         const n = Number(raw)
         if (!Number.isFinite(n) || n < 0) {
-          return NextResponse.json({ error: "Crew pay must be a number, or blank." }, { status: 400 })
+          return NextResponse.json(
+            { error: `${key === "crew_pay" ? "Crew pay" : "Tip"} must be a number, or blank.` },
+            { status: 400 }
+          )
         }
-        updates.crew_pay = Math.round(n * 100) / 100
+        updates[key] = Math.round(n * 100) / 100
       }
     }
 

@@ -21,6 +21,8 @@ export interface CrewWorthProps {
   profit: CrewProfit
   verdict: CrewVerdict
   soloPerHour: number | null
+  /** Tips they received in the window. Shown, never counted as a cost. */
+  tips: number
 }
 
 function money(n: number): string {
@@ -40,6 +42,7 @@ export function CrewWorth({
   profit,
   verdict,
   soloPerHour,
+  tips,
 }: CrewWorthProps) {
   const router = useRouter()
   const [solo, setSolo] = useState(soloPerHour != null ? String(soloPerHour) : "")
@@ -125,8 +128,9 @@ export function CrewWorth({
           </dl>
 
           <p className="text-xs text-[var(--crm-text-faint)]">
-            {profit.crewPayJobs} of {profit.jobs} {profit.jobs === 1 ? "job has" : "jobs have"} crew pay set
+            Base pay known on {profit.crewPayJobs} of {profit.jobs} {profit.jobs === 1 ? "job" : "jobs"}
             {profit.crewShare != null && <> · they take {Math.round(profit.crewShare * 100)}% of revenue</>}
+            {tips > 0 && <> · plus {money(tips)} in tips (customer money, not counted)</>}
             {profit.hours === 0 && <> · no work segments on their clock, so the per-hour numbers are blank</>}
           </p>
         </>
